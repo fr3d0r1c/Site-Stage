@@ -1,0 +1,21 @@
+<%- include('partials/header', { pageTitle: 'Accueil' }) %>
+    
+<h1>Mon Blog</h1>
+<p>Bienvenue sur ce blog créé avec Node.js ! Découvrez ci-dessous les articles les plus récents.</p>
+<nav>
+    <a href="/journal/nouvelle">Écrire un nouvel article</a> | <a href="/journal">Voir tous les articles</a>
+</nav>
+
+    <% articles.forEach(article => { %>
+        <article>
+            <h2><a href="/article/<%= article.id %>"><%= article.title %></a></h2>            <p><%= article.content.substring(0, 200) %>...</p>
+            <small>Publié le: <%= new Date(article.publication_date).toLocaleString('fr-FR') %></small>
+            <p><%= article.content.substring(0, 200) %>...</p>
+            <br><br>
+            <a href="/articles/<%= article.id %>/edit">Modifier</a>
+            <form action="/articles/<%= article.id %>/delete" method="POST" style="display: inline; margin-left: 10px;">
+                <button type="submit">Supprimer</button>
+            </form>
+        </article>
+        <hr>
+    <% }); %>

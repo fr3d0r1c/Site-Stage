@@ -1,0 +1,14 @@
+<%- include('partials/header', { pageTitle: article.title }) %>
+
+<article class="full-article">
+    <h1><%= article.title %></h1>
+    <small>Publié le: <%= new Date(article.publication_date).toLocaleString('fr-FR') %></small>
+    <hr>
+    <div><%- article.content.replace(/\n/g, '<br>') %></div>
+</article>
+
+<nav>
+    <a href="/articles">Retour à la liste des articles</a>
+</nav>
+
+<%- include('partials/footer') %>

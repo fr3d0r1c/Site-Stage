@@ -1,0 +1,152 @@
+/* --- Importation de la police & Variables --- */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+:root {
+    --primary-color: #2c3e50; /* Bleu marine foncé */
+    --secondary-color: #3498db; /* Bleu clair */
+    --background-color: #ecf0f1; /* Gris très clair */
+    --text-color: #34495e; /* Gris foncé */
+    --light-gray: #bdc3c7;
+    --white: #ffffff;
+}
+
+/* --- Style Général --- */
+body {
+    font-family: 'Montserrat', sans-serif;
+    line-height: 1.7;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+}
+
+.container {
+    max-width: 850px;
+    margin: 20px auto;
+    padding: 20px;
+    background: var(--white);
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+h1, h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--secondary-color);
+    padding-bottom: 10px;
+}
+
+a {
+    color: var(--secondary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary-color);
+}
+
+hr {
+    border: 0;
+    height: 1px;
+    background-color: var(--light-gray);
+    margin: 2rem 0;
+}
+
+
+/* --- Header & Navigation --- */
+header {
+    background: var(--primary-color);
+    color: var(--white);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+header .logo a {
+    color: var(--white);
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+header nav a {
+    color: var(--white);
+    margin-left: 1.5rem;
+    font-size: 1rem;
+}
+
+/* --- Entrées de Journal (Articles) --- */
+article {
+    border-bottom: 1px solid var(--light-gray);
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+article:last-child {
+    border-bottom: none;
+}
+
+article h2 a {
+    color: var(--primary-color);
+}
+
+article small {
+    color: #7f8c8d; /* Gris moyen */
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+
+/* --- Formulaires & Boutons --- */
+form div {
+    margin-bottom: 1rem;
+}
+
+input[type="text"],
+input[type="password"],
+textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--light-gray);
+    border-radius: 5px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Important pour que le padding n'augmente pas la largeur */
+}
+
+button, .actions a {
+    display: inline-block;
+    background-color: var(--secondary-color);
+    color: var(--white);
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    text-align: center;
+    transition: background-color 0.3s ease;
+}
+
+button:hover, .actions a:hover {
+    background-color: #2980b9; /* Bleu plus foncé */
+    color: var(--white);
+    text-decoration: none;
+}
+
+.actions form {
+    margin: 0;
+}
+
+.actions a {
+    background-color: #95a5a6; /* Gris */
+}
+
+.actions a:hover {
+    background-color: #7f8c8d;
+}

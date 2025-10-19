@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= pageTitle %> | Mon Blog</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo"><a href="/">Carnet de Stage</a></div>
+        <nav>
+            <a href="/">Accueil</a>
+            <a href="/profil">Mon Profil</a> 
+            <a href="/stage">Mon stage</a> 
+            <a href="/journal">Journal de Bord</a>
+            
+            <% if (locals.username) { %>
+                <a href="/articles/nouveau">Nouvelle Entrée</a>
+                <a href="/deconnexion">Déconnexion (<%= locals.username %>)</a>
+            <% } else { %>
+                <a href="/connexion">Connexion</a>
+            <% } %>
+        </nav>
+    </header>
+    <div class="container">

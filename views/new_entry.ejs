@@ -1,0 +1,21 @@
+<%- include('partials/header', { pageTitle: 'Nouvel article' }) %>
+
+<h1>Écrire un nouvel article</h1>
+
+<form action="/journal" method="POST">
+    <div>
+        <label for="title">Titre :</label><br>
+        <input type="text" id="title" name="title">
+    </div>
+    <br>
+    <div>
+        <label for="content">Contenu :</label><br>
+        <textarea id="content" name="content" rows="10" cols="50"></textarea>
+    </div>
+    <br>
+    <div>
+        <button type="submit">Créer l'article</button>
+    </div>
+</form>
+
+<%- include('partials/footer') %>
