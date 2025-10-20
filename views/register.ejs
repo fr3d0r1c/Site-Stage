@@ -1,23 +1,21 @@
 <%- include('partials/header', { pageTitle: 'Créer le compte Administrateur' }) %>
 
-<div class="container">
-    <h1>Créer le compte</h1>
-    <p>Ce formulaire n'est accessible que pour la création du premier et unique compte.</p>
-    <hr>
+<h1>Créer le compte Administrateur</h1>
+<p>Ce formulaire n'est accessible que pour la création du premier et unique compte.</p>
+<hr>
 
-    <form action="/inscription" method="POST">
-        <div>
-            <label for="username">Nom d'utilisateur :</label><br>
-            <input type="text" id="username" name="username" required>
-        </div>
-        <div>
-            <label for="password">Mot de passe :</label><br>
-            <input type="password" id="password" name="password" required>
-        </div>
-        <div>
-            <button type="submit">Créer le compte</button>
-        </div>
-    </form>
-</div>
+<form action="/inscription" method="POST">
+    <div>
+        <label for="username">Nom d'utilisateur :</label><br>
+        <input type="text" id="username" name="username" required>
+    </div>
+    <div>
+        <label for="password">Mot de passe :</label><br>
+        <input type="password" id="password" name="password" required>
+    </div>
+    <div>
+        <button type="submit">Créer le compte</button>
+    </div>
+</form>
 
 <%- include('partials/footer') %>

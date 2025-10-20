@@ -1,7 +1,79 @@
+// =================================================================
+// 1. IMPORTS (DÉPENDANCES)
+// =================================================================
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+const multer = require('multer');
+
+// =================================================================
+// 2. INITIALISATION ET CONFIGURATION D'EXPRESS
+// =================================================================
 const app = express();
 const port = process.env.PORT || 3000;
-const sqlite3 = require('sqlite3').verbose();
+
+// Définir EJS comme moteur de template
+app.set('view engine', 'ejs');
+
+// Configuration du stockage pour Multer (upload d'images)
+const storage = multer.diskStorage({
+    destination: './public/uploads/',
+    filename: function(req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+const upload = multer({ storage: storage });
+
+// =================================================================
+// 3. MIDDLEWARES
+// =================================================================
+// Servir les fichiers statiques (CSS, images uploadées)
+app.use(express.static('public'));
+
+// Middleware pour lire les données de formulaire (sauf pour les uploads)
+app.use(express.urlencoded({ extended: true }));
+
+// Configuration du middleware de session
+app.use(session({
+  secret: 'votre-secret-personnel-tres-difficile-a-deviner',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false } // Mettre à true en production avec HTTPS
+}));
+
+// Rendre les données de session disponibles dans toutes les vues
+app.use((req, res, next) => {
+    res.locals.username = req.session.username;
+    next();
+});
+
+// Middleware "garde" pour vérifier si l'utilisateur est authentifié
+function isAuthenticated(req, res, next) {
+    if (req.session.userId) {
+        return next();
+    }
+    res.redirect('/connexion');
+}
+
+// Middleware pour vérifier si un compte admin existe déjà
+function checkAdminExists(req, res, next) {
+    const sql = "SELECT COUNT(*) as count FROM users";
+    db.get(sql, [], (err, row) => {
+        if (err) {
+            return res.status(500).send("Erreur serveur");
+        }
+        if (row.count === 0) {
+            next(); // Aucun utilisateur, on peut s'inscrire
+        } else {
+            res.redirect('/connexion'); // Un admin existe déjà, on redirige
+        }
+    });
+}
+
+// =================================================================
+// 4. CONNEXION À LA BASE DE DONNÉES ET CRÉATION DES TABLES
+// =================================================================
 const db = new sqlite3.Database('./blog.db', (err) => {
   if (err) {
     return console.error(err.message);
@@ -9,6 +81,7 @@ const db = new sqlite3.Database('./blog.db', (err) => {
   console.log('Connecté à la base de données SQLite.');
 });
 
+// Création de la table 'articles'
 const createArticleTable = `
 CREATE TABLE IF NOT EXISTS articles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,7 +93,9 @@ CREATE TABLE IF NOT EXISTS articles (
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 `;
+db.run(createArticleTable);
 
+// Création de la table 'users'
 const createUserTable = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,81 +103,17 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL
 );
 `;
-const session = require('express-session');
-const bcrypt = require('bcrypt');
+db.run(createUserTable);
 
-app.set('view engine', 'ejs');
-app.use(express.urlencoded({ extended: true }));
+// =================================================================
+// 5. ROUTES
+// =================================================================
 
-app.use(session({
-  secret: 'votre-secret-personnel-tres-difficile-a-deviner', // Changez ceci pour une chaîne aléatoire
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false } // Mettre à true si vous utilisez HTTPS
-}));
+// --- PAGES PUBLIQUES (LECTURE) ---
 
-// Rendre les données de session disponibles dans toutes les vues
-app.use((req, res, next) => {
-    res.locals.username = req.session.username;
-    next();
-});
-
-// Middleware pour vérifier si l'utilisateur est authentifié
-function isAuthenticated(req, res, next) {
-    if (req.session.userId) {
-        return next(); // Si l'utilisateur est connecté, on continue
-    }
-    res.redirect('/connexion'); // Sinon, on le redirige vers la page de connexion
-}
-
-db.run(createArticleTable, (err) => {
-    if (err) {
-        return console.error(err.message);
-    }
-    console.log("Table 'articles' prête.");
-});
-
-db.run(createUserTable, (err) => {
-    if (err) {
-        return console.error(err.message);
-    }
-    console.log("Table 'users' prête.");
-});
-
-const multer = require('multer');
-
-const storage = multer.diskStorage({
-    destination: './public/uploads/',
-    filename: function(req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname)
-    }
-});
-
-const upload = multer({ storage: storage });
-
-// Middleware pour vérifier si un compte admin existe déjà
-function checkAdminExists(req, res, next) {
-    const sql = "SELECT COUNT(*) as count FROM users";
-    db.get(sql, [], (err, row) => {
-        if (err) {
-            return res.status(500).send("Erreur serveur");
-        }
-        // S'il n'y a aucun utilisateur, on laisse passer vers la page d'inscription
-        if (row.count === 0) {
-            next();
-        } else {
-            // Sinon, on redirige vers la page de connexion
-            res.redirect('/connexion');
-        }
-    });
-}
-
-// Middleware to serve static files (CSS, images, etc.) from the 'public' directory
-app.use(express.static('public'));
-
+// Page d'accueil
 app.get('/', (req, res) => {
     const sql = 'SELECT * FROM articles ORDER BY publication_date DESC LIMIT 3';
-
     db.all(sql, [], (err, rows) => {
         if (err) {
             return res.status(500).send("Erreur dans la base de données");
@@ -111,84 +122,7 @@ app.get('/', (req, res) => {
     });
 });
 
-app.get('/journal', (req, res) => {
-    const sql = 'SELECT * FROM articles ORDER BY publication_date DESC';
-
-    db.all(sql, [], (err, rows) => {
-        if (err) {
-            return res.status(500).send("Erreur dans la base de données");
-        }
-        res.render('journal', { articles: rows, pageTitle: 'Tous les articles' });
-    });
-});
-
-// Route pour afficher UN SEUL article en détail
-app.get('/entree/:id', (req, res) => {
-    const id = req.params.id;
-    const sql = "SELECT * FROM articles WHERE id = ?";
-
-    db.get(sql, id, (err, article) => {
-        if (err) {
-            res.status(500).send("Erreur dans la base de données");
-            throw err;
-        }
-
-        if (!article) {
-            res.status(404).send("Article non trouvé !");
-            return;
-        }
-
-        res.render('entry_detail', { article: article, pagetitle: article.title });
-    });
-});
-
-app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
-    res.render('new_entry', { pageTitle: 'Nouvel article' });
-});
-
-// Route pour AFFICHER le formulaire de modification d'un article
-app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
-    const id = req.params.id;
-    const sql = "SELECT * FROM articles WHERE id = ?";
-
-    db.get(sql, id, (err, article) => {
-        if (err) {
-            res.status(500).send("Erreur dans la base de données");
-            throw err;
-        }
-
-        // On envoie le HTML du formulaire pré-rempli
-        res.render('edit_entry', { article: article, pageTitle: 'Modifier : ' + article.title });
-    });
-});
-
-app.get('/connexion', (req, res) => {
-    const sql = "SELECT COUNT(*) as count FROM users";
-    db.get(sql, [], (err, row) => {
-        if (err) {
-            return res.status(500).send("Erreur serveur");
-        }
-        res.render('login', {
-            pageTitle: 'Connexion',
-            error: null,
-            adminExists: row.count > 0
-        });
-    });
-});
-
-// Route de déconnexion
-app.get('/deconnexion', (req, res) => {
-    req.session.destroy(err => {
-        if (err) {
-            // Gérer l'erreur, par exemple rediriger quand même
-            return res.redirect('/');
-        }
-        res.clearCookie('connect.sid'); // 'connect.sid' est le nom par défaut du cookie de session
-        res.redirect('/');
-    });
-});
-
-// Affiche la page de profil
+// Pages statiques
 app.get('/profil', (req, res) => {
     res.render('profil', { pageTitle: 'Mon Profil' });
 });
@@ -197,115 +131,159 @@ app.get('/stage', (req, res) => {
     res.render('stage', { pageTitle: 'Mon Stage' });
 });
 
-// Affiche le formulaire d'inscription, SEULEMENT si aucun admin n'existe
-app.get('/inscription', checkAdminExists, (req, res) => {
-    res.render('register', { pageTitle: 'Créer le compte Administrateur' });
-});
-
-app.post('/journal', isAuthenticated, upload.single('image'), (req, res) => {
-    const { title, content } = req.body;
-    const userId = req.session.userId;
-
-    const imageFilename = req.file ? req.file.filename : null;
-
-    const sql = 'INSERT INTO articles (title, content, user_id, image_filename) VALUES (?, ?, ?, ?)';
-
-    db.run(sql, [title, content, userId, imageFilename], function(err) {
+// Page de tout le journal
+app.get('/journal', (req, res) => {
+    const sql = 'SELECT * FROM articles ORDER BY publication_date DESC';
+    db.all(sql, [], (err, rows) => {
         if (err) {
-            return res.status(500).send("Erreur lors de la création de l'entrée.");
+            return res.status(500).send("Erreur dans la base de données");
         }
-        res.redirect('/journal');
+        res.render('journal', { articles: rows, pageTitle: 'Journal de Bord' });
     });
 });
 
-// Route pour gérer la suppression d'un article
-app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
-    // On récupère l'ID depuis les paramètres de l'URL
+// Page de détail d'une entrée
+app.get('/entree/:id', (req, res) => {
     const id = req.params.id;
-    const sql = 'DELETE FROM articles WHERE id = ?';
-
-    db.run(sql, id, function(err) {
+    const sql = "SELECT * FROM articles WHERE id = ?";
+    db.get(sql, id, (err, article) => {
         if (err) {
-            res.status(500).send("Erreur lors de la suppression de l'article");
-            return console.error(err.message);
+            return res.status(500).send("Erreur dans la base de données");
         }
-        console.log(`L'article avec l'ID ${id} a été supprimé, ${this.changes} ligne(s) affectée(s).`);
-        
-        // On redirige l'utilisateur vers la liste de tous les articles
-        res.redirect('/articles');
+        if (!article) {
+            return res.status(404).send("Entrée non trouvée !");
+        }
+        res.render('entry_detail', { article: article, pageTitle: article.title });
     });
 });
 
-// Route pour TRAITER la modification d'un article
-app.post('/entree/:id/edit', isAuthenticated, (req, res) => {
-    const id = req.params.id;
-    const { title, content } = req.body; // Raccourci pour req.body.title et req.body.content
 
-    const sql = 'UPDATE articles SET title = ?, content = ? WHERE id = ?';
+// --- AUTHENTIFICATION (ADMIN) ---
 
-    db.run(sql, [title, content, id], function(err) {
+// Affiche le formulaire de connexion
+app.get('/connexion', (req, res) => {
+    const sql = "SELECT COUNT(*) as count FROM users";
+    db.get(sql, [], (err, row) => {
         if (err) {
-            res.status(500).send("Erreur lors de la mise à jour de l'article");
-            return console.error(err.message);
+            return res.status(500).send("Erreur serveur");
         }
-        console.log(`L'article avec l'ID ${id} a été mis à jour.`);
-        res.redirect('/articles');
+        res.render('login', { pageTitle: 'Administration', error: null, adminExists: row.count > 0 });
     });
 });
 
+// Traite la tentative de connexion
 app.post('/connexion', (req, res) => {
     const { username, password } = req.body;
     const sql = 'SELECT * FROM users WHERE username = ?';
-
     db.get(sql, [username], (err, user) => {
-        if (err) {
-            return res.status(500).send("Erreur du serveur.");
-        }
-        // Si aucun utilisateur n'est trouvé avec ce nom d'utilisateur
+        if (err) { return res.status(500).send("Erreur du serveur."); }
         if (!user) {
-            return res.status(400).send("Nom d'utilisateur ou mot de passe incorrect.");
+            return res.render('login', { pageTitle: 'Connexion', error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true });
         }
-
-        // On compare le mot de passe fourni avec le hash stocké
         bcrypt.compare(password, user.password, (err, result) => {
-            if (err) {
-                return res.status(500).send("Erreur lors de la vérification.");
-            }
             if (result) {
-                // Les mots de passe correspondent ! On ouvre une session.
                 req.session.userId = user.id;
                 req.session.username = user.username;
-                console.log(`Utilisateur ${user.username} connecté.`);
                 res.redirect('/');
             } else {
-                // Les mots de passe ne correspondent pas
-                res.status(400).send("Nom d'utilisateur ou mot de passe incorrect.");
+                res.render('login', { pageTitle: 'Connexion', error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true });
             }
         });
     });
+});
+
+// Route de déconnexion
+app.get('/deconnexion', (req, res) => {
+    req.session.destroy(err => {
+        if (err) { return res.redirect('/'); }
+        res.clearCookie('connect.sid');
+        res.redirect('/');
+    });
+});
+
+// Affiche le formulaire d'inscription (seulement si aucun admin n'existe)
+app.get('/inscription', checkAdminExists, (req, res) => {
+    res.render('register', { pageTitle: 'Créer le compte Administrateur' });
 });
 
 // Traite la création du premier et unique utilisateur
 app.post('/inscription', checkAdminExists, (req, res) => {
     const { username, password } = req.body;
     const saltRounds = 10;
-
     bcrypt.hash(password, saltRounds, (err, hash) => {
-        if (err) {
-            return res.status(500).send("Erreur lors du hachage.");
-        }
+        if (err) { return res.status(500).send("Erreur lors du hachage."); }
         const sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
         db.run(sql, [username, hash], function(err) {
-            if (err) {
-                return res.status(400).send("Erreur lors de la création du compte.");
-            }
-            console.log(`Compte administrateur créé avec l'ID : ${this.lastID}`);
+            if (err) { return res.status(400).send("Erreur lors de la création du compte."); }
             res.redirect('/connexion');
         });
     });
 });
 
-// On demande à l'application d'écouter sur le port défini
+
+// --- GESTION DU CONTENU (ROUTES PROTÉGÉES) ---
+
+// Affiche le formulaire de création
+app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
+    res.render('new_entry', { pageTitle: 'Nouvelle entrée' });
+});
+
+// Traite la création d'une entrée
+app.post('/journal', isAuthenticated, upload.single('image'), (req, res) => {
+    const { title, content } = req.body;
+    const userId = req.session.userId;
+    const imageFilename = req.file ? req.file.filename : null;
+    const sql = 'INSERT INTO articles (title, content, user_id, image_filename) VALUES (?, ?, ?, ?)';
+    db.run(sql, [title, content, userId, imageFilename], function(err) {
+        if (err) { return res.status(500).send("Erreur lors de la création de l'entrée."); }
+        res.redirect('/journal');
+    });
+});
+
+// Affiche le formulaire de modification
+app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
+    const id = req.params.id;
+    const sql = "SELECT * FROM articles WHERE id = ?";
+    db.get(sql, id, (err, article) => {
+        if (err) { return res.status(500).send("Erreur dans la base de données"); }
+        res.render('edit_entry', { article: article, pageTitle: 'Modifier : ' + article.title });
+    });
+});
+
+// Traite la modification d'une entrée
+app.post('/entree/:id/edit', isAuthenticated, upload.single('image'), (req, res) => {
+    const id = req.params.id;
+    const { title, content } = req.body;
+    if (req.file) {
+        const imageFilename = req.file.filename;
+        const sql = 'UPDATE articles SET title = ?, content = ?, image_filename = ? WHERE id = ?';
+        db.run(sql, [title, content, imageFilename, id], function(err) {
+            if (err) { return res.status(500).send("Erreur lors de la mise à jour de l'entrée."); }
+            res.redirect('/journal');
+        });
+    } else {
+        const sql = 'UPDATE articles SET title = ?, content = ? WHERE id = ?';
+        db.run(sql, [title, content, id], function(err) {
+            if (err) { return res.status(500).send("Erreur lors de la mise à jour de l'entrée."); }
+            res.redirect('/journal');
+        });
+    }
+});
+
+// Traite la suppression d'une entrée
+app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
+    const id = req.params.id;
+    const sql = 'DELETE FROM articles WHERE id = ?';
+    db.run(sql, id, function(err) {
+        if (err) { return res.status(500).send("Erreur lors de la suppression de l'entrée."); }
+        res.redirect('/journal');
+    });
+});
+
+
+// =================================================================
+// 6. DÉMARRAGE DU SERVEUR
+// =================================================================
 app.listen(port, () => {
   console.log(`Serveur démarré sur http://localhost:${port}`);
 });

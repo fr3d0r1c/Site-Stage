@@ -1,13 +1,9 @@
-<%- include('partials/header', { pageTitle: 'Connexion' }) %>
+<%- include('partials/header', { pageTitle: 'Administration' }) %>
 
-<h1>Se connecter</h1>
+<h1>Administration - Connexion</h1>
 
-<%# ... code du formulaire et du message d'erreur ... %>
-
-<%# On affiche le lien seulement si aucun compte admin n'existe %>
-
-<% if (!adminExists) { %>
-    <p>Aucun compte administrateur n'existe. <a href="/inscription">Créez-le maintenant</a>.</p>
+<% if (error) { %>
+    <p class="error-message"><%= error %></p>
 <% } %>
 
 <form action="/connexion" method="POST">
@@ -23,5 +19,9 @@
         <button type="submit">Se connecter</button>
     </div>
 </form>
+
+<% if (!adminExists) { %>
+    <p>Aucun compte administrateur n'existe. <a href="/inscription">Créez-le maintenant</a>.</p>
+<% } %>
 
 <%- include('partials/footer') %>

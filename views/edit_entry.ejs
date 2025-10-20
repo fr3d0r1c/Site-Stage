@@ -1,8 +1,8 @@
 <%- include('partials/header', { pageTitle: 'Modifier : ' + article.title }) %>
 
-<h1>Modifier l'article</h1>
+<h1>Modifier l'entrée</h1>
 
-<form action="/entree/<%= article.id %>/edit" method="POST">
+<form action="/entree/<%= article.id %>/edit" method="POST" enctype="multipart/form-data">
     <div>
         <label for="title">Titre :</label><br>
         <input type="text" id="title" name="title" value="<%= article.title %>" required>
@@ -10,6 +10,13 @@
     <div>
         <label for="content">Contenu :</label><br>
         <textarea id="content" name="content" rows="15" required><%= article.content %></textarea>
+    </div>
+    <div>
+        <label for="image">Changer l'image (optionnel) :</label><br>
+        <% if (article.image_filename) { %>
+            <p>Image actuelle : <%= article.image_filename %></p>
+        <% } %>
+        <input type="file" id="image" name="image">
     </div>
     <div>
         <button type="submit">Mettre à jour</button>
