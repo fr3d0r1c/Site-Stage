@@ -5,20 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= pageTitle %> | Carnet de Stage</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body>
-    <header>
+    <header class="site-header">
         <div class="logo"><a href="/">Carnet de Stage</a></div>
-        <nav>
-            <a href="/">Accueil</a>
-            <a href="/profil">Mon Profil</a>
-            <a href="/stage">Mon Stage</a>
-            <a href="/journal">Journal de Bord</a>
+
+        <button class="nav-toggle" aria-label="toggle navigation">
+            <span class="hamburger"></span>
+        </button>
+
+        <nav class="main-nav">
+            <a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>">Accueil</a>
+            <a href="/profil" class="<%= activePage === 'profil' ? 'active' : '' %>">Mon Profil</a>
+            <a href="/stage" class="<%= activePage === 'stage' ? 'active' : '' %>">Mon Stage</a>
+            <a href="/journal" class="<%= activePage === 'journal' ? 'active' : '' %>">Journal de Bord</a>
             
             <% if (locals.username) { %>
-                <a href="/deconnexion">Déconnexion (<%= locals.username %>)</a>
+                <a href="/deconnexion" class="<%= activePage === 'admin' ? 'active' : '' %>">Déconnexion (<%= locals.username %>)</a>
             <% } else { %>
-                <a href="/connexion">Administration</a>
+                <a href="/connexion" class="<%= activePage === 'admin' ? 'active' : '' %>">Administration</a>
             <% } %>
         </nav>
     </header>

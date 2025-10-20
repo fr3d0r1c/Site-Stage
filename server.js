@@ -28,10 +28,10 @@ const upload = multer({ storage: storage });
 // =================================================================
 // 3. MIDDLEWARES
 // =================================================================
-// Servir les fichiers statiques (CSS, images uploadées)
+// Servir les fichiers statiques (CSS, JS, images uploadées)
 app.use(express.static('public'));
 
-// Middleware pour lire les données de formulaire (sauf pour les uploads)
+// Middleware pour lire les données de formulaire
 app.use(express.urlencoded({ extended: true }));
 
 // Configuration du middleware de session
@@ -118,17 +118,17 @@ app.get('/', (req, res) => {
         if (err) {
             return res.status(500).send("Erreur dans la base de données");
         }
-        res.render('index', { articles: rows, pageTitle: 'Accueil' });
+        res.render('index', { articles: rows, pageTitle: 'Accueil', activePage: 'accueil' });
     });
 });
 
 // Pages statiques
 app.get('/profil', (req, res) => {
-    res.render('profil', { pageTitle: 'Mon Profil' });
+    res.render('profil', { pageTitle: 'Mon Profil', activePage: 'profil' });
 });
 
 app.get('/stage', (req, res) => {
-    res.render('stage', { pageTitle: 'Mon Stage' });
+    res.render('stage', { pageTitle: 'Mon Stage', activePage: 'stage' });
 });
 
 // Page de tout le journal
@@ -138,7 +138,7 @@ app.get('/journal', (req, res) => {
         if (err) {
             return res.status(500).send("Erreur dans la base de données");
         }
-        res.render('journal', { articles: rows, pageTitle: 'Journal de Bord' });
+        res.render('journal', { articles: rows, pageTitle: 'Journal de Bord', activePage: 'journal' });
     });
 });
 
@@ -153,7 +153,7 @@ app.get('/entree/:id', (req, res) => {
         if (!article) {
             return res.status(404).send("Entrée non trouvée !");
         }
-        res.render('entry_detail', { article: article, pageTitle: article.title });
+        res.render('entry_detail', { article: article, pageTitle: article.title, activePage: 'journal' });
     });
 });
 
@@ -167,7 +167,7 @@ app.get('/connexion', (req, res) => {
         if (err) {
             return res.status(500).send("Erreur serveur");
         }
-        res.render('login', { pageTitle: 'Administration', error: null, adminExists: row.count > 0 });
+        res.render('login', { pageTitle: 'Administration', error: null, adminExists: row.count > 0, activePage: 'admin' });
     });
 });
 
@@ -178,7 +178,7 @@ app.post('/connexion', (req, res) => {
     db.get(sql, [username], (err, user) => {
         if (err) { return res.status(500).send("Erreur du serveur."); }
         if (!user) {
-            return res.render('login', { pageTitle: 'Connexion', error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true });
+            return res.render('login', { pageTitle: 'Administration', error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true, activePage: 'admin' });
         }
         bcrypt.compare(password, user.password, (err, result) => {
             if (result) {
@@ -186,7 +186,7 @@ app.post('/connexion', (req, res) => {
                 req.session.username = user.username;
                 res.redirect('/');
             } else {
-                res.render('login', { pageTitle: 'Connexion', error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true });
+                res.render('login', { pageTitle: 'Administration', error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true, activePage: 'admin' });
             }
         });
     });
@@ -203,7 +203,7 @@ app.get('/deconnexion', (req, res) => {
 
 // Affiche le formulaire d'inscription (seulement si aucun admin n'existe)
 app.get('/inscription', checkAdminExists, (req, res) => {
-    res.render('register', { pageTitle: 'Créer le compte Administrateur' });
+    res.render('register', { pageTitle: 'Créer le compte Administrateur', activePage: 'admin' });
 });
 
 // Traite la création du premier et unique utilisateur
@@ -225,7 +225,7 @@ app.post('/inscription', checkAdminExists, (req, res) => {
 
 // Affiche le formulaire de création
 app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
-    res.render('new_entry', { pageTitle: 'Nouvelle entrée' });
+    res.render('new_entry', { pageTitle: 'Nouvelle entrée', activePage: 'journal' });
 });
 
 // Traite la création d'une entrée
@@ -246,7 +246,7 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
     const sql = "SELECT * FROM articles WHERE id = ?";
     db.get(sql, id, (err, article) => {
         if (err) { return res.status(500).send("Erreur dans la base de données"); }
-        res.render('edit_entry', { article: article, pageTitle: 'Modifier : ' + article.title });
+        res.render('edit_entry', { article: article, pageTitle: 'Modifier : ' + article.title, activePage: 'journal' });
     });
 });
 
