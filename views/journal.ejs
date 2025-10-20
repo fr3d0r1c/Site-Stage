@@ -11,12 +11,12 @@
 
 <% articles.forEach(entry => { %>
     <article>
-        <% if (entry.image_filename) { %>
-            <img src="/uploads/<%= entry.image_filename %>" alt="<%= entry.title %>" style="max-width: 100%; height: auto; border-radius: 5px; margin-bottom: 1rem;">
+        <% if (entry.coverImage) { %>
+            <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" style="max-width: 100%; height: auto; border-radius: 5px; margin-bottom: 1rem;">
         <% } %>
         <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
         <small>Publié le: <%= new Date(entry.publication_date).toLocaleString('fr-FR') %></small>
-        <p><%= entry.content.substring(0, 200) %>... <a href="/entree/<%= entry.id %>">Lire la suite</a></p>
+        <p><%= entry.content.substring(0, 350) %>... <a href="/entree/<%= entry.id %>">Lire la suite</a></p>
         
         <% if (locals.username) { %>
             <div class="actions">

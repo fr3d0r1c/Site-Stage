@@ -353,3 +353,40 @@ form button[type="submit"]:hover {
         font-size: 1.5rem;
     }
 }
+
+/* --- Styles pour l'éditeur Markdown --- */
+.editor-container {
+    display: flex;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+.editor-pane, .preview-pane {
+    flex: 1; /* Chaque panneau prend 50% de la largeur */
+    min-width: 0;
+}
+.preview-pane {
+    border: 1px solid var(--light-gray);
+    border-radius: 5px;
+    padding: 12px;
+    background: #fafafa;
+    min-height: 400px;
+}
+#content-editor {
+    min-height: 400px;
+    resize: vertical;
+}
+
+/* --- Responsive pour l'éditeur --- */
+@media (max-width: 768px) {
+    .editor-container {
+        flex-direction: column;
+    }
+}
+
+.editor-tool-btn {
+    background-color: #7f8c8d;
+    margin-bottom: 0.5rem;
+}
+.editor-tool-btn:hover {
+    background-color: #95a5a6;
+}

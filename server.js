@@ -6,6 +6,7 @@ const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
+const { marked } = require('marked'); // Pour convertir le Markdown
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -39,7 +40,7 @@ app.use(session({
   secret: 'votre-secret-personnel-tres-difficile-a-deviner',
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false } // Mettre à true en production avec HTTPS
+  cookie: { secure: false }
 }));
 
 // Rendre les données de session disponibles dans toutes les vues
@@ -64,9 +65,9 @@ function checkAdminExists(req, res, next) {
             return res.status(500).send("Erreur serveur");
         }
         if (row.count === 0) {
-            next(); // Aucun utilisateur, on peut s'inscrire
+            next();
         } else {
-            res.redirect('/connexion'); // Un admin existe déjà, on redirige
+            res.redirect('/connexion');
         }
     });
 }
@@ -81,7 +82,7 @@ const db = new sqlite3.Database('./blog.db', (err) => {
   console.log('Connecté à la base de données SQLite.');
 });
 
-// Création de la table 'articles'
+// Création de la table 'articles' (version simplifiée, sans image_filename)
 const createArticleTable = `
 CREATE TABLE IF NOT EXISTS articles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,7 +90,6 @@ CREATE TABLE IF NOT EXISTS articles (
   content TEXT NOT NULL,
   publication_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER,
-  image_filename TEXT,
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 `;
@@ -115,10 +115,13 @@ db.run(createUserTable);
 app.get('/', (req, res) => {
     const sql = 'SELECT * FROM articles ORDER BY publication_date DESC LIMIT 3';
     db.all(sql, [], (err, rows) => {
-        if (err) {
-            return res.status(500).send("Erreur dans la base de données");
-        }
-        res.render('index', { articles: rows, pageTitle: 'Accueil', activePage: 'accueil' });
+        if (err) { return res.status(500).send("Erreur BDD"); }
+        const articlesWithCovers = rows.map(article => {
+            const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+            const coverImage = match ? match[1] : null;
+            return { ...article, coverImage };
+        });
+        res.render('index', { articles: articlesWithCovers, pageTitle: 'Accueil', activePage: 'accueil' });
     });
 });
 
@@ -135,10 +138,13 @@ app.get('/stage', (req, res) => {
 app.get('/journal', (req, res) => {
     const sql = 'SELECT * FROM articles ORDER BY publication_date DESC';
     db.all(sql, [], (err, rows) => {
-        if (err) {
-            return res.status(500).send("Erreur dans la base de données");
-        }
-        res.render('journal', { articles: rows, pageTitle: 'Journal de Bord', activePage: 'journal' });
+        if (err) { return res.status(500).send("Erreur BDD"); }
+        const articlesWithCovers = rows.map(article => {
+            const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+            const coverImage = match ? match[1] : null;
+            return { ...article, coverImage };
+        });
+        res.render('journal', { articles: articlesWithCovers, pageTitle: 'Journal de Bord', activePage: 'journal' });
     });
 });
 
@@ -147,26 +153,22 @@ app.get('/entree/:id', (req, res) => {
     const id = req.params.id;
     const sql = "SELECT * FROM articles WHERE id = ?";
     db.get(sql, id, (err, article) => {
-        if (err) {
-            return res.status(500).send("Erreur dans la base de données");
-        }
-        if (!article) {
-            return res.status(404).send("Entrée non trouvée !");
-        }
+        if (err) { return res.status(500).send("Erreur BDD"); }
+        if (!article) { return res.status(404).send("Entrée non trouvée !"); }
+        // On convertit le contenu Markdown en HTML avant de l'envoyer
+        article.content = marked.parse(article.content);
         res.render('entry_detail', { article: article, pageTitle: article.title, activePage: 'journal' });
     });
 });
 
 
-// --- AUTHENTIFICATION (ADMIN) ---
+// --- AUTHENTIFICATION ET API ---
 
 // Affiche le formulaire de connexion
 app.get('/connexion', (req, res) => {
     const sql = "SELECT COUNT(*) as count FROM users";
     db.get(sql, [], (err, row) => {
-        if (err) {
-            return res.status(500).send("Erreur serveur");
-        }
+        if (err) { return res.status(500).send("Erreur serveur"); }
         res.render('login', { pageTitle: 'Administration', error: null, adminExists: row.count > 0, activePage: 'admin' });
     });
 });
@@ -201,23 +203,32 @@ app.get('/deconnexion', (req, res) => {
     });
 });
 
-// Affiche le formulaire d'inscription (seulement si aucun admin n'existe)
+// Affiche le formulaire d'inscription (conditionnel)
 app.get('/inscription', checkAdminExists, (req, res) => {
     res.render('register', { pageTitle: 'Créer le compte Administrateur', activePage: 'admin' });
 });
 
-// Traite la création du premier et unique utilisateur
+// Traite la création du premier admin
 app.post('/inscription', checkAdminExists, (req, res) => {
     const { username, password } = req.body;
     const saltRounds = 10;
     bcrypt.hash(password, saltRounds, (err, hash) => {
-        if (err) { return res.status(500).send("Erreur lors du hachage."); }
+        if (err) { return res.status(500).send("Erreur hachage."); }
         const sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
         db.run(sql, [username, hash], function(err) {
-            if (err) { return res.status(400).send("Erreur lors de la création du compte."); }
+            if (err) { return res.status(400).send("Erreur création compte."); }
             res.redirect('/connexion');
         });
     });
+});
+
+// Endpoint d'API pour l'upload d'images
+app.post('/upload-image', isAuthenticated, upload.single('image'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier reçu.' });
+    }
+    const imageUrl = '/uploads/' + req.file.filename;
+    res.json({ imageUrl: imageUrl });
 });
 
 
@@ -228,14 +239,13 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
     res.render('new_entry', { pageTitle: 'Nouvelle entrée', activePage: 'journal' });
 });
 
-// Traite la création d'une entrée
-app.post('/journal', isAuthenticated, upload.single('image'), (req, res) => {
+// Traite la création d'une entrée (sans gestion de fichier ici)
+app.post('/journal', isAuthenticated, (req, res) => {
     const { title, content } = req.body;
     const userId = req.session.userId;
-    const imageFilename = req.file ? req.file.filename : null;
-    const sql = 'INSERT INTO articles (title, content, user_id, image_filename) VALUES (?, ?, ?, ?)';
-    db.run(sql, [title, content, userId, imageFilename], function(err) {
-        if (err) { return res.status(500).send("Erreur lors de la création de l'entrée."); }
+    const sql = 'INSERT INTO articles (title, content, user_id) VALUES (?, ?, ?)';
+    db.run(sql, [title, content, userId], function(err) {
+        if (err) { return res.status(500).send("Erreur création entrée."); }
         res.redirect('/journal');
     });
 });
@@ -245,29 +255,20 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
     const id = req.params.id;
     const sql = "SELECT * FROM articles WHERE id = ?";
     db.get(sql, id, (err, article) => {
-        if (err) { return res.status(500).send("Erreur dans la base de données"); }
+        if (err) { return res.status(500).send("Erreur BDD"); }
         res.render('edit_entry', { article: article, pageTitle: 'Modifier : ' + article.title, activePage: 'journal' });
     });
 });
 
-// Traite la modification d'une entrée
-app.post('/entree/:id/edit', isAuthenticated, upload.single('image'), (req, res) => {
+// Traite la modification d'une entrée (sans gestion de fichier ici)
+app.post('/entree/:id/edit', isAuthenticated, (req, res) => {
     const id = req.params.id;
     const { title, content } = req.body;
-    if (req.file) {
-        const imageFilename = req.file.filename;
-        const sql = 'UPDATE articles SET title = ?, content = ?, image_filename = ? WHERE id = ?';
-        db.run(sql, [title, content, imageFilename, id], function(err) {
-            if (err) { return res.status(500).send("Erreur lors de la mise à jour de l'entrée."); }
-            res.redirect('/journal');
-        });
-    } else {
-        const sql = 'UPDATE articles SET title = ?, content = ? WHERE id = ?';
-        db.run(sql, [title, content, id], function(err) {
-            if (err) { return res.status(500).send("Erreur lors de la mise à jour de l'entrée."); }
-            res.redirect('/journal');
-        });
-    }
+    const sql = 'UPDATE articles SET title = ?, content = ? WHERE id = ?';
+    db.run(sql, [title, content, id], function(err) {
+        if (err) { return res.status(500).send("Erreur mise à jour entrée."); }
+        res.redirect('/journal');
+    });
 });
 
 // Traite la suppression d'une entrée
@@ -275,7 +276,7 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
     const id = req.params.id;
     const sql = 'DELETE FROM articles WHERE id = ?';
     db.run(sql, id, function(err) {
-        if (err) { return res.status(500).send("Erreur lors de la suppression de l'entrée."); }
+        if (err) { return res.status(500).send("Erreur suppression entrée."); }
         res.redirect('/journal');
     });
 });

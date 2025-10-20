@@ -2,22 +2,35 @@
 
 <h1>Ajouter une entrée au journal</h1>
 
-<form action="/journal" method="POST" enctype="multipart/form-data">
+<form action="/journal" method="POST">
     <div>
         <label for="title">Titre :</label><br>
         <input type="text" id="title" name="title" required>
     </div>
-    <div>
-        <label for="content">Contenu :</label><br>
-        <textarea id="content" name="content" rows="15" required></textarea>
+    
+    <div class="editor-container">
+        <div class="editor-pane">
+            <label for="content-editor">Contenu (Markdown) :</label><br>
+            <button type="button" id="upload-image-btn" class="editor-tool-btn">
+                Téléverser une image
+            </button>
+            <textarea id="content-editor" name="content" rows="20" required></textarea>
+        </div>
+        <div class="preview-pane">
+            <label>Aperçu :</label><br>
+            <div id="content-preview" class="article-content"></div>
+        </div>
     </div>
-    <div>
-        <label for="image">Image (optionnel) :</label><br>
-        <input type="file" id="image" name="image">
-    </div>
+    
+    <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
+
     <div>
         <button type="submit">Créer l'entrée</button>
     </div>
 </form>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="/js/editor.js"></script>
+<script src="/js/uploader.js"></script>
 
 <%- include('partials/footer') %>

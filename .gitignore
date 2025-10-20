@@ -1,5 +1,11 @@
+# Dépendances (ne jamais envoyer sur GitHub)
 node_modules
 
+# Fichiers de base de données locaux
 *.db
 
+# Dossier des uploads (la structure est sur GitHub, mais pas les fichiers dedans)
+public/uploads/
+
+# Fichiers système
 .DS_Store

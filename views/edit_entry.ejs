@@ -2,25 +2,35 @@
 
 <h1>Modifier l'entrée</h1>
 
-<form action="/entree/<%= article.id %>/edit" method="POST" enctype="multipart/form-data">
+<form action="/entree/<%= article.id %>/edit" method="POST">
     <div>
         <label for="title">Titre :</label><br>
         <input type="text" id="title" name="title" value="<%= article.title %>" required>
     </div>
-    <div>
-        <label for="content">Contenu :</label><br>
-        <textarea id="content" name="content" rows="15" required><%= article.content %></textarea>
+
+    <div class="editor-container">
+        <div class="editor-pane">
+            <label for="content-editor">Contenu (Markdown) :</label><br>
+            <button type="button" id="upload-image-btn" class="editor-tool-btn">
+                Téléverser une image
+            </button>
+            <textarea id="content-editor" name="content" rows="20" required><%= article.content %></textarea>
+        </div>
+        <div class="preview-pane">
+            <label>Aperçu :</label><br>
+            <div id="content-preview" class="article-content"></div>
+        </div>
     </div>
-    <div>
-        <label for="image">Changer l'image (optionnel) :</label><br>
-        <% if (article.image_filename) { %>
-            <p>Image actuelle : <%= article.image_filename %></p>
-        <% } %>
-        <input type="file" id="image" name="image">
-    </div>
+
+    <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
+
     <div>
         <button type="submit">Mettre à jour</button>
     </div>
 </form>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="/js/editor.js"></script>
+<script src="/js/uploader.js"></script>
 
 <%- include('partials/footer') %>
