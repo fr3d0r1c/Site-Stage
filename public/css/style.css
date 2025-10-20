@@ -8,6 +8,7 @@
     --text-color: #34495e; /* Gris foncé */
     --light-gray: #bdc3c7;
     --white: #ffffff;
+    --danger-color: #e74c3c; /* Pour les boutons de suppression */
 }
 
 /* --- Style Général --- */
@@ -17,12 +18,13 @@ body {
     background-color: var(--background-color);
     color: var(--text-color);
     margin: 0;
+    -webkit-font-smoothing: antialiased; /* Améliore le rendu du texte */
 }
 
 .container {
     max-width: 850px;
     margin: 20px auto;
-    padding: 20px;
+    padding: 20px 40px; /* Augmentation du padding horizontal */
     background: var(--white);
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -37,7 +39,7 @@ h1, h2 {
 a {
     color: var(--secondary-color);
     text-decoration: none;
-    transition: color 0.3s ease;
+    transition: color 0.2s ease-in-out; /* NOUVEAU : transition douce */
 }
 
 a:hover {
@@ -47,7 +49,7 @@ a:hover {
 hr {
     border: 0;
     height: 1px;
-    background-color: var(--light-gray);
+    background-color: #e0e0e0;
     margin: 2rem 0;
 }
 
@@ -73,17 +75,22 @@ header nav a {
     color: var(--white);
     margin-left: 1.5rem;
     font-size: 1rem;
+    padding: 5px 0;
+    border-bottom: 2px solid transparent; /* NOUVEAU : prépare l'animation */
+    transition: border-bottom-color 0.2s ease-in-out; /* NOUVEAU : transition */
+}
+header nav a:hover {
+    border-bottom-color: var(--secondary-color); /* NOUVEAU : souligne au survol */
 }
 
 /* --- Entrées de Journal (Articles) --- */
 article {
-    border-bottom: 1px solid var(--light-gray);
     padding-bottom: 1.5rem;
     margin-bottom: 1.5rem;
 }
 
-article:last-child {
-    border-bottom: none;
+article:not(:last-child) {
+    border-bottom: 1px solid #e0e0e0;
 }
 
 article h2 a {
@@ -91,9 +98,15 @@ article h2 a {
 }
 
 article small {
-    color: #7f8c8d; /* Gris moyen */
+    color: #7f8c8d;
     display: block;
     margin-bottom: 1rem;
+}
+
+/* NOUVEAU : amélioration de la lisibilité des longs textes */
+.full-article div p {
+    line-height: 1.8;
+    margin-bottom: 1.5em;
 }
 
 .actions {
@@ -102,7 +115,6 @@ article small {
     gap: 1rem;
     align-items: center;
 }
-
 
 /* --- Formulaires & Boutons --- */
 form div {
@@ -117,7 +129,17 @@ textarea {
     border: 1px solid var(--light-gray);
     border-radius: 5px;
     font-size: 1rem;
-    box-sizing: border-box; /* Important pour que le padding n'augmente pas la largeur */
+    box-sizing: border-box;
+    transition: all 0.2s ease-in-out; /* NOUVEAU : transition */
+}
+
+/* NOUVEAU : amélioration de l'accessibilité sur le focus */
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+    outline: none;
 }
 
 button, .actions a {
@@ -130,17 +152,24 @@ button, .actions a {
     cursor: pointer;
     font-size: 1rem;
     text-align: center;
-    transition: background-color 0.3s ease;
+    transition: all 0.2s ease-in-out; /* NOUVEAU : transition */
+    transform: translateY(0);
 }
 
 button:hover, .actions a:hover {
-    background-color: #2980b9; /* Bleu plus foncé */
+    background-color: #2980b9;
     color: var(--white);
     text-decoration: none;
+    transform: translateY(-2px); /* NOUVEAU : léger effet de soulèvement */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-.actions form {
-    margin: 0;
+/* NOUVEAU : Style distinct pour le bouton supprimer */
+form button[type="submit"][value="delete"] {
+    background-color: var(--danger-color);
+}
+form button[type="submit"][value="delete"]:hover {
+    background-color: #c0392b;
 }
 
 .actions a {
@@ -149,4 +178,43 @@ button:hover, .actions a:hover {
 
 .actions a:hover {
     background-color: #7f8c8d;
+}
+
+/*
+=========================================
+NOUVEAU : Styles pour les mobiles (Responsive)
+=========================================
+*/
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+        margin: 10px;
+    }
+
+    header {
+        flex-direction: column;
+        padding: 1rem;
+    }
+
+    header .logo {
+        margin-bottom: 1rem;
+    }
+
+    header nav {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    header nav a {
+        margin: 0 0.75rem 0.5rem;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
 }

@@ -16,9 +16,11 @@ CREATE TABLE IF NOT EXISTS articles (
   content TEXT NOT NULL,
   publication_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER,
+  image_filename TEXT,
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 `;
+
 const createUserTable = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,6 +68,34 @@ db.run(createUserTable, (err) => {
     }
     console.log("Table 'users' prête.");
 });
+
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+    destination: './public/uploads/',
+    filename: function(req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname)
+    }
+});
+
+const upload = multer({ storage: storage });
+
+// Middleware pour vérifier si un compte admin existe déjà
+function checkAdminExists(req, res, next) {
+    const sql = "SELECT COUNT(*) as count FROM users";
+    db.get(sql, [], (err, row) => {
+        if (err) {
+            return res.status(500).send("Erreur serveur");
+        }
+        // S'il n'y a aucun utilisateur, on laisse passer vers la page d'inscription
+        if (row.count === 0) {
+            next();
+        } else {
+            // Sinon, on redirige vers la page de connexion
+            res.redirect('/connexion');
+        }
+    });
+}
 
 // Middleware to serve static files (CSS, images, etc.) from the 'public' directory
 app.use(express.static('public'));
@@ -133,7 +163,17 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
 });
 
 app.get('/connexion', (req, res) => {
-    res.render('login', { pageTitle: 'Connexion' });
+    const sql = "SELECT COUNT(*) as count FROM users";
+    db.get(sql, [], (err, row) => {
+        if (err) {
+            return res.status(500).send("Erreur serveur");
+        }
+        res.render('login', {
+            pageTitle: 'Connexion',
+            error: null,
+            adminExists: row.count > 0
+        });
+    });
 });
 
 // Route de déconnexion
@@ -157,17 +197,24 @@ app.get('/stage', (req, res) => {
     res.render('stage', { pageTitle: 'Mon Stage' });
 });
 
-app.post('/journal', isAuthenticated, (req, res) => {
+// Affiche le formulaire d'inscription, SEULEMENT si aucun admin n'existe
+app.get('/inscription', checkAdminExists, (req, res) => {
+    res.render('register', { pageTitle: 'Créer le compte Administrateur' });
+});
+
+app.post('/journal', isAuthenticated, upload.single('image'), (req, res) => {
     const { title, content } = req.body;
     const userId = req.session.userId;
 
-    const sql = 'INSERT INTO articles (title, content, user_id) VALUES (?, ?, ?)';
-    
-    db.run(sql, [title, content, userId], function(err) {
+    const imageFilename = req.file ? req.file.filename : null;
+
+    const sql = 'INSERT INTO articles (title, content, user_id, image_filename) VALUES (?, ?, ?, ?)';
+
+    db.run(sql, [title, content, userId, imageFilename], function(err) {
         if (err) {
-            return res.status(500).send("Erreur lors de la création de l'article");
+            return res.status(500).send("Erreur lors de la création de l'entrée.");
         }
-        res.redirect('/');
+        res.redirect('/journal');
     });
 });
 
@@ -234,6 +281,26 @@ app.post('/connexion', (req, res) => {
                 // Les mots de passe ne correspondent pas
                 res.status(400).send("Nom d'utilisateur ou mot de passe incorrect.");
             }
+        });
+    });
+});
+
+// Traite la création du premier et unique utilisateur
+app.post('/inscription', checkAdminExists, (req, res) => {
+    const { username, password } = req.body;
+    const saltRounds = 10;
+
+    bcrypt.hash(password, saltRounds, (err, hash) => {
+        if (err) {
+            return res.status(500).send("Erreur lors du hachage.");
+        }
+        const sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
+        db.run(sql, [username, hash], function(err) {
+            if (err) {
+                return res.status(400).send("Erreur lors de la création du compte.");
+            }
+            console.log(`Compte administrateur créé avec l'ID : ${this.lastID}`);
+            res.redirect('/connexion');
         });
     });
 });

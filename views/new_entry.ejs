@@ -1,20 +1,27 @@
 <%- include('partials/header', { pageTitle: 'Nouvel article' }) %>
 
-<h1>Écrire un nouvel article</h1>
+<h1>Ajouter une entrée au journal</h1>
 
-<form action="/journal" method="POST">
+<%# IMPORTANT : Il faut ajouter enctype="multipart/form-data" au formulaire %>
+<form action="/journal" method="post" enctype="multipart/form-data">
     <div>
-        <label for="title">Titre :</label><br>
-        <input type="text" id="title" name="title">
+        <label for="title">Titre : </label><br>
+        <input type="text" id="title" name="title" required>
     </div>
-    <br>
+
     <div>
-        <label for="content">Contenu :</label><br>
-        <textarea id="content" name="content" rows="10" cols="50"></textarea>
+        <label for="content">Contenu : </label><br>
+        <textarea name="content" id="content" rows="15" required></textarea>
     </div>
-    <br>
+
+    <%# AJOUT : Le champ pour choisir un fichier image %>
     <div>
-        <button type="submit">Créer l'article</button>
+        <label for="image">Image (optionnel) :</label><br>
+        <input type="file" id="image" name="image">
+    </div>
+
+    <div>
+        <button type="submit">Créer l'entrée</button>
     </div>
 </form>
 

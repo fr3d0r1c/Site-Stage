@@ -1,9 +1,12 @@
 <%- include('partials/header', { pageTitle: 'Accueil' }) %>
     
-<h1>Mon Blog</h1>
+<h1>Mon stage en [Nom du Pays]</h1>
 <p>Bienvenue sur ce blog créé avec Node.js ! Découvrez ci-dessous les articles les plus récents.</p>
 <nav>
-    <a href="/journal/nouvelle">Écrire un nouvel article</a> | <a href="/journal">Voir tous les articles</a>
+    <% if (locals.username) { %>
+        <a href="/journal/nouvelle">Écrire un nouvel article</a> | 
+    <% } %>
+    <a href="/journal">Voir tout le journal</a>
 </nav>
 
     <% articles.forEach(article => { %>

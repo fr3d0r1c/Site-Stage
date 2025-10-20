@@ -2,6 +2,14 @@
 
 <h1>Se connecter</h1>
 
+<%# ... code du formulaire et du message d'erreur ... %>
+
+<%# On affiche le lien seulement si aucun compte admin n'existe %>
+
+<% if (!adminExists) { %>
+    <p>Aucun compte administrateur n'existe. <a href="/inscription">Créez-le maintenant</a>.</p>
+<% } %>
+
 <form action="/connexion" method="POST">
     <div>
         <label for="username">Nom d'utilisateur :</label><br>
