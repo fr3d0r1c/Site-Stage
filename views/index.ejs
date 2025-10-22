@@ -16,7 +16,7 @@
 <% articles.forEach(entry => { %>
     <article>
         <% if (entry.coverImage) { %>
-            <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" style="max-width: 100%; height: auto; border-radius: 5px; margin-bottom: 1rem;">
+            <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
         <% } %>
         <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
         <small>Publié le: <%= new Date(entry.publication_date).toLocaleString('fr-FR') %></small>

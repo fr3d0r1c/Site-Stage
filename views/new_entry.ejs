@@ -11,9 +11,14 @@
     <div class="editor-container">
         <div class="editor-pane">
             <label for="content-editor">Contenu (Markdown) :</label><br>
+            
             <button type="button" id="upload-image-btn" class="editor-tool-btn">
                 Téléverser une image
             </button>
+            <button type="button" id="add-url-image-btn" class="editor-tool-btn">
+                Ajouter par URL
+            </button>
+            
             <textarea id="content-editor" name="content" rows="20" required></textarea>
         </div>
         <div class="preview-pane">
@@ -23,6 +28,12 @@
     </div>
     
     <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
+
+    <div>
+        <label for="cover_image_url">URL de l'image de couverture (optionnel) :</label><br>
+        <input type="text" id="cover_image_url" name="cover_image_url" placeholder="Collez l'URL d'une image ici...">
+        <small>Astuce : Uploadez une image dans le contenu, puis copiez son URL ici.</small>
+    </div>
 
     <div>
         <button type="submit">Créer l'entrée</button>

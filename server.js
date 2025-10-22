@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS articles (
   content TEXT NOT NULL,
   publication_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER,
+  cover_image_url TEXT,
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 `;
@@ -115,12 +116,23 @@ db.run(createUserTable);
 app.get('/', (req, res) => {
     const sql = 'SELECT * FROM articles ORDER BY publication_date DESC LIMIT 3';
     db.all(sql, [], (err, rows) => {
-        if (err) { return res.status(500).send("Erreur BDD"); }
+        if (err) {
+            return res.status(500).send("Erreur BDD");
+        }
+
         const articlesWithCovers = rows.map(article => {
-            const match = article.content.match(/!\[.*?\]\((.*?)\)/);
-            const coverImage = match ? match[1] : null;
-            return { ...article, coverImage };
+            let finalCoverImage = null;
+            if (article.cover_image_url) {
+                finalCoverImage = article.cover_image_url;
+            } else {
+                const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                finalCoverImage = match ? match[1] : null;
+            }
+            return {
+                ...article, coverImage: finalCoverImage
+            };
         });
+
         res.render('index', { articles: articlesWithCovers, pageTitle: 'Accueil', activePage: 'accueil' });
     });
 });
@@ -139,10 +151,18 @@ app.get('/journal', (req, res) => {
     const sql = 'SELECT * FROM articles ORDER BY publication_date DESC';
     db.all(sql, [], (err, rows) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
+
+
         const articlesWithCovers = rows.map(article => {
-            const match = article.content.match(/!\[.*?\]\((.*?)\)/);
-            const coverImage = match ? match[1] : null;
-            return { ...article, coverImage };
+            let finalCoverImage = null;
+            if (article.cover_iamge_url) {
+                finalCoverImage = article.cover_image_url;
+            } else {
+                const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                finalCoverImage = match ? match[1] : null;
+
+            }
+            return { ...article, coverImage: finalCoverImage };
         });
         res.render('journal', { articles: articlesWithCovers, pageTitle: 'Journal de Bord', activePage: 'journal' });
     });
@@ -241,10 +261,11 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
 
 // Traite la création d'une entrée (sans gestion de fichier ici)
 app.post('/journal', isAuthenticated, (req, res) => {
-    const { title, content } = req.body;
+    const { title, content, cover_image_url } = req.body;
     const userId = req.session.userId;
-    const sql = 'INSERT INTO articles (title, content, user_id) VALUES (?, ?, ?)';
-    db.run(sql, [title, content, userId], function(err) {
+
+    const sql = 'INSERT INTO articles (title, content, user_id, cover_image_url) VALUES (?, ?, ?, ?)';
+    db.run(sql, [title, content, userId, cover_image_url], function(err) {
         if (err) { return res.status(500).send("Erreur création entrée."); }
         res.redirect('/journal');
     });
@@ -263,9 +284,9 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
 // Traite la modification d'une entrée (sans gestion de fichier ici)
 app.post('/entree/:id/edit', isAuthenticated, (req, res) => {
     const id = req.params.id;
-    const { title, content } = req.body;
-    const sql = 'UPDATE articles SET title = ?, content = ? WHERE id = ?';
-    db.run(sql, [title, content, id], function(err) {
+    const { title, content, cover_image_url } = req.body;
+    const sql = 'UPDATE articles SET title = ?, content = ?, cover_image_url = ? WHERE id = ?';
+    db.run(sql, [title, content, cover_image_url, id], function(err) {
         if (err) { return res.status(500).send("Erreur mise à jour entrée."); }
         res.redirect('/journal');
     });
