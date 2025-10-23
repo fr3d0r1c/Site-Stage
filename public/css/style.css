@@ -296,10 +296,71 @@ form button[type="submit"]:hover {
     text-decoration: underline;
 }
 
+/*
+=========================================
+--- 8. Styles pour l'éditeur Markdown ---
+=========================================
+*/
+.editor-container {
+    display: flex;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+.editor-pane, .preview-pane {
+    flex: 1; /* Chaque panneau prend 50% de la largeur */
+    min-width: 0;
+}
+.preview-pane {
+    border: 1px solid var(--light-gray);
+    border-radius: 5px;
+    padding: 12px;
+    background: #fafafa;
+    min-height: 400px;
+}
+#content-editor {
+    min-height: 400px;
+    resize: vertical;
+}
+.editor-tool-btn {
+    background-color: #7f8c8d; /* Gris moyen */
+    margin-bottom: 0.5rem;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+    padding: 8px 15px;
+}
+.editor-tool-btn:hover {
+    background-color: #95a5a6; /* Gris plus clair */
+}
+
 
 /*
 =========================================
---- 8. Styles pour les mobiles (Responsive) ---
+--- 9. Styles pour les Images ---
+=========================================
+*/
+
+/* Style pour les images de couverture dans les listes */
+.cover-image {
+    width: 100%;
+    height: 250px; /* Hauteur fixe pour uniformiser */
+    object-fit: cover; /* Recadre l'image pour remplir l'espace sans la déformer */
+    border-radius: 5px;
+    margin-bottom: 1rem;
+    background-color: #eee; /* Couleur de fond si l'image charge lentement */
+}
+
+/* Style pour les images DANS le contenu d'une entrée */
+.article-content img {
+    max-width: 100%; /* L'image ne débordera jamais de son conteneur */
+    height: auto; /* Garde les proportions */
+    border-radius: 5px;
+    display: block; /* Évite les problèmes d'alignement avec le texte */
+    margin: 1.5rem auto; /* Centre l'image avec des marges */
+}
+
+/*
+=========================================
+--- 10. Styles pour les mobiles (Responsive) ---
 =========================================
 */
 @media (max-width: 768px) {
@@ -352,66 +413,68 @@ form button[type="submit"]:hover {
     h2 {
         font-size: 1.5rem;
     }
-}
-
-/* --- Styles pour l'éditeur Markdown --- */
-.editor-container {
-    display: flex;
-    gap: 2rem;
-    margin: 2rem 0;
-}
-.editor-pane, .preview-pane {
-    flex: 1; /* Chaque panneau prend 50% de la largeur */
-    min-width: 0;
-}
-.preview-pane {
-    border: 1px solid var(--light-gray);
-    border-radius: 5px;
-    padding: 12px;
-    background: #fafafa;
-    min-height: 400px;
-}
-#content-editor {
-    min-height: 400px;
-    resize: vertical;
-}
-
-/* --- Responsive pour l'éditeur --- */
-@media (max-width: 768px) {
+    
+    /* --- Responsive pour l'éditeur --- */
     .editor-container {
         flex-direction: column;
     }
 }
 
-.editor-tool-btn {
-    background-color: #7f8c8d;
-    margin-bottom: 0.5rem;
+/*
+=========================================
+--- 11. Corrections Google Translate ---
+=========================================
+*/
+
+/* Corrige un bug de décalage de la page (marge en haut)
+   causé par le widget et un header 'sticky'. */
+body {
+    top: 0 !important;
 }
-.editor-tool-btn:hover {
-    background-color: #95a5a6;
+
+/* Force le menu déroulant de Google à s'afficher
+   AU-DESSUS de notre header (qui a un z-index de 1000) */
+.goog-te-menu-frame {
+    z-index: 1001 !important;
 }
 
 /*
 =========================================
---- 9. Styles pour les Images ---
+--- 12. Positionnement Google Translate ---
 =========================================
 */
 
-/* Style pour les images de couverture dans les listes */
-.cover-image {
-    width: 100%;
-    height: 250px; /* Hauteur fixe pour uniformiser */
-    object-fit: cover; /* Recadre l'image pour remplir l'espace sans la déformer */
-    border-radius: 5px;
-    margin-bottom: 1rem;
-    background-color: #eee; /* Couleur de fond si l'image charge lentement */
+/* Style du conteneur du widget sur ordinateur */
+.google-translate-widget {
+    margin-left: 1.5rem;
+    padding: 5px 0;
 }
 
-/* Style pour les images DANS le contenu d'une entrée */
-.article-content img {
-    max-width: 100%; /* L'image ne débordera jamais de son conteneur */
-    height: auto; /* Garde les proportions */
-    border-radius: 5px;
-    display: block; /* Évite les problèmes d'alignement avec le texte */
-    margin: 1.5rem auto; /* Centre l'image avec des marges */
+/* Positionnement sur mobile */
+@media (max-width: 768px) {
+    .site-header {
+        /* Permet au logo et au widget d'être l'un sous l'autre */
+        flex-wrap: wrap; 
+        justify-content: center;
+    }
+    
+    .logo {
+        /* Prend toute la largeur */
+        flex-basis: 100%;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .google-translate-widget {
+        /* Se centre sous le logo */
+        margin: 0.5rem 0 0 0;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    
+    .nav-toggle {
+        /* On s'assure qu'il est au bon endroit */
+        top: 1.2rem; 
+    }
 }

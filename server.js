@@ -40,7 +40,7 @@ app.use(session({
   secret: 'votre-secret-personnel-tres-difficile-a-deviner',
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false }
+  cookie: { secure: false } // Mettre à true en production avec HTTPS
 }));
 
 // Rendre les données de session disponibles dans toutes les vues
@@ -82,7 +82,7 @@ const db = new sqlite3.Database('./blog.db', (err) => {
   console.log('Connecté à la base de données SQLite.');
 });
 
-// Création de la table 'articles' (version simplifiée, sans image_filename)
+// Création de la table 'articles' (avec image de couverture)
 const createArticleTable = `
 CREATE TABLE IF NOT EXISTS articles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -116,10 +116,8 @@ db.run(createUserTable);
 app.get('/', (req, res) => {
     const sql = 'SELECT * FROM articles ORDER BY publication_date DESC LIMIT 3';
     db.all(sql, [], (err, rows) => {
-        if (err) {
-            return res.status(500).send("Erreur BDD");
-        }
-
+        if (err) { return res.status(500).send("Erreur BDD"); }
+        
         const articlesWithCovers = rows.map(article => {
             let finalCoverImage = null;
             if (article.cover_image_url) {
@@ -128,9 +126,7 @@ app.get('/', (req, res) => {
                 const match = article.content.match(/!\[.*?\]\((.*?)\)/);
                 finalCoverImage = match ? match[1] : null;
             }
-            return {
-                ...article, coverImage: finalCoverImage
-            };
+            return { ...article, coverImage: finalCoverImage };
         });
 
         res.render('index', { articles: articlesWithCovers, pageTitle: 'Accueil', activePage: 'accueil' });
@@ -151,19 +147,18 @@ app.get('/journal', (req, res) => {
     const sql = 'SELECT * FROM articles ORDER BY publication_date DESC';
     db.all(sql, [], (err, rows) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
-
-
+        
         const articlesWithCovers = rows.map(article => {
             let finalCoverImage = null;
-            if (article.cover_iamge_url) {
+            if (article.cover_image_url) {
                 finalCoverImage = article.cover_image_url;
             } else {
                 const match = article.content.match(/!\[.*?\]\((.*?)\)/);
                 finalCoverImage = match ? match[1] : null;
-
             }
             return { ...article, coverImage: finalCoverImage };
         });
+        
         res.render('journal', { articles: articlesWithCovers, pageTitle: 'Journal de Bord', activePage: 'journal' });
     });
 });
@@ -175,7 +170,7 @@ app.get('/entree/:id', (req, res) => {
     db.get(sql, id, (err, article) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
         if (!article) { return res.status(404).send("Entrée non trouvée !"); }
-        // On convertit le contenu Markdown en HTML avant de l'envoyer
+        
         article.content = marked.parse(article.content);
         res.render('entry_detail', { article: article, pageTitle: article.title, activePage: 'journal' });
     });
@@ -242,7 +237,7 @@ app.post('/inscription', checkAdminExists, (req, res) => {
     });
 });
 
-// Endpoint d'API pour l'upload d'images
+// Endpoint d'API pour l'upload d'images (on le garde, il est très utile !)
 app.post('/upload-image', isAuthenticated, upload.single('image'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'Aucun fichier reçu.' });
@@ -259,11 +254,10 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
     res.render('new_entry', { pageTitle: 'Nouvelle entrée', activePage: 'journal' });
 });
 
-// Traite la création d'une entrée (sans gestion de fichier ici)
+// Traite la création d'une entrée
 app.post('/journal', isAuthenticated, (req, res) => {
     const { title, content, cover_image_url } = req.body;
     const userId = req.session.userId;
-
     const sql = 'INSERT INTO articles (title, content, user_id, cover_image_url) VALUES (?, ?, ?, ?)';
     db.run(sql, [title, content, userId, cover_image_url], function(err) {
         if (err) { return res.status(500).send("Erreur création entrée."); }
@@ -281,7 +275,7 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
     });
 });
 
-// Traite la modification d'une entrée (sans gestion de fichier ici)
+// Traite la modification d'une entrée
 app.post('/entree/:id/edit', isAuthenticated, (req, res) => {
     const id = req.params.id;
     const { title, content, cover_image_url } = req.body;
