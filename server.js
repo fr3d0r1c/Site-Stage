@@ -164,15 +164,36 @@ app.get('/journal', (req, res) => {
 });
 
 // Page de détail d'une entrée
+// Page de détail d'une entrée
 app.get('/entree/:id', (req, res) => {
     const id = req.params.id;
     const sql = "SELECT * FROM articles WHERE id = ?";
+    
     db.get(sql, id, (err, article) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
         if (!article) { return res.status(404).send("Entrée non trouvée !"); }
+
+        // --- NOUVELLE LOGIQUE DE NETTOYAGE ---
+        let finalContent = article.content;
         
-        article.content = marked.parse(article.content);
-        res.render('entry_detail', { article: article, pageTitle: article.title, activePage: 'journal' });
+        // 1. On reconstruit le titre tel qu'il serait dans le Markdown
+        const markdownTitle = '# ' + article.title;
+
+        // 2. On vérifie si le contenu commence par ce titre (en ignorant les espaces)
+        if (finalContent.trim().startsWith(markdownTitle)) {
+            // 3. Si oui, on supprime cette première ligne
+            finalContent = finalContent.substring(markdownTitle.length).trim();
+        }
+        // --- FIN DE LA NOUVELLE LOGIQUE ---
+
+        // On parse le contenu (qui est maintenant nettoyé)
+        article.content = marked.parse(finalContent); 
+        
+        res.render('entry_detail', { 
+            article: article, 
+            pageTitle: article.title, 
+            activePage: 'journal' 
+        });
     });
 });
 

@@ -9,24 +9,32 @@
 </nav>
 <hr>
 
-<% articles.forEach(entry => { %>
-    <article>
-        <% if (entry.coverImage) { %>
-            <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
-        <% } %>
-        <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
-        <small>Publié le: <%= new Date(entry.publication_date).toLocaleString('fr-FR') %></small>
-        <p><%= entry.content.substring(0, 350) %>... <a href="/entree/<%= entry.id %>">Lire la suite</a></p>
-        
-        <% if (locals.username) { %>
-            <div class="actions">
-                <a href="/entree/<%= entry.id %>/edit">Modifier</a>
-                <form action="/entree/<%= entry.id %>/delete" method="POST">
-                    <button type="submit">Supprimer</button>
-                </form>
-            </div>
-        <% } %>
-    </article>
-<% }); %>
+<div class="entries-grid">
 
-<%- include('partials/footer') %>
+    <% articles.forEach(entry => { %>
+        <article class="entry-card">
+
+            <% if (entry.coverImage) { %>
+                <a href="/entree/<%= entry.id %>" class="card-image-link">
+                    <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
+                </a>
+            <% } %>
+            
+            <div class="card-body">
+                <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
+                <small>Publié le: <%= new Date(entry.publication_date).toLocaleString('fr-FR') %></small>
+                
+                <% if (locals.username) { %>
+                    <div class="actions">
+                        <a href="/entree/<%= entry.id %>/edit">Modifier</a>
+                        <form action="/entree/<%= entry.id %>/delete" method="POST">
+                            <button type="submit">Supprimer</button>
+                        </form>
+                    </div>
+                <% } %>
+            </div>
+
+        </article>
+    <% }); %>
+
+</div> <%- include('partials/footer') %>
