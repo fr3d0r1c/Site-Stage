@@ -1,18 +1,47 @@
 /*
 =========================================
---- 1. Importation de la police & Variables ---
+--- 1. Importation, Variables & Thèmes ---
 =========================================
 */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 :root {
-    --primary-color: #2c3e50; /* Bleu marine foncé */
-    --secondary-color: #3498db; /* Bleu clair */
-    --background-color: #ecf0f1; /* Gris très clair */
-    --text-color: #34495e; /* Gris foncé */
-    --light-gray: #bdc3c7;
-    --white: #ffffff;
-    --danger-color: #e74c3c; /* Pour les actions de suppression */
+    /* --- THÈME PAR DÉFAUT : "CLASSIQUE" --- */
+    --c-primary: #007aff;
+    --c-text: #222222;
+    --c-text-light: #555555;
+    --c-border: #eeeeee;
+    --c-background: #f9f9f9;
+    --c-surface: #ffffff;
+    --c-danger: #ff3b30;
+    --c-gray: #8e8e93;
+
+    --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --border-radius: 12px;
+}
+
+/* --- THÈME DARK --- */
+body.theme-dark {
+    --c-primary: #00adb5;
+    --c-text: #eeeeee;
+    --c-text-light: #9a9a9a;
+    --c-background: #222831;
+    --c-surface: #393e46;
+    --c-border: #4a4a4a;
+    --c-danger: #e74c3c;
+    --c-gray: #8e8e93;
+}
+
+/* --- THÈME SEPIA --- */
+body.theme-sepia {
+    --c-primary: #a0522d;
+    --c-text: #5c4a3a;
+    --c-text-light: #7f7063;
+    --c-border: #dcd3b8;
+    --c-background: #f5f2e9;
+    --c-surface: #fffef7;
+    --c-danger: #c0392b;
+    --c-gray: #9e8a78;
 }
 
 /*
@@ -21,44 +50,46 @@
 =========================================
 */
 body {
-    font-family: 'Montserrat', sans-serif;
-    line-height: 1.7;
-    background-color: var(--background-color);
-    color: var(--text-color);
+    font-family: var(--font-main);
+    line-height: 1.6;
+    background-color: var(--c-background);
+    color: var(--c-text);
     margin: 0;
-    -webkit-font-smoothing: antialiased; /* Améliore le rendu du texte */
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .container {
-    max-width: 850px;
-    margin: 20px auto;
-    padding: 20px 40px;
-    background: var(--white);
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    max-width: 960px;
+    margin: 3rem auto;
+    padding: 0 1rem;
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
 }
 
 h1, h2 {
-    color: var(--primary-color);
-    border-bottom: 2px solid var(--secondary-color);
+    color: var(--c-text);
+    border-bottom: 2px solid var(--c-primary);
     padding-bottom: 10px;
+    font-weight: 700;
 }
 
 a {
-    color: var(--secondary-color);
+    color: var(--c-primary);
     text-decoration: none;
-    transition: color 0.2s ease-in-out;
+    transition: all 0.2s ease;
 }
 
 a:hover {
-    color: var(--primary-color);
+    color: var(--c-text);
 }
 
 hr {
     border: 0;
     height: 1px;
-    background-color: #e0e0e0;
-    margin: 2rem 0;
+    background-color: var(--c-border);
+    margin: 3rem 0;
 }
 
 
@@ -68,42 +99,45 @@ hr {
 =========================================
 */
 .site-header {
-    background: var(--primary-color);
-    color: var(--white);
+    background: var(--c-surface);
+    color: var(--c-text);
+    border-bottom: 1px solid var(--c-border);
     padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 0;
     position: sticky;
     top: 0;
     z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .logo a {
-    color: var(--white);
+    color: var(--c-text);
     font-size: 1.5rem;
-    font-weight: bold;
+    font-weight: 700;
 }
 
 .main-nav a {
-    color: var(--white);
+    color: var(--c-text-light);
     margin-left: 1.5rem;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     padding: 5px 0;
     border-bottom: 2px solid transparent;
-    transition: all 0.2s ease-in-out;
 }
 .main-nav a:hover {
-    color: var(--secondary-color);
+    color: var(--c-text);
 }
 
 .main-nav a.active {
-    color: var(--secondary-color);
-    border-bottom-color: var(--secondary-color);
+    color: var(--c-primary);
+    border-bottom-color: var(--c-primary);
 }
 
+/* Styles du menu Hamburger (Base) */
 .nav-toggle {
     display: none;
     cursor: pointer;
@@ -112,6 +146,11 @@ hr {
     padding: 0;
     width: 2em;
     height: 2em;
+    /* Important pour le positionnement sur mobile */
+    position: absolute;
+    top: 1.5rem;
+    right: 2rem;
+    z-index: 1001; /* Doit être au-dessus du .main-nav */
 }
 
 .hamburger,
@@ -119,7 +158,7 @@ hr {
 .hamburger::after {
     content: '';
     display: block;
-    background: var(--white);
+    background: var(--c-text); /* Couleur des barres */
     height: 3px;
     width: 100%;
     border-radius: 3px;
@@ -134,14 +173,15 @@ hr {
     transform: translateY(5px);
 }
 
+/* Animation du hamburger en croix 'X' quand il est actif */
 .nav-toggle.is-active .hamburger {
-    background: transparent;
+    background: transparent; /* La barre du milieu disparaît */
 }
 .nav-toggle.is-active .hamburger::before {
-    transform: rotate(45deg);
+    transform: rotate(45deg); /* La barre du haut pivote */
 }
 .nav-toggle.is-active .hamburger::after {
-    transform: rotate(-45deg) translateY(-3px) translateX(3px);
+    transform: rotate(-45deg) translateY(-3px) translateX(3px); /* La barre du bas pivote */
 }
 
 /*
@@ -149,16 +189,32 @@ hr {
 --- 4. Contenu (Pages & Articles Détaillés) ---
 =========================================
 */
-/* Note : Les styles pour les listes d'articles sont maintenant ci-dessous */
+.full-article, .static-page {
+    background: var(--c-surface);
+    padding: 2rem;
+    border: 1px solid var(--c-border);
+    border-radius: var(--border-radius);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
 article small {
-    color: #7f8c8d;
+    color: var(--c-gray);
     display: block;
     margin-bottom: 1rem;
+    font-size: 0.9rem;
 }
 
 .full-article .article-content p {
     line-height: 1.8;
     margin-bottom: 1.5em;
+    font-size: 1.1rem;
+}
+.full-article .article-content h1,
+.full-article .article-content h2,
+.full-article .article-content h3 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-top: 2em;
 }
 
 .actions {
@@ -170,7 +226,7 @@ article small {
 
 /*
 =========================================
---- 5. Grille d'entrées (Format Cube) ---
+--- 5. Grille d'entrées (Cartes) ---
 =========================================
 */
 .entries-grid {
@@ -180,9 +236,10 @@ article small {
 }
 
 .entry-card {
-    background: var(--white);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--border-radius);
+    box-shadow: none;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -190,8 +247,8 @@ article small {
 }
 
 .entry-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    transform: translateY(0);
+    border-color: var(--c-primary);
 }
 
 .entry-card .cover-image {
@@ -200,27 +257,27 @@ article small {
     object-fit: cover;
     margin-bottom: 0;
     border-radius: 0;
+    border-bottom: 1px solid var(--c-border);
 }
 .entry-card .card-image-link {
     display: block;
     height: 200px;
     overflow: hidden;
 }
-
 .entry-card .card-body {
     padding: 1.25rem;
     display: flex;
     flex-direction: column;
     flex-grow: 1;
 }
-
 .entry-card h2 {
     font-size: 1.3rem;
     border-bottom: none;
     padding-bottom: 0;
     margin-top: 0;
 }
-
+.entry-card h2 a { color: var(--c-text); }
+.entry-card h2 a:hover { color: var(--c-primary); }
 .entry-card .actions {
     margin-top: auto;
     padding-top: 1rem;
@@ -231,68 +288,52 @@ article small {
 --- 6. Formulaires & Boutons ---
 =========================================
 */
-form div {
-    margin-bottom: 1rem;
-}
+form div { margin-bottom: 1.5rem; }
+form small { color: var(--c-gray); font-size: 0.9rem; }
 
-input[type="text"],
-input[type="password"],
-textarea {
+input[type="text"], input[type="password"], textarea {
     width: 100%;
     padding: 12px;
-    border: 1px solid var(--light-gray);
-    border-radius: 5px;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
     font-size: 1rem;
+    font-family: var(--font-main);
     box-sizing: border-box;
-    transition: all 0.2s ease-in-out;
+    background: var(--c-background);
+    color: var(--c-text);
+    transition: all 0.3s ease;
 }
 
-input[type="text"]:focus,
-input[type="password"]:focus,
-textarea:focus {
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 20%, transparent);
+    background: var(--c-surface);
     outline: none;
 }
 
 button, .actions a {
     display: inline-block;
-    background-color: var(--secondary-color);
-    color: var(--white);
-    padding: 10px 20px;
+    background-color: var(--c-primary);
+    color: var(--c-white);
+    padding: 10px 24px;
     border: none;
-    border-radius: 5px;
+    border-radius: 99px;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     text-align: center;
-    transition: all 0.2s ease-in-out;
+    transition: all 0.3s ease;
     transform: translateY(0);
 }
 
 button:hover, .actions a:hover {
-    color: var(--white);
+    color: var(--c-white);
     text-decoration: none;
     transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    opacity: 0.85;
 }
-
-form button[type="submit"]:hover {
-     background-color: #2980b9;
-}
-
-.actions a {
-    background-color: #95a5a6;
-}
-.actions a:hover {
-    background-color: #7f8c8d;
-}
-
-.actions form button[type="submit"] {
-    background-color: var(--danger-color);
-}
-.actions form button[type="submit"]:hover {
-    background-color: #c0392b;
-}
+.actions a { background-color: var(--c-gray); color: var(--c-surface); }
+.actions form button[type="submit"] { background-color: var(--c-danger); color: var(--c-white); }
 
 /*
 =========================================
@@ -300,11 +341,11 @@ form button[type="submit"]:hover {
 =========================================
 */
 .error-message {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: color-mix(in srgb, var(--c-danger) 10%, var(--c-surface));
+    color: var(--c-danger);
     padding: 1rem;
-    border: 1px solid #f5c6cb;
-    border-radius: 5px;
+    border: 1px solid var(--c-danger);
+    border-radius: 8px;
     margin-bottom: 1rem;
     text-align: center;
 }
@@ -316,27 +357,16 @@ form button[type="submit"]:hover {
 */
 .site-footer {
     text-align: center;
-    padding: 2rem 1rem;
-    margin-top: 2rem;
-    background-color: var(--primary-color);
-    color: rgba(255, 255, 255, 0.7);
-    border-top: 4px solid var(--secondary-color);
+    padding: 3rem 1rem;
+    margin-top: 3rem;
+    background-color: var(--c-surface);
+    color: var(--c-gray);
+    border-top: 1px solid var(--c-border);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
-
-.site-footer p {
-    margin: 0.5rem 0;
-    font-size: 0.9rem;
-}
-
-.site-footer a {
-    color: var(--white);
-    font-weight: bold;
-}
-
-.site-footer a:hover {
-    color: var(--secondary-color);
-    text-decoration: underline;
-}
+.site-footer p { margin: 0.5rem 0; font-size: 0.9rem; }
+.site-footer a { color: var(--c-text-light); }
+.site-footer a:hover { color: var(--c-primary); }
 
 /*
 =========================================
@@ -353,51 +383,44 @@ form button[type="submit"]:hover {
     min-width: 0;
 }
 .preview-pane {
-    border: 1px solid var(--light-gray);
-    border-radius: 5px;
-    padding: 12px;
-    background: #fafafa;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    background: var(--c-background);
     min-height: 400px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 #content-editor {
     min-height: 400px;
     resize: vertical;
 }
 .editor-tool-btn {
-    background-color: #7f8c8d;
-    margin-bottom: 0.5rem;
+    background-color: var(--c-text-light);
+    color: var(--c-surface);
+    margin-bottom: 1rem;
     margin-right: 0.5rem;
     font-size: 0.9rem;
     padding: 8px 15px;
 }
-.editor-tool-btn:hover {
-    background-color: #95a5a6;
-}
-
+.editor-tool-btn:hover { background-color: var(--c-text); }
 
 /*
 =========================================
 --- 10. Styles pour les Images ---
 =========================================
 */
-
-/* Style pour les images de couverture dans les listes (maintenant dans la .entry-card) */
-.entry-card .cover-image {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-    margin-bottom: 0;
-    border-radius: 0;
-    background-color: #eee;
+.cover-image {
+     background-color: var(--c-surface); /* Pour le thème sombre */
 }
 
-/* Style pour les images DANS le contenu d'une entrée */
 .article-content img {
     max-width: 100%;
     height: auto;
-    border-radius: 5px;
+    border-radius: 8px;
     display: block;
-    margin: 1.5rem auto;
+    margin: 2rem auto;
+    border: 1px solid var(--c-border);
+    transition: border-color 0.3s ease;
 }
 
 /*
@@ -407,55 +430,59 @@ form button[type="submit"]:hover {
 */
 @media (max-width: 768px) {
     .container {
-        padding: 15px;
-        margin: 10px;
+        padding: 0 1rem;
+        margin: 1rem auto;
     }
-    
     .site-header {
-        padding: 1.2rem 1rem;
+        padding: 1rem;
     }
 
-    .nav-toggle {
-        display: block;
-        position: absolute;
-        top: 1.5rem;
-        right: 1.5rem;
-        z-index: 1001;
-    }
-
-    .main-nav {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        background: var(--primary-color);
-        width: 60%;
-        transform: translateX(100%);
-        transition: transform 0.3s ease-in-out;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        display: flex;
-    }
-
-    .main-nav.nav-visible {
-        transform: translateX(0);
-    }
-
-    .main-nav a {
-        margin: 1.5rem 0;
-        font-size: 1.2rem;
-    }
+    /* Styles pour le menu hamburger */
+    .nav-toggle { display: block; position: absolute; top: 1.5rem; right: 1.5rem; z-index: 1001; }
+    .main-nav { position: fixed; top: 0; right: 0; bottom: 0; background: var(--c-surface); width: 60%; transform: translateX(100%); transition: transform 0.3s ease-in-out; flex-direction: column; justify-content: center; align-items: center; display: flex; z-index: 1000;}
+    .main-nav.nav-visible { transform: translateX(0); }
+    .main-nav a { margin: 1.5rem 0; font-size: 1.2rem; }
     
-    h1 {
-        font-size: 1.8rem;
-    }
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.5rem; }
     
-    h2 {
-        font-size: 1.5rem;
-    }
-    
-    .editor-container {
-        flex-direction: column;
-    }
+    .editor-container { flex-direction: column; }
+}
+
+/*
+=========================================
+--- 12. Sélecteur de Thème ---
+=========================================
+*/
+.theme-switcher {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.theme-switcher span {
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--c-gray);
+}
+
+.theme-switcher button {
+    background: none;
+    border: 1px solid var(--c-border);
+    color: var(--c-text-light);
+    padding: 5px 12px;
+    border-radius: 99px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.theme-switcher button:hover {
+    background: var(--c-background);
+    color: var(--c-text);
+    border-color: var(--c-text-light);
+    transform: none; /* Annule l'effet de soulèvement */
+    opacity: 1;
 }

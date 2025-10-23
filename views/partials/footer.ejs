@@ -1,14 +1,26 @@
-</div> <footer class="site-footer">
-        <p>&copy; <%= new Date().getFullYear() %> Frederic Alleron. Tous droits réservés.</p>
-        <p>
+</div> 
+<footer class="site-footer">
+
+    <div class="theme-switcher">
+        <span>Thème :</span>
+        <button data-theme="system">Système</button>
+        <button data-theme="light">Classique</button>
+        <button data-theme="dark">Sombre</button>
+        <button data-theme="sepia">Sépia</button>
+    </div>
+
+    <p>&copy; <%= new Date().getFullYear() %> Frederic Alleron. Tous droits réservés.</p>
+    
+    <p>
             <a href="/">Accueil</a> | 
             <a href="/profil">Profil</a> | 
             <a href="/stage">Stage</a> | 
             <a href="/journal">Journal de Bord</a>
-        </p>
+    </p>
     </footer>
 
     <script src="/js/main.js"></script>
+    <script src="/js/theme-switcher.js"></script>
     
     </body>
 </html>
