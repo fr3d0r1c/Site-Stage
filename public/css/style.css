@@ -426,55 +426,42 @@ form button[type="submit"]:hover {
 =========================================
 */
 
-/* Corrige un bug de décalage de la page (marge en haut)
-   causé par le widget et un header 'sticky'. */
+/* On donne une taille et une bordure visible à NOTRE div
+   pour voir où elle se trouve, même si le widget est vide. */
+.google-translate-widget {
+    min-width: 150px;
+    min-height: 30px;
+    margin-left: 1.5rem;
+    padding: 5px 0;
+    /* Ajout d'une bordure pour le débogage */
+    border: 2px dashed red; 
+}
+
+/* Corrige le bug de la barre en haut */
 body {
     top: 0 !important;
 }
 
-/* Force le menu déroulant de Google à s'afficher
-   AU-DESSUS de notre header (qui a un z-index de 1000) */
+/* Force le menu déroulant à s'afficher au-dessus de tout */
 .goog-te-menu-frame {
     z-index: 1001 !important;
 }
 
-/*
-=========================================
---- 12. Positionnement Google Translate ---
-=========================================
-*/
-
-/* Style du conteneur du widget sur ordinateur */
-.google-translate-widget {
-    margin-left: 1.5rem;
-    padding: 5px 0;
-}
-
-/* Positionnement sur mobile */
+/* Positionnement sur mobile (ne change pas) */
 @media (max-width: 768px) {
     .site-header {
-        /* Permet au logo et au widget d'être l'un sous l'autre */
         flex-wrap: wrap; 
         justify-content: center;
     }
-    
     .logo {
-        /* Prend toute la largeur */
         flex-basis: 100%;
         text-align: center;
         margin-bottom: 0.5rem;
     }
-
     .google-translate-widget {
-        /* Se centre sous le logo */
         margin: 0.5rem 0 0 0;
         width: 100%;
         display: flex;
         justify-content: center;
-    }
-    
-    .nav-toggle {
-        /* On s'assure qu'il est au bon endroit */
-        top: 1.2rem; 
     }
 }
