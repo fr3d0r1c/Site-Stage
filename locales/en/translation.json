@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "home": "Home",
+    "profile": "My Profile",
+    "internship": "My Internship",
+    "journal": "Journal",
+    "admin": "Administration",
+    "logout": "Logout"
+  },
+  "footer": {
+    "rights": "All rights reserved."
+  },
+  "forms": {
+    "title_fr": "Title (FR)",
+    "title_en": "Title (EN)",
+    "content_fr": "Content (FR - Markdown)",
+    "content_en": "Content (EN - Markdown)",
+    "cover_image_url": "Cover image URL (optional)",
+    "cover_image_hint": "Tip: Upload an image in the FR content, then copy its URL here.",
+    "create_entry": "Create Entry",
+    "update_entry": "Update Entry",
+    "username": "Username",
+    "password": "Password",
+    "login_button": "Login",
+    "create_account_button": "Create Account"
+  },
+  "journal": {
+    "add_entry": "Add Entry",
+    "view_all": "View Full Journal",
+    "back_to_journal": "Back to Journal",
+    "edit": "Edit",
+    "delete": "Delete",
+    "read_more": "Read More",
+    "published_on": "Published on"
+  },
+  "general": {
+    "upload_image": "Upload Image",
+    "add_image_url": "Add by URL",
+    "preview": "Preview",
+    "latest_entries": "Latest Entries",
+    "page_title_new_entry": "New Entry",
+    "page_title_edit_entry": "Edit Entry",
+    "page_title_login": "Administration - Login",
+    "page_title_register": "Create Administrator Account"
+  },
+  "auth": {
+    "login_title": "Administration - Login",
+    "register_title": "Create Administrator Account",
+    "register_info": "This form is only available for creating the first and only account.",
+    "no_admin": "No administrator account exists.",
+    "create_now": "Create it now"
+  },
+  "static_pages": {
+    "profile_title": "About Me",
+    "profile_intro": "I am an engineering student at ESAIP, passionate about software development and new technologies. This site was created to document my internship abroad from June to August 2026.",
+    "profile_skills_title": "Technical Skills",
+    "profile_skills_langs": "Languages",
+    "profile_skills_web": "Web",
+    "profile_skills_db": "Databases",
+    "profile_skills_tools": "Tools",
+    "profile_contact_title": "Contact & Links",
+    "profile_contact_intro": "Feel free to contact me or check out my other profiles:",
+    "profile_linkedin": "My LinkedIn Profile",
+    "profile_github": "My GitHub Profile",
+    "profile_cv": "Download my CV (PDF)",
+    "internship_title": "My Internship Abroad",
+    "internship_intro": "This section will be dedicated to presenting my final year internship, which will take place over 12 weeks starting June 2026.",
+    "internship_company_title": "The Company",
+    "internship_company_name": "Name",
+    "internship_company_location": "Location",
+    "internship_company_sector": "Industry",
+    "internship_mission_title": "My Mission",
+    "internship_mission_desc": "[Describe the main objectives of your internship here.]"
+  }
+}

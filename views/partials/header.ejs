@@ -16,17 +16,23 @@
         </button>
 
         <nav class="main-nav">
-            <a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>">Accueil</a>
-            <a href="/profil" class="<%= activePage === 'profil' ? 'active' : '' %>">Mon Profil</a>
-            <a href="/stage" class="<%= activePage === 'stage' ? 'active' : '' %>">Mon Stage</a>
-            <a href="/journal" class="<%= activePage === 'journal' ? 'active' : '' %>">Journal de Bord</a>
-            
+            <a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>"><%= t('nav.home') %></a>
+            <a href="/profil" class="<%= activePage === 'profil' ? 'active' : '' %>"><%= t('nav.profile') %></a>
+            <a href="/stage" class="<%= activePage === 'stage' ? 'active' : '' %>"><%= t('nav.internship') %></a>
+            <a href="/journal" class="<%= activePage === 'journal' ? 'active' : '' %>"><%= t('nav.journal') %></a>
+
             <% if (locals.username) { %>
-                <a href="/deconnexion" class="<%= activePage === 'admin' ? 'active' : '' %>">Déconnexion (<%= locals.username %>)</a>
+                <a href="/deconnexion" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.logout') %> (<%= locals.username %>)</a>
             <% } else { %>
-                <a href="/connexion" class="<%= activePage === 'admin' ? 'active' : '' %>">Administration</a>
+                <a href="/connexion" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.admin') %></a>
             <% } %>
         </nav>
+        
+        <div class="language-switcher" style="margin-left: 1.5rem;">
+            <a href="?lng=fr" style="color: var(--c-text); font-weight: bold; text-decoration: <%= i18n.language === 'fr' ? 'underline' : 'none' %>;">FR</a>
+            <span style="color: var(--c-text-light);">|</span>
+            <a href="?lng=en" style="color: var(--c-text); font-weight: bold; text-decoration: <%= i18n.language === 'en' ? 'underline' : 'none' %>;">EN</a>
+        </div>
 
         </header>
     <div class="container">

@@ -1,11 +1,11 @@
-<%- include('partials/header', { pageTitle: 'Journal de Bord' }) %>
+<%- include('partials/header', { pageTitle: t('nav.journal') }) %>
 
-<h1>Journal de Bord</h1>
+<h1><%= t('nav.journal') %></h1>
 <nav>
     <% if (locals.username) { %>
-        <a href="/journal/nouvelle">Ajouter une entrée</a> | 
+        <a href="/journal/nouvelle"><%= t('journal.add_entry') %></a> | 
     <% } %>
-    <a href="/">Retour à l'accueil</a>
+    <a href="/"><%= t('nav.home') %></a>
 </nav>
 <hr>
 
@@ -22,13 +22,14 @@
             
             <div class="card-body">
                 <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
-                <small>Publié le: <%= new Date(entry.publication_date).toLocaleString('fr-FR') %></small>
+                <small><%= t('journal.published_on') %>: <%= new Date(entry.publication_date).toLocaleString(i18n.language) %></small>
+                <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
                 
                 <% if (locals.username) { %>
                     <div class="actions">
-                        <a href="/entree/<%= entry.id %>/edit">Modifier</a>
+                        <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
                         <form action="/entree/<%= entry.id %>/delete" method="POST">
-                            <button type="submit">Supprimer</button>
+                            <button type="submit"><%= t('journal.delete') %></button>
                         </form>
                     </div>
                 <% } %>
@@ -37,4 +38,6 @@
         </article>
     <% }); %>
 
-</div> <%- include('partials/footer') %>
+</div>
+
+<%- include('partials/footer') %>

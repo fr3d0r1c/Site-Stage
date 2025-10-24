@@ -2,14 +2,14 @@
 
 <article class="full-article">
     <h1><%= article.title %></h1>
-    <small>Publié le: <%= new Date(article.publication_date).toLocaleString('fr-FR') %></small>
+    <small><%= t('journal.published_on') %>: <%= new Date(article.publication_date).toLocaleString(i18n.language) %></small>
     <hr>
     
     <div class="article-content"><%- article.content %></div>
 </article>
 
 <nav>
-    <a href="/journal">Retour au journal</a>
+    <a href="/journal"><%= t('journal.back_to_journal') %></a>
 </nav>
 
 <%- include('partials/footer') %>

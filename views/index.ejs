@@ -1,44 +1,35 @@
-<%- include('partials/header', { pageTitle: 'Accueil' }) %>
+<%- include('partials/header', { pageTitle: t('nav.home') }) %>
 
 <h1>Mon Carnet de Stage</h1>
 <p>Bienvenue sur ce site créé pour documenter mon stage à l'étranger. Découvrez ci-dessous les entrées les plus récentes du journal de bord.</p>
 
 <nav>
     <% if (locals.username) { %>
-        <a href="/journal/nouvelle">Ajouter une entrée</a> | 
+        <a href="/journal/nouvelle"><%= t('journal.add_entry') %></a> |
     <% } %>
-    <a href="/journal">Voir tout le journal</a>
+    <a href="/journal"><%= t('journal.view_all') %></a>
 </nav>
 
 <hr>
-<h2>Les dernières entrées</h2>
+<h2><%= t('general.latest_entries') %></h2>
 
 <div class="entries-grid">
-
     <% articles.forEach(entry => { %>
         <article class="entry-card">
-
-            <% if (entry.coverImage) { %>
-                <a href="/entree/<%= entry.id %>" class="card-image-link">
-                    <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
-                </a>
-            <% } %>
-            
+            <%# ... image ... %>
             <div class="card-body">
                 <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
-                <small>Publié le: <%= new Date(entry.publication_date).toLocaleString('fr-FR') %></small>
-                
+                <small><%= t('journal.published_on') %>: <%= new Date(entry.publication_date).toLocaleString(i18n.language) %></small>
+                <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
                 <% if (locals.username) { %>
                     <div class="actions">
-                        <a href="/entree/<%= entry.id %>/edit">Modifier</a>
+                        <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
                         <form action="/entree/<%= entry.id %>/delete" method="POST">
-                            <button type="submit">Supprimer</button>
+                            <button type="submit"><%= t('journal.delete') %></button>
                         </form>
                     </div>
                 <% } %>
             </div>
-
         </article>
     <% }); %>
-
-</div> <%- include('partials/footer') %>
+</div>

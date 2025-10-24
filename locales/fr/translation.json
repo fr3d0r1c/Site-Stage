@@ -1,0 +1,75 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "profile": "Mon Profil",
+    "internship": "Mon Stage",
+    "journal": "Journal de Bord",
+    "admin": "Administration",
+    "logout": "Déconnexion"
+  },
+  "footer": {
+    "rights": "Tous droits réservés."
+  },
+  "forms": {
+    "title_fr": "Titre (FR)",
+    "title_en": "Titre (EN)",
+    "content_fr": "Contenu (FR - Markdown)",
+    "content_en": "Contenu (EN - Markdown)",
+    "cover_image_url": "URL de l'image de couverture (optionnel)",
+    "cover_image_hint": "Astuce : Uploadez une image dans le contenu FR, puis copiez son URL ici.",
+    "create_entry": "Créer l'entrée",
+    "update_entry": "Mettre à jour",
+    "username": "Nom d'utilisateur",
+    "password": "Mot de passe",
+    "login_button": "Se connecter",
+    "create_account_button": "Créer le compte"
+  },
+  "journal": {
+    "add_entry": "Ajouter une entrée",
+    "view_all": "Voir tout le journal",
+    "back_to_journal": "Retour au journal",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "read_more": "Lire la suite",
+    "published_on": "Publié le"
+  },
+  "general": {
+    "upload_image": "Téléverser une image",
+    "add_image_url": "Ajouter par URL",
+    "preview": "Aperçu",
+    "latest_entries": "Les dernières entrées",
+    "page_title_new_entry": "Nouvelle entrée",
+    "page_title_edit_entry": "Modifier l'entrée",
+    "page_title_login": "Administration - Connexion",
+    "page_title_register": "Créer le compte Administrateur"
+  },
+  "auth": {
+    "login_title": "Administration - Connexion",
+    "register_title": "Créer le compte Administrateur",
+    "register_info": "Ce formulaire n'est accessible que pour la création du premier et unique compte.",
+    "no_admin": "Aucun compte administrateur n'existe.",
+    "create_now": "Créez-le maintenant"
+  },
+  "static_pages": {
+    "profile_title": "À propos de moi",
+    "profile_intro": "Je suis un étudiant en école d'ingénieur à l'ESAIP, passionné par le développement logiciel et les nouvelles technologies. Ce site a été créé pour documenter mon stage à l'étranger qui se déroulera de juin à août 2026.",
+    "profile_skills_title": "Compétences Techniques",
+    "profile_skills_langs": "Langages",
+    "profile_skills_web": "Web",
+    "profile_skills_db": "Bases de données",
+    "profile_skills_tools": "Outils",
+    "profile_contact_title": "Contact & Liens",
+    "profile_contact_intro": "N'hésitez pas à me contacter ou à consulter mes autres profils :",
+    "profile_linkedin": "Mon Profil LinkedIn",
+    "profile_github": "Mon Profil GitHub",
+    "profile_cv": "Télécharger mon CV (PDF)",
+    "internship_title": "Mon Stage à l'Étranger",
+    "internship_intro": "Cette section sera dédiée à la présentation de mon stage de fin d'études, qui se déroulera pendant 12 semaines à partir de juin 2026.",
+    "internship_company_title": "L'Entreprise",
+    "internship_company_name": "Nom",
+    "internship_company_location": "Localisation",
+    "internship_company_sector": "Secteur d'activité",
+    "internship_mission_title": "Ma Mission",
+    "internship_mission_desc": "[Décrivez ici les objectifs principaux de votre stage.]"
+  }
+}

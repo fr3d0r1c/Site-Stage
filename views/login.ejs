@@ -1,6 +1,6 @@
-<%- include('partials/header', { pageTitle: 'Administration' }) %>
+<%- include('partials/header', { pageTitle: t('general.page_title_login') }) %>
 
-<h1>Administration - Connexion</h1>
+<h1><%= t('auth.login_title') %></h1>
 
 <% if (error) { %>
     <p class="error-message"><%= error %></p>
@@ -8,20 +8,20 @@
 
 <form action="/connexion" method="POST">
     <div>
-        <label for="username">Nom d'utilisateur :</label><br>
+        <label for="username"><%= t('forms.username') %> :</label><br>
         <input type="text" id="username" name="username" required>
     </div>
     <div>
-        <label for="password">Mot de passe :</label><br>
+        <label for="password"><%= t('forms.password') %> :</label><br>
         <input type="password" id="password" name="password" required>
     </div>
     <div>
-        <button type="submit">Se connecter</button>
+        <button type="submit"><%= t('forms.login_button') %></button>
     </div>
 </form>
 
 <% if (!adminExists) { %>
-    <p>Aucun compte administrateur n'existe. <a href="/inscription">Créez-le maintenant</a>.</p>
+    <p><%= t('auth.no_admin') %> <a href="/inscription"><%= t('auth.create_now') %></a>.</p>
 <% } %>
 
 <%- include('partials/footer') %>

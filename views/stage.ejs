@@ -1,24 +1,20 @@
-<%- include('partials/header', { pageTitle: 'Mon Stage' }) %>
+<%- include('partials/header', { pageTitle: t('nav.internship') }) %>
 
 <div class="static-page">
-    <h1>Mon Stage à l'Étranger</h1>
+    <h1><%= t('static_pages.internship_title') %></h1>
+    <p><%= t('static_pages.internship_intro') %></p>
+
+    <h2><%= t('static_pages.internship_company_title') %></h2>
     <p>
-        Cette section sera dédiée à la présentation de mon stage de fin d'études, qui se déroulera pendant 12 semaines à partir de juin 2026.
+        <strong><%= t('static_pages.internship_company_name') %> :</strong> [Nom de l'entreprise]
+        <br>
+        <strong><%= t('static_pages.internship_company_location') %> :</strong> [Ville, Pays]
+        <br>
+        <strong><%= t('static_pages.internship_company_sector') %> :</strong> [Secteur de l'entreprise]
     </p>
 
-    <h2>L'Entreprise</h2>
-    <p>
-        <strong>Nom :</strong> [Nom de l'entreprise]
-        <br>
-        <strong>Localisation :</strong> [Ville, Pays]
-        <br>
-        <strong>Secteur d'activité :</strong> [Secteur de l'entreprise, ex: Développement de logiciels, Aéronautique...]
-    </p>
-
-    <h2>Ma Mission</h2>
-    <p>
-        [Décrivez ici les objectifs principaux de votre stage. Par exemple : "Mon objectif principal sera de participer au développement d'une nouvelle application web en utilisant les technologies React et Node.js. Je serai intégré à l'équipe de développement agile et je contribuerai à l'analyse des besoins, au développement et aux tests." ]
-    </p>
+    <h2><%= t('static_pages.internship_mission_title') %></h2>
+    <p><%= t('static_pages.internship_mission_desc') %></p>
 </div>
 
 <%- include('partials/footer') %>

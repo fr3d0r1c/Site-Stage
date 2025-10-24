@@ -1,20 +1,20 @@
-<%- include('partials/header', { pageTitle: 'Créer le compte Administrateur' }) %>
+<%- include('partials/header', { pageTitle: t('general.page_title_register') }) %>
 
-<h1>Créer le compte Administrateur</h1>
-<p>Ce formulaire n'est accessible que pour la création du premier et unique compte.</p>
+<h1><%= t('auth.register_title') %></h1>
+<p><%= t('auth.register_info') %></p>
 <hr>
 
 <form action="/inscription" method="POST">
     <div>
-        <label for="username">Nom d'utilisateur :</label><br>
+        <label for="username"><%= t('forms.username') %> :</label><br>
         <input type="text" id="username" name="username" required>
     </div>
     <div>
-        <label for="password">Mot de passe :</label><br>
+        <label for="password"><%= t('forms.password') %> :</label><br>
         <input type="password" id="password" name="password" required>
     </div>
     <div>
-        <button type="submit">Créer le compte</button>
+        <button type="submit"><%= t('forms.create_account_button') %></button>
     </div>
 </form>
 

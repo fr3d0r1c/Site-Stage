@@ -1,42 +1,54 @@
-<%- include('partials/header', { pageTitle: 'Modifier : ' + article.title }) %>
+<%- include('partials/header', { pageTitle: t('journal.edit') + ': ' + article.title_fr }) %>
 
-<h1>Modifier l'entrée</h1>
+<h1><%= t('journal.edit') %></h1>
 
 <form action="/entree/<%= article.id %>/edit" method="POST">
+
     <div>
-        <label for="title">Titre :</label><br>
-        <input type="text" id="title" name="title" value="<%= article.title %>" required>
+        <label for="title_fr"><%= t('forms.title_fr') %> :</label><br>
+        <input type="text" id="title_fr" name="title_fr" value="<%= article.title_fr %>" required>
     </div>
+    <div>
+        <label for="title_en"><%= t('forms.title_en') %> :</label><br>
+        <input type="text" id="title_en" name="title_en" value="<%= article.title_en %>" required>
+    </div>
+    <hr>
 
     <div class="editor-container">
         <div class="editor-pane">
-            <label for="content-editor">Contenu (Markdown) :</label><br>
-            
+            <label for="content-editor-fr"><%= t('forms.content_fr') %> :</label><br>
             <button type="button" id="upload-image-btn" class="editor-tool-btn">
-                Téléverser une image
+                <%= t('general.upload_image') %>
             </button>
             <button type="button" id="add-url-image-btn" class="editor-tool-btn">
-                Ajouter par URL
+                <%= t('general.add_image_url') %>
             </button>
-            
-            <textarea id="content-editor" name="content" rows="20" required><%= article.content %></textarea>
+            <textarea id="content-editor-fr" name="content_fr" rows="20" required><%= article.content_fr %></textarea>
         </div>
         <div class="preview-pane">
-            <label>Aperçu :</label><br>
-            <div id="content-preview" class="article-content"></div>
+            <label><%= t('general.preview') %> (FR) :</label><br>
+            <div id="content-preview-fr" class="article-content"></div>
         </div>
     </div>
+    <hr>
+
+    <div>
+        <label for="content_en"><%= t('forms.content_en') %> :</label><br>
+        <textarea id="content_en" name="content_en" rows="20" required><%= article.content_en %></textarea>
+        <small>Vous pouvez utiliser la syntaxe Markdown ici aussi.</small>
+    </div>
+    <hr>
 
     <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
 
     <div>
-        <label for="cover_image_url">URL de l'image de couverture (optionnel) :</label><br>
+        <label for="cover_image_url"><%= t('forms.cover_image_url') %> :</label><br>
         <input type="text" id="cover_image_url" name="cover_image_url" placeholder="Collez l'URL d'une image ici..." value="<%= article.cover_image_url || '' %>">
-        <small>Astuce : Uploadez une image dans le contenu, puis copiez son URL ici.</small>
+        <small><%= t('forms.cover_image_hint') %></small>
     </div>
 
     <div>
-        <button type="submit">Mettre à jour</button>
+        <button type="submit"><%= t('forms.update_entry') %></button>
     </div>
 </form>
 

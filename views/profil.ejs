@@ -1,27 +1,23 @@
-<%- include('partials/header', { pageTitle: 'Mon Profil' }) %>
+<%- include('partials/header', { pageTitle: t('nav.profile') }) %>
 
 <div class="static-page">
-    <h1>À propos de moi</h1>
-    <p>
-        Je suis un étudiant en école d'ingénieur à l'<strong>ESAIP</strong>, passionné par le développement logiciel et les nouvelles technologies. Ce site a été créé pour documenter mon stage à l'étranger qui se déroulera de juin à août 2026.
-    </p>
+    <h1><%= t('static_pages.profile_title') %></h1>
+    <p><%= t('static_pages.profile_intro') %></p>
 
-    <h2>Compétences Techniques</h2>
+    <h2><%= t('static_pages.profile_skills_title') %></h2>
     <ul>
-        <li><strong>Langages :</strong> JavaScript (Node.js), Python, Java, C++</li>
-        <li><strong>Web :</strong> HTML, CSS, Express.js, EJS</li>
-        <li><strong>Bases de données :</strong> SQLite, SQL</li>
-        <li><strong>Outils :</strong> Git, GitHub, Docker</li>
+        <li><strong><%= t('static_pages.profile_skills_langs') %> :</strong> JavaScript (Node.js), Python, Java, C++</li>
+        <li><strong><%= t('static_pages.profile_skills_web') %> :</strong> HTML, CSS, Express.js, EJS</li>
+        <li><strong><%= t('static_pages.profile_skills_db') %> :</strong> SQLite, SQL</li>
+        <li><strong><%= t('static_pages.profile_skills_tools') %> :</strong> Git, GitHub, Docker</li>
     </ul>
 
-    <h2>Contact & Liens</h2>
-    <p>
-        N'hésitez pas à me contacter ou à consulter mes autres profils :
-    </p>
+    <h2><%= t('static_pages.profile_contact_title') %></h2>
+    <p><%= t('static_pages.profile_contact_intro') %></p>
     <ul>
-        <li><a href="https://www.linkedin.com/in/falleron/">Mon Profil LinkedIn</a></li>
-        <li><a href="https://github.com/fr3d0r1c">Mon Profil GitHub</a></li>
-        <li><a href="#">Télécharger mon CV (PDF)</a></li>
+        <li><a href="#"><%= t('static_pages.profile_linkedin') %></a></li>
+        <li><a href="#"><%= t('static_pages.profile_github') %></a></li>
+        <li><a href="#"><%= t('static_pages.profile_cv') %></a></li>
     </ul>
 </div>
 

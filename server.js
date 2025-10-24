@@ -7,6 +7,9 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
 const { marked } = require('marked'); // Pour convertir le Markdown
+const i18next = require('i18next');
+const i18nextMiddleware = require('i18next-http-middleware');
+const FsBackend = require('i18next-fs-backend');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -26,6 +29,18 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+// --- CONFIGURATION i18n (TRADUCTION) ---
+i18next
+  .use(FsBackend) // Charge les traductions depuis les fichiers (locales/...)
+  .use(i18nextMiddleware.LanguageDetector) // Détecte la langue
+  .init({
+    backend: {
+      loadPath: __dirname + '/locales/{{lng}}/translation.json', // Chemin vers tes fichiers JSON
+    },
+    fallbackLng: 'fr', // Langue par défaut si la détection échoue
+    preload: ['fr', 'en'] // Langues supportées
+  });
+
 // =================================================================
 // 3. MIDDLEWARES
 // =================================================================
@@ -37,11 +52,14 @@ app.use(express.urlencoded({ extended: true }));
 
 // Configuration du middleware de session
 app.use(session({
-  secret: 'votre-secret-personnel-tres-difficile-a-deviner',
+  secret: 'votre-secret-personnel-tres-difficile-a-deviner', // Change this!
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false } // Mettre à true en production avec HTTPS
+  cookie: { secure: false } // Set true in production with HTTPS
 }));
+
+// Middleware pour i18next (doit être après 'session')
+app.use(i18nextMiddleware.handle(i18next));
 
 // Rendre les données de session disponibles dans toutes les vues
 app.use((req, res, next) => {
@@ -65,9 +83,9 @@ function checkAdminExists(req, res, next) {
             return res.status(500).send("Erreur serveur");
         }
         if (row.count === 0) {
-            next();
+            next(); // Allow access to registration if no user exists
         } else {
-            res.redirect('/connexion');
+            res.redirect('/connexion'); // Redirect if an admin already exists
         }
     });
 }
@@ -82,15 +100,17 @@ const db = new sqlite3.Database('./blog.db', (err) => {
   console.log('Connecté à la base de données SQLite.');
 });
 
-// Création de la table 'articles' (avec image de couverture)
+// Création de la table 'articles' (version bilingue)
 const createArticleTable = `
 CREATE TABLE IF NOT EXISTS articles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
+  title_fr TEXT NOT NULL,
+  title_en TEXT NOT NULL,
+  content_fr TEXT NOT NULL,
+  content_en TEXT NOT NULL,
+  cover_image_url TEXT,
   publication_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER,
-  cover_image_url TEXT,
   FOREIGN KEY (user_id) REFERENCES users (id)
 );
 `;
@@ -114,7 +134,11 @@ db.run(createUserTable);
 
 // Page d'accueil
 app.get('/', (req, res) => {
-    const sql = 'SELECT * FROM articles ORDER BY publication_date DESC LIMIT 3';
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const sql = `
+        SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date 
+        FROM articles ORDER BY publication_date DESC LIMIT 3
+    `;
     db.all(sql, [], (err, rows) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
         
@@ -126,14 +150,16 @@ app.get('/', (req, res) => {
                 const match = article.content.match(/!\[.*?\]\((.*?)\)/);
                 finalCoverImage = match ? match[1] : null;
             }
-            return { ...article, coverImage: finalCoverImage };
+            // Strip markdown for excerpt
+            const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
+            return { ...article, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
         });
 
         res.render('index', { articles: articlesWithCovers, pageTitle: 'Accueil', activePage: 'accueil' });
     });
 });
 
-// Pages statiques
+// Pages statiques (These are not translated by i18next unless you add keys)
 app.get('/profil', (req, res) => {
     res.render('profil', { pageTitle: 'Mon Profil', activePage: 'profil' });
 });
@@ -144,7 +170,11 @@ app.get('/stage', (req, res) => {
 
 // Page de tout le journal
 app.get('/journal', (req, res) => {
-    const sql = 'SELECT * FROM articles ORDER BY publication_date DESC';
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const sql = `
+        SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date 
+        FROM articles ORDER BY publication_date DESC
+    `;
     db.all(sql, [], (err, rows) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
         
@@ -156,7 +186,9 @@ app.get('/journal', (req, res) => {
                 const match = article.content.match(/!\[.*?\]\((.*?)\)/);
                 finalCoverImage = match ? match[1] : null;
             }
-            return { ...article, coverImage: finalCoverImage };
+             // Strip markdown for excerpt
+            const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
+            return { ...article, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
         });
         
         res.render('journal', { articles: articlesWithCovers, pageTitle: 'Journal de Bord', activePage: 'journal' });
@@ -164,36 +196,25 @@ app.get('/journal', (req, res) => {
 });
 
 // Page de détail d'une entrée
-// Page de détail d'une entrée
 app.get('/entree/:id', (req, res) => {
     const id = req.params.id;
-    const sql = "SELECT * FROM articles WHERE id = ?";
-    
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const sql = `
+        SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date 
+        FROM articles WHERE id = ?
+    `;
     db.get(sql, id, (err, article) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
         if (!article) { return res.status(404).send("Entrée non trouvée !"); }
-
-        // --- NOUVELLE LOGIQUE DE NETTOYAGE ---
-        let finalContent = article.content;
         
-        // 1. On reconstruit le titre tel qu'il serait dans le Markdown
+        let finalContent = article.content;
         const markdownTitle = '# ' + article.title;
-
-        // 2. On vérifie si le contenu commence par ce titre (en ignorant les espaces)
         if (finalContent.trim().startsWith(markdownTitle)) {
-            // 3. Si oui, on supprime cette première ligne
             finalContent = finalContent.substring(markdownTitle.length).trim();
         }
-        // --- FIN DE LA NOUVELLE LOGIQUE ---
 
-        // On parse le contenu (qui est maintenant nettoyé)
         article.content = marked.parse(finalContent); 
-        
-        res.render('entry_detail', { 
-            article: article, 
-            pageTitle: article.title, 
-            activePage: 'journal' 
-        });
+        res.render('entry_detail', { article: article, pageTitle: article.title, activePage: 'journal' });
     });
 });
 
@@ -258,7 +279,7 @@ app.post('/inscription', checkAdminExists, (req, res) => {
     });
 });
 
-// Endpoint d'API pour l'upload d'images (on le garde, il est très utile !)
+// Endpoint d'API pour l'upload d'images
 app.post('/upload-image', isAuthenticated, upload.single('image'), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'Aucun fichier reçu.' });
@@ -275,33 +296,36 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
     res.render('new_entry', { pageTitle: 'Nouvelle entrée', activePage: 'journal' });
 });
 
-// Traite la création d'une entrée
+// Traite la création d'une entrée (bilingual)
 app.post('/journal', isAuthenticated, (req, res) => {
-    const { title, content, cover_image_url } = req.body;
+    const { title_fr, title_en, content_fr, content_en, cover_image_url } = req.body;
     const userId = req.session.userId;
-    const sql = 'INSERT INTO articles (title, content, user_id, cover_image_url) VALUES (?, ?, ?, ?)';
-    db.run(sql, [title, content, userId, cover_image_url], function(err) {
+    const sql = 'INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?)';
+    db.run(sql, [title_fr, title_en, content_fr, content_en, userId, cover_image_url], function(err) {
         if (err) { return res.status(500).send("Erreur création entrée."); }
         res.redirect('/journal');
     });
 });
 
-// Affiche le formulaire de modification
+// Affiche le formulaire de modification (bilingual)
 app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
     const id = req.params.id;
-    const sql = "SELECT * FROM articles WHERE id = ?";
+    // Fetch all fields for editing
+    const sql = "SELECT * FROM articles WHERE id = ?"; 
     db.get(sql, id, (err, article) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
-        res.render('edit_entry', { article: article, pageTitle: 'Modifier : ' + article.title, activePage: 'journal' });
+        if (!article) { return res.status(404).send("Entrée non trouvée !");}
+        // Send the complete article object with _fr and _en fields
+        res.render('edit_entry', { article: article, pageTitle: 'Modifier : ' + article.title_fr, activePage: 'journal' });
     });
 });
 
-// Traite la modification d'une entrée
+// Traite la modification d'une entrée (bilingual)
 app.post('/entree/:id/edit', isAuthenticated, (req, res) => {
     const id = req.params.id;
-    const { title, content, cover_image_url } = req.body;
-    const sql = 'UPDATE articles SET title = ?, content = ?, cover_image_url = ? WHERE id = ?';
-    db.run(sql, [title, content, cover_image_url, id], function(err) {
+    const { title_fr, title_en, content_fr, content_en, cover_image_url } = req.body;
+    const sql = 'UPDATE articles SET title_fr = ?, title_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
+    db.run(sql, [title_fr, title_en, content_fr, content_en, cover_image_url, id], function(err) {
         if (err) { return res.status(500).send("Erreur mise à jour entrée."); }
         res.redirect('/journal');
     });

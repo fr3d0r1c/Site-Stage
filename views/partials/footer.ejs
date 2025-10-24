@@ -9,13 +9,12 @@
         <button data-theme="sepia">Sépia</button>
     </div>
 
-    <p>&copy; <%= new Date().getFullYear() %> Frederic Alleron. Tous droits réservés.</p>
-    
+    <p>&copy; <%= new Date().getFullYear() %> Frederic Alleron. <%= t('footer.rights') %></p>
     <p>
-            <a href="/">Accueil</a> | 
-            <a href="/profil">Profil</a> | 
-            <a href="/stage">Stage</a> | 
-            <a href="/journal">Journal de Bord</a>
+        <a href="/"><%= t('nav.home') %></a> |
+        <a href="/profil"><%= t('nav.profile') %></a> |
+        <a href="/stage"><%= t('nav.internship') %></a> |
+        <a href="/journal"><%= t('nav.journal') %></a>
     </p>
     </footer>
 

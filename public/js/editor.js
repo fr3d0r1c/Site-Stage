@@ -1,38 +1,34 @@
-// On s'assure que le script s'exécute quand le DOM est prêt
 document.addEventListener('DOMContentLoaded', () => {
-    // On sélectionne les trois éléments dont nous avons besoin
-    const editor = document.getElementById('content-editor');
-    const preview = document.getElementById('content-preview');
-    const titleInput = document.getElementById('title');
+    // === TARGET FRENCH EDITOR ELEMENTS ===
+    const editor = document.getElementById('content-editor-fr'); // Updated ID
+    const preview = document.getElementById('content-preview-fr'); // Updated ID
+    const titleInput = document.getElementById('title_fr'); // Updated ID
 
-    // S'assure que les éléments existent sur la page avant de continuer
+    // Ensure elements exist before adding listeners
     if (!editor || !preview || !titleInput) return;
 
-    // Variable "verrou" pour éviter les boucles de mise à jour infinies
     let isUpdating = false;
 
-    // Fonction qui met à jour le titre ET l'aperçu à partir de l'éditeur
     function updateFromEditor() {
         if (isUpdating) return;
         isUpdating = true;
 
         const markdownText = editor.value;
 
-        // Logique d'auto-remplissage du titre
+        // Auto-fill title logic (targets title_fr)
         const lines = markdownText.split('\n');
         if (lines.length > 0 && lines[0].startsWith('# ')) {
             const potentialTitle = lines[0].substring(2).trim();
             titleInput.value = potentialTitle;
         }
 
-        // Logique de l'aperçu
+        // Preview logic (targets content-preview-fr)
         const htmlText = marked.parse(markdownText);
         preview.innerHTML = htmlText;
         
         isUpdating = false;
     }
 
-    // Fonction qui met à jour l'éditeur à partir du champ titre
     function updateFromTitle() {
         if (isUpdating) return;
         isUpdating = true;
@@ -48,16 +44,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         editor.value = lines.join('\n');
         
+        // Update preview after title changes editor
         const htmlText = marked.parse(editor.value);
         preview.innerHTML = htmlText;
         
         isUpdating = false;
     }
 
-    // On attache les écouteurs d'événements
     editor.addEventListener('input', updateFromEditor);
     titleInput.addEventListener('input', updateFromTitle);
 
-    // On exécute la fonction une première fois au chargement
+    // Initial update on load
     updateFromEditor();
 });
