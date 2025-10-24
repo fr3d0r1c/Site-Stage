@@ -9,3 +9,5 @@ public/uploads/
 
 # Fichiers système
 .DS_Store
+
+.env

@@ -10,12 +10,23 @@ const { marked } = require('marked'); // Pour convertir le Markdown
 const i18next = require('i18next');
 const i18nextMiddleware = require('i18next-http-middleware');
 const FsBackend = require('i18next-fs-backend');
+require('dotenv').config();
+const deepl = require('deepl-node');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
 // =================================================================
 const app = express();
 const port = process.env.PORT || 3000;
+
+const deeplApiKey = process.env.DEEPL_API_KEY;
+if (!deeplApiKey) {
+    console.warn("AVERTISSEMENT : Clé API DeepL manquante. La traduction automatique sera désactivée.");
+}
+const translator = deeplApiKey ? new deepl.Translator(deeplApiKey) : null;
+if (translator) {
+    console.log("Client DeepL initialisé.")
+}
 
 // Définir EJS comme moteur de template
 app.set('view engine', 'ejs');
@@ -35,10 +46,20 @@ i18next
   .use(i18nextMiddleware.LanguageDetector) // Détecte la langue
   .init({
     backend: {
-      loadPath: __dirname + '/locales/{{lng}}/translation.json', // Chemin vers tes fichiers JSON
+      loadPath: __dirname + '/locales/{{lng}}/translation.json',
     },
     fallbackLng: 'fr', // Langue par défaut si la détection échoue
-    preload: ['fr', 'en'] // Langues supportées
+    preload: ['fr', 'en'], // Langues supportées
+
+    detection: {
+        order: ['querystring', 'cookie', 'header'],
+
+        caches: ['cookie'],
+        cookieOptions: {
+            path: '/',
+            maxAge: 30 * 24 * 60 * 60 * 1000
+        }
+    }
   });
 
 // =================================================================
@@ -72,7 +93,7 @@ function isAuthenticated(req, res, next) {
     if (req.session.userId) {
         return next();
     }
-    res.redirect('/connexion');
+    res.status(401).json({ error: 'Accès non autorisé. Veuillez vous reconnecter.' });
 }
 
 // Middleware pour vérifier si un compte admin existe déjà
@@ -258,6 +279,43 @@ app.get('/deconnexion', (req, res) => {
         res.clearCookie('connect.sid');
         res.redirect('/');
     });
+});
+
+// --- API POUR LA TRADUCTION (Syntaxe .then/.catch) ---
+app.post('/api/translate', isAuthenticated, (req, res) => {
+    console.log("[DEBUG] Entrée dans /api/translate (.then/.catch)");
+
+    if (!translator) {
+        console.error("[DEBUG] Erreur: translator non initialisé !");
+        return res.status(503).json({ error: 'Service de traduction non disponible.' });
+    }
+
+    const textToTranslate = req.body.text;
+    const targetLanguage = req.body.targetLang || 'en-GB';
+
+    if (!textToTranslate) {
+        console.log("[DEBUG] Erreur: textToTranslate est vide ou manquant.");
+        return res.status(400).json({ error: 'Le champ "text" est manquant.' });
+    }
+
+    console.log(`[DEBUG] Paramètres avant appel: text='${textToTranslate.substring(0, 20)}...', lang='${targetLanguage}'`);
+
+    // Utilisation de .then() et .catch()
+    translator.translateText(textToTranslate, 'fr', targetLanguage)
+        .then(result => {
+            console.log("[DEBUG] Réponse brute de DeepL:", result);
+            if (result && typeof result.text === 'string') {
+                res.json({ translatedText: result.text });
+            } else {
+                console.error("[DEBUG] Réponse DeepL invalide:", result);
+                res.status(500).json({ error: 'Réponse invalide du service de traduction.' });
+            }
+        })
+        .catch(error => {
+            // Log spécifique si l'appel échoue
+            console.error("[DEBUG] Erreur attrapée par .catch() de translateText:", error);
+            res.status(500).json({ error: `Échec traduction: ${error.message || 'Erreur inconnue'}` });
+        });
 });
 
 // Affiche le formulaire d'inscription (conditionnel)
