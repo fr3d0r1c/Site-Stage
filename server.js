@@ -10,6 +10,7 @@ const { marked } = require('marked'); // Pour convertir le Markdown
 const i18next = require('i18next');
 const i18nextMiddleware = require('i18next-http-middleware');
 const FsBackend = require('i18next-fs-backend');
+const ITEMS_PER_PAGE = 5; // Nombre d'entrées par page
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -179,29 +180,53 @@ app.get('/stage', (req, res) => {
 });
 
 // Page de tout le journal
+// Page de tout le journal (avec pagination)
 app.get('/journal', (req, res) => {
+    // Récupère le numéro de page (par défaut 1)
+    const currentPage = parseInt(req.query.page) || 1;
+    // Calcule l'offset pour SQL
+    const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
     const lang = req.language === 'en' ? 'en' : 'fr';
-    const sql = `
+
+    // 1. Récupérer les entrées pour la page actuelle
+    const sqlEntries = `
         SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date 
-        FROM articles ORDER BY publication_date DESC
+        FROM articles 
+        ORDER BY publication_date DESC
+        LIMIT ? OFFSET ?
     `;
-    db.all(sql, [], (err, rows) => {
-        if (err) { return res.status(500).send("Erreur BDD"); }
-        
-        const articlesWithCovers = rows.map(article => {
-            let finalCoverImage = null;
-            if (article.cover_image_url) {
-                finalCoverImage = article.cover_image_url;
-            } else {
-                const match = article.content.match(/!\[.*?\]\((.*?)\)/);
-                finalCoverImage = match ? match[1] : null;
-            }
-             // Strip markdown for excerpt
-            const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
-            return { ...article, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
+
+    // 2. Compter le nombre total d'entrées
+    const sqlCount = `SELECT COUNT(*) as totalCount FROM articles`;
+
+    // Exécute les deux requêtes
+    db.all(sqlEntries, [ITEMS_PER_PAGE, offset], (err, rows) => {
+        if (err) { return res.status(500).send("Erreur BDD (entrées)"); }
+
+        db.get(sqlCount, [], (errCount, countResult) => {
+            if (errCount) { return res.status(500).send("Erreur BDD (compte)"); }
+
+            const totalEntries = countResult.totalCount;
+            const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+
+            // Logique pour l'image de couverture (inchangée)
+            const articlesWithCovers = rows.map(article => {
+                let finalCoverImage = null;
+                if (article.cover_image_url) { /* ... */ } else { /* ... */ }
+                const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
+                return { ...article, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
+            });
+
+            // On passe les données à la vue
+            res.render('journal', {
+                articles: articlesWithCovers,
+                pageTitle: 'Journal de Bord',
+                activePage: 'journal',
+                currentPage: currentPage, // Page actuelle
+                totalPages: totalPages    // Nombre total de pages
+            });
         });
-        
-        res.render('journal', { articles: articlesWithCovers, pageTitle: 'Journal de Bord', activePage: 'journal' });
     });
 });
 

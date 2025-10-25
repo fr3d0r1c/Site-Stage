@@ -521,3 +521,53 @@ button:hover, .actions a:hover {
     transform: none; /* Annule l'effet de soulèvement */
     opacity: 1;
 }
+
+/*
+=========================================
+--- 13. Pagination ---
+=========================================
+*/
+.pagination {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.pagination li a,
+.pagination li span {
+    display: block;
+    padding: 8px 15px;
+    border: 1px solid var(--c-border);
+    border-radius: 5px;
+    color: var(--c-text-light);
+    background-color: var(--c-surface);
+    transition: all 0.2s ease;
+}
+
+.pagination li a:hover {
+    background-color: var(--c-background);
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+    text-decoration: none;
+}
+
+.pagination li.active span {
+    background-color: var(--c-primary);
+    color: var(--c-white);
+    border-color: var(--c-primary);
+    font-weight: bold;
+}
+
+.pagination li.disabled span {
+    color: var(--c-gray);
+    background-color: var(--c-background);
+    cursor: not-allowed;
+}

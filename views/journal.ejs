@@ -40,4 +40,30 @@
 
 </div>
 
+<% if (totalPages > 1) { %>
+    <nav class="pagination" aria-label="Pagination">
+        <ul>
+            <% if (currentPage > 1) { %>
+                <li><a href="/journal?page=<%= currentPage - 1 %>">Précédent</a></li>
+            <% } else { %>
+                <li class="disabled"><span>Précédent</span></li>
+            <% } %>
+
+            <% for (let i = 1; i <= totalPages; i++) { %>
+                <% if (i === currentPage) { %>
+                    <li class="active"><span><%= i %></span></li>
+                <% } else { %>
+                    <li><a href="/journal?page=<%= i %>"><%= i %></a></li>
+                <% } %>
+            <% } %>
+
+            <% if (currentPage < totalPages) { %>
+                <li><a href="/journal?page=<%= currentPage + 1 %>">Suivant</a></li>
+            <% } else { %>
+                <li class="disabled"><span>Suivant</span></li>
+            <% } %>
+        </ul>
+    </nav>
+<% } %>
+
 <%- include('partials/footer') %>
