@@ -10,23 +10,12 @@ const { marked } = require('marked'); // Pour convertir le Markdown
 const i18next = require('i18next');
 const i18nextMiddleware = require('i18next-http-middleware');
 const FsBackend = require('i18next-fs-backend');
-require('dotenv').config();
-const deepl = require('deepl-node');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
 // =================================================================
 const app = express();
 const port = process.env.PORT || 3000;
-
-const deeplApiKey = process.env.DEEPL_API_KEY;
-if (!deeplApiKey) {
-    console.warn("AVERTISSEMENT : Clé API DeepL manquante. La traduction automatique sera désactivée.");
-}
-const translator = deeplApiKey ? new deepl.Translator(deeplApiKey) : null;
-if (translator) {
-    console.log("Client DeepL initialisé.")
-}
 
 // Définir EJS comme moteur de template
 app.set('view engine', 'ejs');
@@ -279,43 +268,6 @@ app.get('/deconnexion', (req, res) => {
         res.clearCookie('connect.sid');
         res.redirect('/');
     });
-});
-
-// --- API POUR LA TRADUCTION (Syntaxe .then/.catch) ---
-app.post('/api/translate', isAuthenticated, (req, res) => {
-    console.log("[DEBUG] Entrée dans /api/translate (.then/.catch)");
-
-    if (!translator) {
-        console.error("[DEBUG] Erreur: translator non initialisé !");
-        return res.status(503).json({ error: 'Service de traduction non disponible.' });
-    }
-
-    const textToTranslate = req.body.text;
-    const targetLanguage = req.body.targetLang || 'en-GB';
-
-    if (!textToTranslate) {
-        console.log("[DEBUG] Erreur: textToTranslate est vide ou manquant.");
-        return res.status(400).json({ error: 'Le champ "text" est manquant.' });
-    }
-
-    console.log(`[DEBUG] Paramètres avant appel: text='${textToTranslate.substring(0, 20)}...', lang='${targetLanguage}'`);
-
-    // Utilisation de .then() et .catch()
-    translator.translateText(textToTranslate, 'fr', targetLanguage)
-        .then(result => {
-            console.log("[DEBUG] Réponse brute de DeepL:", result);
-            if (result && typeof result.text === 'string') {
-                res.json({ translatedText: result.text });
-            } else {
-                console.error("[DEBUG] Réponse DeepL invalide:", result);
-                res.status(500).json({ error: 'Réponse invalide du service de traduction.' });
-            }
-        })
-        .catch(error => {
-            // Log spécifique si l'appel échoue
-            console.error("[DEBUG] Erreur attrapée par .catch() de translateText:", error);
-            res.status(500).json({ error: `Échec traduction: ${error.message || 'Erreur inconnue'}` });
-        });
 });
 
 // Affiche le formulaire d'inscription (conditionnel)
