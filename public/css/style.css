@@ -651,3 +651,10 @@ button:hover, .actions a:hover {
 .entry-tags {
     margin-bottom: 1.5rem;
 }
+
+/* Style au survol pour les tags cliquables */
+.tag-item:hover {
+    background-color: var(--c-primary);
+    color: var(--c-white);
+    border-color: var(--c-primary);
+}

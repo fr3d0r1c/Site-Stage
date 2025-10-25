@@ -313,7 +313,6 @@ app.get('/entree/:id', (req, res) => {
 });
 
 // --- RECHERCHE ---
-// --- RECHERCHE ---
 app.get('/search', (req, res) => {
     const query = req.query.query;
     const lang = req.language === 'en' ? 'en' : 'fr';
@@ -356,6 +355,83 @@ app.get('/search', (req, res) => {
 
         res.render('search_results', {
             articles: articlesWithData, query: query, pageTitle: `Résultats pour "${query}"`, activePage: 'search'
+        });
+    });
+});
+
+// --- FILTRAGE PAR TAG ---
+app.get('/tags/:tagName', (req, res) => {
+    const tagName = req.params.tagName; // Récupère le nom du tag depuis l'URL
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const currentPage = parseInt(req.query.page) || 1; // Gère aussi la pagination pour les tags
+    const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+    // 1. Trouve l'ID du tag
+    const sqlFindTag = `SELECT id FROM tags WHERE name = ?`;
+    
+    db.get(sqlFindTag, [tagName], (errTag, tag) => {
+        if (errTag) { return res.status(500).send("Erreur BDD (recherche tag)"); }
+        if (!tag) {
+            // Si le tag n'existe pas, on affiche une page vide
+             return res.render('journal', { // On réutilise la vue journal
+                 articles: [],
+                 pageTitle: `Aucune entrée pour le tag "${tagName}"`,
+                 activePage: 'journal', // Ou une autre page active si tu veux
+                 currentPage: 1,
+                 totalPages: 0,
+                 currentTag: tagName // On passe le tag pour l'afficher
+             });
+        }
+
+        const tagId = tag.id;
+
+        // 2. Trouve les articles liés à ce tag (pour la page actuelle)
+        const sqlEntries = `
+            SELECT
+                a.id, a.title_${lang} as title, a.content_${lang} as content,
+                a.cover_image_url, a.publication_date,
+                GROUP_CONCAT(t.name) as tags -- On récupère aussi les autres tags de l'article
+            FROM articles a
+            JOIN article_tags at ON a.id = at.article_id
+            LEFT JOIN article_tags at_all ON a.id = at_all.article_id -- Jointure pour récupérer TOUS les tags de l'article
+            LEFT JOIN tags t ON at_all.tag_id = t.id
+            WHERE at.tag_id = ? -- Filtre sur l'ID du tag recherché
+            GROUP BY a.id
+            ORDER BY a.publication_date DESC
+            LIMIT ? OFFSET ?
+        `;
+
+        // 3. Compte le nombre total d'articles pour ce tag (pour la pagination)
+        const sqlCount = `SELECT COUNT(*) as totalCount FROM article_tags WHERE tag_id = ?`;
+
+        db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
+            if (err) { return res.status(500).send("Erreur BDD (articles par tag)"); }
+
+            db.get(sqlCount, [tagId], (errCount, countResult) => {
+                 if (errCount) { return res.status(500).send("Erreur BDD (compte par tag)"); }
+
+                 const totalEntries = countResult.totalCount;
+                 const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+
+                 const articlesWithData = rows.map(article => {
+                     const tagList = article.tags ? article.tags.split(',') : [];
+                     let finalCoverImage = null;
+                     if (article.cover_image_url) { finalCoverImage = article.cover_image_url; }
+                     else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
+                     const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
+                     return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
+                 });
+
+                 // On réutilise la vue 'journal.ejs' pour afficher les résultats
+                 res.render('journal', {
+                     articles: articlesWithData,
+                     pageTitle: `Entrées pour le tag "${tagName}"`,
+                     activePage: 'journal',
+                     currentPage: currentPage,
+                     totalPages: totalPages,
+                     currentTag: tagName // On passe le tag pour l'afficher dans le titre/header si besoin
+                 });
+            });
         });
     });
 });

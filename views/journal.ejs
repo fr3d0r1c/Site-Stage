@@ -27,7 +27,7 @@
                 <% if (entry.tags && entry.tags.length > 0) { %>
                     <div class="tags-list">
                         <% entry.tags.forEach(tag => { %>
-                            <span class="tag-item"><%= tag %></span>
+                            <a href="/tags/<%= tag %>" class="tag-item"><%= tag %></a>
                         <% }); %>
                     </div>
                 <% } %>
