@@ -1,7 +1,7 @@
 // =================================================================
 // 1. IMPORTS (DÉPENDANCES)
 // =================================================================
-// require('dotenv').config(); // Pour lire le .env (si utilisé pour la clé DeepL par ex.)
+require('dotenv').config(); // Pour lire le .env (si utilisé pour la clé DeepL par ex.)
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
@@ -11,6 +11,7 @@ const { marked } = require('marked'); // Pour convertir le Markdown
 const i18next = require('i18next');
 const i18nextMiddleware = require('i18next-http-middleware');
 const FsBackend = require('i18next-fs-backend');
+const nodemailer = require('nodemailer');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -50,6 +51,21 @@ i18next
                 }
             }
         });
+
+// --- NODEMAILER CONFIGURATION ---
+let transporter = null;
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+    console.log("Nodemailer (Gmail) configuré.");
+} else {
+    console.warn("AVERTISSEMENT : Identifiants email manquants dans .env. Le formulaire de contact sera désactivé.");
+}
 
 // =================================================================
 // 3. MIDDLEWARES
@@ -640,6 +656,61 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
 app.get('/contact', (req, res) => {
     // We'll add 'messageSent' later for feedback
     res.render('contact', { pageTitle: 'Contact', activePage: 'contact', messageSent: null });
+});
+
+// --- TRAITEMENT DU FORMULAIRE DE CONTACT ---
+app.post('/contact', (req, res) => {
+    // Vérifie si le transporter est configuré
+    if (!transporter) {
+        return res.status(503).render('contact', {
+            pageTitle: 'Contact',
+            activePage: 'contact',
+            messageSent: false // Indique une erreur
+        });
+    }
+
+    const { name, email, message } = req.body;
+
+    // Validation simple (peut être améliorée)
+    if (!name || !email || !message) {
+         return res.status(400).render('contact', {
+            pageTitle: 'Contact',
+            activePage: 'contact',
+            messageSent: false
+        });
+    }
+
+    const mailOptions = {
+        from: `"${name}" <${process.env.EMAIL_USER}>`, // L'expéditeur affiché sera votre compte Gmail
+        replyTo: email, // Permet de répondre directement à l'expéditeur
+        to: process.env.EMAIL_TO, // L'adresse où vous recevez les messages
+        subject: `Nouveau message de ${name} via le Carnet de Stage`,
+        text: `Nom: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
+        html: `
+            <p><strong>Nom :</strong> ${name}</p>
+            <p><strong>Email :</strong> ${email}</p>
+            <hr>
+            <p><strong>Message :</strong></p>
+            <p>${message.replace(/\n/g, '<br>')}</p>
+        `
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        let messageStatus = null;
+        if (error) {
+            console.error("Erreur lors de l'envoi de l'email:", error);
+            messageStatus = false; // Échec
+        } else {
+            console.log('Email envoyé: ' + info.response);
+            messageStatus = true; // Succès
+        }
+        // Recharge la page contact avec un message de statut
+        res.render('contact', {
+            pageTitle: 'Contact',
+            activePage: 'contact',
+            messageSent: messageStatus
+        });
+    });
 });
 
 // =================================================================
