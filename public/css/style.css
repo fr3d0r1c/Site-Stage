@@ -658,3 +658,52 @@ button:hover, .actions a:hover {
     color: var(--c-white);
     border-color: var(--c-primary);
 }
+
+/*
+=========================================
+--- 15. Styles Page Contact ---
+=========================================
+*/
+
+.contact-page h1 {
+    text-align: center; /* Center the main title */
+    border-bottom: none; /* Remove the line under H1 on this page */
+}
+
+.contact-page p:first-of-type {
+    text-align: center; /* Center the intro paragraph */
+    margin-bottom: 2rem;
+    color: var(--c-text-light);
+}
+
+.contact-form .form-group {
+    margin-bottom: 1.5rem; /* Slightly more space */
+}
+
+.contact-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--c-text);
+}
+
+/* Style for feedback messages */
+.feedback-message {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    text-align: center;
+    font-weight: 500;
+}
+
+.feedback-message.success {
+    background-color: color-mix(in srgb, var(--c-primary) 15%, transparent); /* Light primary color */
+    color: var(--c-primary);
+    border: 1px solid var(--c-primary);
+}
+
+.feedback-message.error {
+    background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); /* Light danger color */
+    color: var(--c-danger);
+    border: 1px solid var(--c-danger);
+}
