@@ -36,10 +36,21 @@
     </div>
     <hr>
 
-    <div>
-        <label for="content_en"><%= t('forms.content_en') %> :</label><br>
-        <textarea id="content_en" name="content_en" rows="20"><%= article.content_en %></textarea>
-        <small>Vous pouvez utiliser la syntaxe Markdown ici aussi.</small>
+    <div class="editor-container">
+        <div class="editor-pane">
+            <label for="content-editor-en"><%= t('forms.content_en') %> :</label><br>
+            <button type="button" id="upload-image-btn-en" class="editor-tool-btn">
+                <%= t('general.upload_image') %> (EN)
+            </button>
+            <button type="button" id="add-url-image-btn-en" class="editor-tool-btn">
+                <%= t('general.add_image_url') %> (EN)
+            </button>
+            <textarea id="content-editor-en" name="content_en" rows="20" required><%= (typeof article !== 'undefined' && article.content_en) ? article.content_en : '' %></textarea>
+        </div>
+        <div class="preview-pane">
+            <label><%= t('general.preview') %> (EN) :</label><br>
+            <div id="content-preview-en" class="article-content"></div>
+        </div>
     </div>
     <hr>
 

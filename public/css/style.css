@@ -102,10 +102,11 @@ hr {
     background: var(--c-surface);
     color: var(--c-text);
     border-bottom: 1px solid var(--c-border);
-    padding: 1rem 2rem;
+    padding: 0.8rem 2rem; /* Reduced vertical padding slightly */
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    /* Vertically align all items in the header */
+    align-items: center; 
+    gap: 1.5rem; /* Add some space between main sections */
     margin-bottom: 0;
     position: sticky;
     top: 0;
@@ -114,10 +115,20 @@ hr {
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
+.logo {
+    flex-shrink: 0; /* Prevent logo from shrinking */
+}
 .logo a {
     color: var(--c-text);
     font-size: 1.5rem;
     font-weight: 700;
+}
+
+/* Push navigation to the right */
+.main-nav {
+    margin-left: auto; /* Pushes nav to the right, before search/lang */
+    display: flex; /* Ensure nav items are horizontal */
+    align-items: center; /* Align nav items vertically */
 }
 
 .main-nav a {
@@ -127,6 +138,7 @@ hr {
     font-weight: 500;
     padding: 5px 0;
     border-bottom: 2px solid transparent;
+    white-space: nowrap; /* Prevent nav links from wrapping */
 }
 .main-nav a:hover {
     color: var(--c-text);
@@ -135,6 +147,58 @@ hr {
 .main-nav a.active {
     color: var(--c-primary);
     border-bottom-color: var(--c-primary);
+}
+
+/* Search Form adjustments */
+.search-form {
+    display: flex;
+    align-items: center;
+    margin-left: 0; /* Remove default margin */
+    flex-shrink: 0; /* Prevent shrinking */
+}
+.search-form input[type="search"] {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    border: 1px solid var(--c-border);
+    border-right: none; /* Remove right border to merge with button */
+    border-radius: 99px 0 0 99px;
+    background-color: var(--c-background);
+    color: var(--c-text);
+    min-width: 150px;
+    height: 36px; /* Match button height */
+    box-sizing: border-box;
+}
+.search-form button {
+    padding: 6px 12px;
+    border-radius: 0 99px 99px 0;
+    margin-left: -1px;
+    font-size: 1rem;
+    line-height: 1; /* Adjust emoji alignment */
+    height: 36px; /* Match input height */
+    box-sizing: border-box;
+    border: 1px solid var(--c-primary); /* Add border matching input focus */
+    background-color: var(--c-primary);
+}
+.search-form button:hover {
+    opacity: 0.8;
+}
+
+/* Language Switcher adjustments */
+.language-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
+    flex-shrink: 0; /* Prevent shrinking */
+}
+.language-switcher .fi {
+    font-size: 1.4em; /* Slightly larger flags */
+    line-height: 1;
+    display: block; /* Helps alignment */
+}
+.language-switcher span { /* Separator */
+     color: var(--c-border);
 }
 
 /* Styles du menu Hamburger (Base) */
@@ -706,4 +770,9 @@ button:hover, .actions a:hover {
     background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); /* Light danger color */
     color: var(--c-danger);
     border: 1px solid var(--c-danger);
+}
+
+.language-switcher .fi {
+    font-size: 1.2em; /* Adjust size as needed */
+    line-height: 1; /* Helps vertical alignment */
 }

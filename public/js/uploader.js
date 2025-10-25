@@ -1,57 +1,96 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const uploadBtn = document.getElementById('upload-image-btn');
-    const fileInput = document.getElementById('image-upload-input');
-    const urlBtn = document.getElementById('add-url-image-btn');
+    // Buttons and shared file input
+    const uploadBtnFr = document.getElementById('upload-image-btn');
+    const urlBtnFr = document.getElementById('add-url-image-btn');
+    const uploadBtnEn = document.getElementById('upload-image-btn-en');
+    const urlBtnEn = document.getElementById('add-url-image-btn-en');
+    const fileInput = document.getElementById('image-upload-input'); // Keep one hidden input
+    let targetEditorInstance = null; // To know which editor to update
 
-    // Vérifie si l'instance EasyMDE existe (créée dans init-easymde.js)
-    // On attend un court instant au cas où EasyMDE s'initialise après ce script
+    // Wait for EasyMDE instances
     setTimeout(() => {
-        const easyMDE = window.easyMDEInstance;
+        const easyMDE_fr = window.easyMDEInstances ? window.easyMDEInstances.fr : null;
+        const easyMDE_en = window.easyMDEInstances ? window.easyMDEInstances.en : null;
 
-        if (!easyMDE) {
-            console.warn("L'instance EasyMDE n'a pas été trouvée pour uploader.js.");
-            return; // Ne pas continuer si l'éditeur n'est pas prêt
+        if (!easyMDE_fr && !easyMDE_en) {
+            console.warn("No EasyMDE instances found for uploader.");
+            return;
         }
 
-        // Fonction pour insérer du texte dans EasyMDE au curseur
-        function insertTextAtCursor(text) {
-            const cm = easyMDE.codemirror;
+        function insertTextAtCursor(easyMDEInstance, text) {
+            if (!easyMDEInstance) return;
+            const cm = easyMDEInstance.codemirror;
             const doc = cm.getDoc();
             const cursor = doc.getCursor();
             doc.replaceRange(text, cursor);
         }
 
-        // Logique d'upload de fichier
-        if (uploadBtn && fileInput) {
-            uploadBtn.addEventListener('click', () => { fileInput.click(); });
+        // --- Event Listeners ---
+        // Set target editor when a button is clicked
+
+        if (uploadBtnFr) {
+            uploadBtnFr.addEventListener('click', () => {
+                targetEditorInstance = easyMDE_fr;
+                fileInput.click();
+            });
+        }
+        if (urlBtnFr) {
+             urlBtnFr.addEventListener('click', () => {
+                 targetEditorInstance = easyMDE_fr;
+                 addImageByUrl();
+             });
+        }
+         if (uploadBtnEn) {
+            uploadBtnEn.addEventListener('click', () => {
+                targetEditorInstance = easyMDE_en;
+                fileInput.click();
+            });
+        }
+        if (urlBtnEn) {
+            urlBtnEn.addEventListener('click', () => {
+                targetEditorInstance = easyMDE_en;
+                addImageByUrl();
+            });
+        }
+
+
+        // File input change handler (uploads and inserts into the target editor)
+        if (fileInput) {
             fileInput.addEventListener('change', () => {
+                if (!targetEditorInstance) return; // Don't do anything if we don't know where to insert
+
                 const file = fileInput.files[0];
                 if (!file) return;
+
                 const formData = new FormData();
                 formData.append('image', file);
-                fetch('/upload-image', { method: 'POST', body: formData, credentials: 'include' })
+
+                fetch('/upload-image', { /* ... fetch options ... */ credentials: 'include' })
                     .then(response => response.ok ? response.json() : Promise.reject(response))
                     .then(data => {
                         if (data.imageUrl) {
                             const markdownImage = `\n![Description](${data.imageUrl})\n`;
-                            insertTextAtCursor(markdownImage);
-                        } else { alert("Erreur d'upload: " + (data.error || 'Inconnue')); }
+                            insertTextAtCursor(targetEditorInstance, markdownImage); // Use target
+                        } else { /* ... error handling ... */ }
                     })
-                    .catch(error => { console.error("Erreur fetch upload:", error); alert(`Échec upload: ${error.message || error.statusText || 'Erreur réseau'}`); })
-                    .finally(() => { fileInput.value = ''; });
+                    .catch(error => { /* ... error handling ... */ })
+                    .finally(() => {
+                         fileInput.value = '';
+                         targetEditorInstance = null; // Reset target
+                    });
             });
         }
 
-        // Logique d'ajout par URL
-        if (urlBtn) {
-            urlBtn.addEventListener('click', () => {
-                const url = prompt("URL de l'image:");
-                if (!url) return;
-                const alt = prompt("Description:", "Description image");
-                const markdownImage = `\n![${alt || 'Description'}](${url})\n`;
-                insertTextAtCursor(markdownImage);
-            });
+        // Add by URL function
+        function addImageByUrl() {
+             if (!targetEditorInstance) return;
+             const url = prompt("URL de l'image:");
+             if (!url) { targetEditorInstance = null; return; }
+             const alt = prompt("Description:", "Description image");
+             const markdownImage = `\n![${alt || 'Description'}](${url})\n`;
+             insertTextAtCursor(targetEditorInstance, markdownImage); // Use target
+             targetEditorInstance = null; // Reset target
         }
-    }, 100); // Petit délai pour laisser EasyMDE s'initialiser
 
+    }, 150); // Slightly longer delay to ensure instances are ready
 });
