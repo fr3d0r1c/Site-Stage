@@ -1,13 +1,8 @@
-<%- include('partials/header', { pageTitle: t('journal.edit') + ': ' + article.title_fr }) %>
+<%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<head>
-    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
-</head>
-
-<h1><%= t('journal.edit') %></h1>
+<h1><%= t('general.page_title_edit_entry') %></h1>
 
 <form action="/entree/<%= article.id %>/edit" method="POST">
-
     <div>
         <label for="title_fr"><%= t('forms.title_fr') %> :</label><br>
         <input type="text" id="title_fr" name="title_fr" value="<%= article.title_fr %>" required>
@@ -17,35 +12,24 @@
         <input type="text" id="title_en" name="title_en" value="<%= article.title_en %>" required>
     </div>
     <hr>
-
     <div class="editor-container">
         <div class="editor-pane">
             <label for="content-editor-fr"><%= t('forms.content_fr') %> :</label><br>
-            <button type="button" id="upload-image-btn" class="editor-tool-btn">
-                <%= t('general.upload_image') %>
-            </button>
-            <button type="button" id="add-url-image-btn" class="editor-tool-btn">
-                <%= t('general.add_image_url') %>
-            </button>
-            <textarea id="content-editor-fr" name="content_fr" rows="20" required><%= article.content_fr %></textarea>
-        </div>
+            <button type="button" id="upload-image-btn" class="editor-tool-btn"><%= t('general.upload_image') %></button>
+            <button type="button" id="add-url-image-btn" class="editor-tool-btn"><%= t('general.add_image_url') %></button>
+            <textarea id="content-editor-fr" name="content_fr" rows="20"><%= article.content_fr %></textarea> </div>
         <div class="preview-pane">
             <label><%= t('general.preview') %> (FR) :</label><br>
             <div id="content-preview-fr" class="article-content"></div>
         </div>
     </div>
     <hr>
-
     <div class="editor-container">
         <div class="editor-pane">
             <label for="content-editor-en"><%= t('forms.content_en') %> :</label><br>
-            <button type="button" id="upload-image-btn-en" class="editor-tool-btn">
-                <%= t('general.upload_image') %> (EN)
-            </button>
-            <button type="button" id="add-url-image-btn-en" class="editor-tool-btn">
-                <%= t('general.add_image_url') %> (EN)
-            </button>
-            <textarea id="content-editor-en" name="content_en" rows="20" required><%= (typeof article !== 'undefined' && article.content_en) ? article.content_en : '' %></textarea>
+            <button type="button" id="upload-image-btn-en" class="editor-tool-btn"><%= t('general.upload_image') %> (EN)</button>
+            <button type="button" id="add-url-image-btn-en" class="editor-tool-btn"><%= t('general.add_image_url') %> (EN)</button>
+            <textarea id="content-editor-en" name="content_en" rows="20" required><%= article.content_en %></textarea>
         </div>
         <div class="preview-pane">
             <label><%= t('general.preview') %> (EN) :</label><br>
@@ -53,77 +37,42 @@
         </div>
     </div>
     <hr>
-
     <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
-
     <div>
         <label for="cover_image_url"><%= t('forms.cover_image_url') %> :</label><br>
         <input type="text" id="cover_image_url" name="cover_image_url" placeholder="Collez l'URL d'une image ici..." value="<%= article.cover_image_url || '' %>">
         <small><%= t('forms.cover_image_hint') %></small>
     </div>
-
     <div>
         <label for="tags">Tags (séparés par des virgules) :</label><br>
         <input type="text" id="tags" name="tags" placeholder="Ex: Travail, Culture, Voyage" value="<%= article.tags || '' %>">
     </div>
-
     <div>
-        <button type="submit" id="submit-button"><%= t('forms.create_entry') %></button>
+        <button type="submit" id="submit-button"><%= t('forms.update_entry') %></button>
     </div>
 </form>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="/js/uploader.js"></script>
 <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
 <script src="/js/init-easymde.js"></script>
-
+<script src="/js/uploader.js"></script>
 <script>
-    // Force la soumission du formulaire quand on clique sur le bouton principal
-    const submitBtn = document.getElementById('submit-button');
-    const form = document.querySelector('form'); // Trouve le premier formulaire de la page
-
-    if (submitBtn && form) {
-        submitBtn.addEventListener('click', function(event) {
-            console.log('Submit button clicked!'); 
-            // Vérifie si EasyMDE a mis à jour la textarea cachée
-            if (window.easyMDEInstance) {
-                window.easyMDEInstance.codemirror.save(); // Force EasyMDE à copier son contenu dans la textarea
-            }
-            
-            // Vérifie la validité des champs requis *manuellement*
-            let isValid = true;
-            const requiredInputs = form.querySelectorAll('[required]');
-            requiredInputs.forEach(input => {
-                // On ignore la textarea FR cachée par EasyMDE
-                if (input.id === 'content-editor-fr' && window.easyMDEInstance) {
-                    // Vérifie plutôt le contenu de EasyMDE
-                    if (window.easyMDEInstance.value().trim() === '') {
-                        isValid = false;
-                        alert('Le contenu français ne peut pas être vide.'); 
-                        console.error('Validation failed: French content is empty in EasyMDE');
-                    }
-                } else if (!input.value.trim()) {
-                     isValid = false;
-                     // Trouve le label associé pour un message plus clair
-                     const label = form.querySelector(`label[for="${input.id}"]`);
-                     const fieldName = label ? label.innerText.replace(':', '') : input.name;
-                     alert(`Le champ "${fieldName}" est requis.`);
-                     console.error(`Validation failed: Field "${input.name}" is empty.`);
-                     input.focus(); // Met le focus sur le champ vide
-                }
-            });
-
-            if (!isValid) {
-                 event.preventDefault(); // Empêche l'envoi du formulaire si invalide
-                 console.log('Form submission prevented due to validation errors.');
-            } else {
-                 console.log('Form is valid, attempting submission...');
-                 // Laisse l'événement de clic continuer (qui devrait déclencher le submit)
-                 // Si ça ne marche toujours pas, on pourrait forcer avec form.submit() ici, 
-                 // mais essayons sans d'abord.
-            }
-        });
-    }
+    const submitBtn = document.getElementById('submit-button'); const form = document.querySelector('form');
+    if (submitBtn && form) { submitBtn.addEventListener('click', function(event) {
+        if (window.easyMDEInstances && window.easyMDEInstances.fr) { window.easyMDEInstances.fr.codemirror.save(); }
+        if (window.easyMDEInstances && window.easyMDEInstances.en) { window.easyMDEInstances.en.codemirror.save(); }
+        let isValid = true; const requiredInputs = form.querySelectorAll('[required]');
+        requiredInputs.forEach(input => {
+            if (input.id === 'content-editor-fr' && window.easyMDEInstances && window.easyMDEInstances.fr) {
+                // French content is not required in edit
+            } else if (input.id === 'content-editor-en' && window.easyMDEInstances && window.easyMDEInstances.en) {
+                 if (window.easyMDEInstances.en.value().trim() === '') { isValid = false; alert('Le contenu anglais ne peut pas être vide.'); }
+            } else if (!input.value.trim()) {
+                 isValid = false; const label = form.querySelector(`label[for="${input.id}"]`); const fieldName = label ? label.innerText.replace(':', '') : input.name;
+                 alert(`Le champ "${fieldName}" est requis.`); input.focus();
+            }});
+        if (!isValid) { event.preventDefault(); }
+    });}
 </script>
 
 <%- include('partials/footer') %>

@@ -34,14 +34,41 @@
     "published_on": "Published on"
   },
   "general": {
+    "logo": "Internship Log",
     "upload_image": "Upload Image",
     "add_image_url": "Add by URL",
     "preview": "Preview",
     "latest_entries": "Latest Entries",
-    "page_title_new_entry": "New Entry",
-    "page_title_edit_entry": "Edit Entry",
-    "page_title_login": "Administration - Login",
-    "page_title_register": "Create Administrator Account"
+    "search_placeholder": "Search...",
+    "search_button": "🔍"
+  },
+  "homepage": {
+    "title": "My Internship Log",
+    "welcome": "Welcome to this site created to document my internship abroad. Discover the latest journal entries below."
+  },
+  "themes": {
+    "label": "Theme",
+    "system": "System",
+    "light": "Classic",
+    "dark": "Dark",
+    "sepia": "Sepia"
+  },
+  "page_titles": {
+    "home": "Home",
+    "profile": "My Profile",
+    "internship": "My Internship",
+    "journal": "Journal",
+    "contact": "Contact",
+    "search": "Search",
+    "login": "Administration",
+    "register": "Create Admin Account",
+    "new_entry": "New Entry",
+    "edit_entry": "Edit Entry"
+  },
+   "search": {
+    "results_for": "Results for",
+    "no_results": "No entries found matching",
+    "results_count": "Number of results found"
   },
   "auth": {
     "login_title": "Administration - Login",

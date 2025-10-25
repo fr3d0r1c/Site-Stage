@@ -34,14 +34,41 @@
     "published_on": "Publié le"
   },
   "general": {
+    "logo": "Carnet de Stage",
     "upload_image": "Téléverser une image",
     "add_image_url": "Ajouter par URL",
     "preview": "Aperçu",
     "latest_entries": "Les dernières entrées",
-    "page_title_new_entry": "Nouvelle entrée",
-    "page_title_edit_entry": "Modifier l'entrée",
-    "page_title_login": "Administration - Connexion",
-    "page_title_register": "Créer le compte Administrateur"
+    "search_placeholder": "Rechercher...",
+    "search_button": "🔍"
+  },
+  "homepage": {
+    "title": "Mon Carnet de Stage",
+    "welcome": "Bienvenue sur ce site créé pour documenter mon stage à l'étranger. Découvrez ci-dessous les entrées les plus récentes du journal de bord."
+  },
+  "themes": {
+    "label": "Thème",
+    "system": "Système",
+    "light": "Classique",
+    "dark": "Sombre",
+    "sepia": "Sépia"
+  },
+  "page_titles": {
+    "home": "Accueil",
+    "profile": "Mon Profil",
+    "internship": "Mon Stage",
+    "journal": "Journal de Bord",
+    "contact": "Contact",
+    "search": "Recherche",
+    "login": "Administration",
+    "register": "Créer Compte Admin",
+    "new_entry": "Nouvelle Entrée",
+    "edit_entry": "Modifier Entrée"
+  },
+  "search": {
+    "results_for": "Résultats pour",
+    "no_results": "Aucune entrée trouvée correspondant à",
+    "results_count": "Nombre de résultats trouvés"
   },
   "auth": {
     "login_title": "Administration - Connexion",
