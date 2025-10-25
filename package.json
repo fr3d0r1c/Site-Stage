@@ -22,6 +22,7 @@
     "i18next-http-middleware": "^3.8.1",
     "marked": "^16.4.1",
     "multer": "^2.0.2",
+    "nodemailer": "^7.0.10",
     "sqlite3": "^5.1.7"
   }
 }

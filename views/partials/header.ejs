@@ -20,6 +20,8 @@
             <a href="/profil" class="<%= activePage === 'profil' ? 'active' : '' %>"><%= t('nav.profile') %></a>
             <a href="/stage" class="<%= activePage === 'stage' ? 'active' : '' %>"><%= t('nav.internship') %></a>
             <a href="/journal" class="<%= activePage === 'journal' ? 'active' : '' %>"><%= t('nav.journal') %></a>
+            <a href="/contact" class="<%= activePage === 'contact' ? 'active' : '' %>">Contact</a> 
+        </nav>
 
             <% if (locals.username) { %>
                 <a href="/deconnexion" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.logout') %> (<%= locals.username %>)</a>

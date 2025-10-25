@@ -1,0 +1,33 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <h1>Contactez-moi</h1>
+    <p>N'hésitez pas à me laisser un message via le formulaire ci-dessous.</p>
+    <hr>
+
+    <% if (messageSent === true) { %>
+        <p style="color: green; font-weight: bold;">✔️ Votre message a bien été envoyé !</p>
+    <% } else if (messageSent === false) { %>
+        <p style="color: red; font-weight: bold;">❌ Une erreur s'est produite. Veuillez réessayer.</p>
+    <% } %>
+
+    <form action="/contact" method="POST">
+        <div class="form-group">
+            <label for="name">Votre Nom :</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div class="form-group">
+            <label for="email">Votre Email :</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label for="message">Votre Message :</label>
+            <textarea id="message" name="message" rows="8" required></textarea>
+        </div>
+        <div>
+            <button type="submit">Envoyer le Message</button>
+        </div>
+    </form>
+</div>
+
+<%- include('partials/footer') %>

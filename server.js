@@ -636,6 +636,12 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
     });
 });
 
+// --- Page Contact ---
+app.get('/contact', (req, res) => {
+    // We'll add 'messageSent' later for feedback
+    res.render('contact', { pageTitle: 'Contact', activePage: 'contact', messageSent: null });
+});
+
 // =================================================================
 // 6. DÉMARRAGE DU SERVEUR
 // =================================================================
