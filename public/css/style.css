@@ -435,17 +435,52 @@ button:hover, .actions a:hover {
     }
     .site-header {
         padding: 1rem;
+        flex-wrap: wrap;
+        position: relative;
+        justify-content: space-between;
+    }
+    .logo {
+        flex-grow: 1;
     }
 
-    /* Styles pour le menu hamburger */
-    .nav-toggle { display: block; position: absolute; top: 1.5rem; right: 1.5rem; z-index: 1001; }
+    .nav-toggle {
+        display: block;
+        position: static;
+        order: 3;
+        margin-left: 1rem;
+        width: 1.8em;
+        height: 1.8em;
+    }
+    .hamburger::before {
+        transform: translateY(-7px);
+    }
+    .hamburger::after { 
+        transform: translateY(4px); 
+    }
+    .nav-toggle.is-active .hamburger::after { 
+        transform: rotate(-45deg) translateY(-2px) translateX(2px); 
+    }
+
+    .language-switcher {
+        order: 2; /* Place it before the hamburger */
+        margin-left: auto; /* Push it towards the right, next to hamburger */
+        /* Align vertically with the logo/hamburger */
+        display: flex;
+        align-items: center;
+        padding: 0; /* Remove default padding */
+    }
+    .language-switcher a, .language-switcher span {
+        color: var(--c-text); /* Ensure visibility based on header background */
+    }
+
+    /* Styles du menu coulissant (inchangés) */
     .main-nav { position: fixed; top: 0; right: 0; bottom: 0; background: var(--c-surface); width: 60%; transform: translateX(100%); transition: transform 0.3s ease-in-out; flex-direction: column; justify-content: center; align-items: center; display: flex; z-index: 1000;}
     .main-nav.nav-visible { transform: translateX(0); }
     .main-nav a { margin: 1.5rem 0; font-size: 1.2rem; }
-    
+
+    /* Autres styles mobiles */
     h1 { font-size: 1.8rem; }
     h2 { font-size: 1.5rem; }
-    
     .editor-container { flex-direction: column; }
 }
 
