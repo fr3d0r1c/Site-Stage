@@ -1,0 +1,51 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<h1><%= pageTitle %></h1>
+
+<% if (articles.length > 0) { %>
+    <p>Nombre de résultats trouvés : <%= articles.length %></p>
+    <hr>
+    <div class="entries-grid">
+
+        <% articles.forEach(entry => { %>
+            <article class="entry-card">
+                <% if (entry.coverImage) { %>
+                    <a href="/entree/<%= entry.id %>" class="card-image-link">
+                        <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
+                    </a>
+                <% } %>
+                <div class="card-body">
+                    <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
+                    <small><%= t('journal.published_on') %>: <%= new Date(entry.publication_date).toLocaleString(i18n.language) %></small>
+
+                    <% if (entry.tags && entry.tags.length > 0) { %>
+                        <div class="tags-list">
+                            <% entry.tags.forEach(tag => { %>
+                                <span class="tag-item"><%= tag %></span>
+                            <% }); %>
+                        </div>
+                    <% } %>
+
+                    <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
+                    <% if (locals.username) { %>
+                        <div class="actions">
+                            <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
+                            <form action="/entree/<%= entry.id %>/delete" method="POST">
+                                <button type="submit"><%= t('journal.delete') %></button>
+                            </form>
+                        </div>
+                    <% } %>
+                </div>
+            </article>
+        <% }); %>
+    </div>
+<% } else { %>
+    <p>Aucune entrée trouvée correspondant à "<%= query %>".</p>
+<% } %>
+
+<hr>
+<nav>
+    <a href="/journal"><%= t('journal.back_to_journal') %></a>
+</nav>
+
+<%- include('partials/footer') %>

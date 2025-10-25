@@ -2,81 +2,83 @@ document.addEventListener('DOMContentLoaded', () => {
     const frenchEditorTextarea = document.getElementById('content-editor-fr');
     const previewDiv = document.getElementById('content-preview-fr');
     const titleInput = document.getElementById('title_fr');
-    let easyMDE = null; // Variable to hold the EasyMDE instance
+    let easyMDE = null; // Variable pour contenir l'instance EasyMDE
 
+    // Continuer seulement si la textarea principale existe
     if (frenchEditorTextarea) {
         easyMDE = new EasyMDE({
             element: frenchEditorTextarea,
-            spellChecker: false,
-            status: ["lines", "words"],
-            // You can customize toolbar etc. here if needed
+            spellChecker: false, // Désactive le correcteur orthographique
+            status: ["lines", "words"], // Affiche le nombre de lignes/mots
         });
 
-        // --- Sync EasyMDE -> Preview & Title ---
+        // --- Synchronisation EasyMDE -> Aperçu & Titre ---
         if (previewDiv || titleInput) {
             easyMDE.codemirror.on("change", () => {
                 const markdownText = easyMDE.value();
 
-                // Update Preview
+                // Mettre à jour l'aperçu
                 if (previewDiv) {
                     previewDiv.innerHTML = marked.parse(markdownText);
                 }
 
-                // Update Title from Editor's H1
+                // Mettre à jour le champ Titre depuis le H1 de l'éditeur
                 if (titleInput) {
                     const lines = markdownText.split('\n');
                     if (lines.length > 0 && lines[0].startsWith('# ')) {
                         const potentialTitle = lines[0].substring(2).trim();
-                        // Only update if different to avoid potential cursor jumps
+                        // Mettre à jour seulement si différent pour éviter des problèmes de curseur
                         if (potentialTitle && titleInput.value !== potentialTitle) {
                              titleInput.value = potentialTitle;
                         }
                     }
                 }
             });
-            // Initial preview update on load
+
+            // Mise à jour initiale de l'aperçu au chargement
              if (previewDiv) {
                  previewDiv.innerHTML = marked.parse(easyMDE.value());
              }
         }
 
-        // --- Sync Title -> EasyMDE ---
+        // --- Synchronisation Titre -> EasyMDE ---
          if (titleInput) {
             let titleSyncTimeout;
             titleInput.addEventListener('input', () => {
-                 // Debounce to avoid excessive updates
+                 // Utilise un délai pour éviter les mises à jour trop fréquentes
                  clearTimeout(titleSyncTimeout);
                  titleSyncTimeout = setTimeout(() => {
                     const newTitle = titleInput.value;
+                    if (!easyMDE) return; // Sécurité
                     const currentContent = easyMDE.value();
                     const lines = currentContent.split('\n');
                     let titleUpdated = false;
 
+                    // Si la première ligne est déjà un H1, la remplacer si différente
                     if (lines.length > 0 && lines[0].startsWith('# ')) {
-                        // Only update if the content is different from the new title
                         if (lines[0] !== '# ' + newTitle) {
                             lines[0] = '# ' + newTitle;
                             titleUpdated = true;
                         }
-                    } else if (newTitle) { // Only add if title is not empty
+                    // Sinon, ajouter le titre au début (si le titre n'est pas vide)
+                    } else if (newTitle) {
                         lines.unshift('# ' + newTitle);
                         titleUpdated = true;
                     }
-                    
-                    // Update EasyMDE only if necessary
+
+                    // Mettre à jour EasyMDE seulement si nécessaire
                     if (titleUpdated) {
-                        const cursorPos = easyMDE.codemirror.getCursor(); // Get cursor position
-                        easyMDE.value(lines.join('\n')); // Update EasyMDE content
-                        easyMDE.codemirror.setCursor(cursorPos); // Try to restore cursor position
+                        const cursorPos = easyMDE.codemirror.getCursor(); // Sauve la position du curseur
+                        easyMDE.value(lines.join('\n')); // Met à jour le contenu
+                        easyMDE.codemirror.setCursor(cursorPos); // Essaie de restaurer le curseur
                     }
-                 }, 300); // 300ms delay
+                 }, 300); // Délai de 300ms
             });
          }
     }
 
-    // --- Make easyMDE instance globally accessible for uploader.js ---
-    // Ensure this runs only if easyMDE was initialized
+    // --- Rendre l'instance EasyMDE accessible globalement pour uploader.js ---
     if (easyMDE) {
-        window.easyMDEInstance = easyMDE; 
+        window.easyMDEInstance = easyMDE;
     }
 });

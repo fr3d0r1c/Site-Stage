@@ -1,8 +1,12 @@
 <%- include('partials/header', { pageTitle: 'Nouvelle entrée' }) %>
 
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+</head>
+
 <h1><%= t('journal.add_entry') %></h1>
 
-<form action="/journal" method="POST">
+<form action="/journal" method="POST" id="entry-form">
     <div>
         <label for="title_fr"><%= t('forms.title_fr') %> :</label><br>
         <input type="text" id="title_fr" name="title_fr" required>
@@ -31,7 +35,7 @@
     <hr>
     <div>
         <label for="content_en"><%= t('forms.content_en') %> :</label><br>
-        <textarea id="content_en" name="content_en" rows="20" required></textarea>
+        <textarea id="content_en" name="content_en" rows="20"></textarea>
         <small>Vous pouvez utiliser la syntaxe Markdown ici aussi.</small>
     </div>
     <hr>
@@ -41,8 +45,14 @@
         <input type="text" id="cover_image_url" name="cover_image_url" placeholder="Collez l'URL d'une image ici...">
         <small><%= t('forms.cover_image_hint') %></small>
     </div>
+
     <div>
-        <button type="submit"><%= t('forms.create_entry') %></button>
+        <label for="tags">Tags (séparés par des virgules) :</label><br>
+        <input type="text" id="tags" name="tags" placeholder="Ex: Travail, Culture, Voyage">
+    </div>
+
+    <div>
+        <button type="submit" id="submit-button"><%= t('forms.create_entry') %></button>
     </div>
 </form>
 
@@ -50,5 +60,54 @@
 <script src="/js/uploader.js"></script>
 <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
 <script src="/js/init-easymde.js"></script>
+
+<script>
+    // Force la soumission du formulaire quand on clique sur le bouton principal
+    const submitBtn = document.getElementById('submit-button');
+    const form = document.querySelector('form'); // Trouve le premier formulaire de la page
+
+    if (submitBtn && form) {
+        submitBtn.addEventListener('click', function(event) {
+            console.log('Submit button clicked!'); 
+            // Vérifie si EasyMDE a mis à jour la textarea cachée
+            if (window.easyMDEInstance) {
+                window.easyMDEInstance.codemirror.save(); // Force EasyMDE à copier son contenu dans la textarea
+            }
+            
+            // Vérifie la validité des champs requis *manuellement*
+            let isValid = true;
+            const requiredInputs = form.querySelectorAll('[required]');
+            requiredInputs.forEach(input => {
+                // On ignore la textarea FR cachée par EasyMDE
+                if (input.id === 'content-editor-fr' && window.easyMDEInstance) {
+                    // Vérifie plutôt le contenu de EasyMDE
+                    if (window.easyMDEInstance.value().trim() === '') {
+                        isValid = false;
+                        alert('Le contenu français ne peut pas être vide.'); 
+                        console.error('Validation failed: French content is empty in EasyMDE');
+                    }
+                } else if (!input.value.trim()) {
+                     isValid = false;
+                     // Trouve le label associé pour un message plus clair
+                     const label = form.querySelector(`label[for="${input.id}"]`);
+                     const fieldName = label ? label.innerText.replace(':', '') : input.name;
+                     alert(`Le champ "${fieldName}" est requis.`);
+                     console.error(`Validation failed: Field "${input.name}" is empty.`);
+                     input.focus(); // Met le focus sur le champ vide
+                }
+            });
+
+            if (!isValid) {
+                 event.preventDefault(); // Empêche l'envoi du formulaire si invalide
+                 console.log('Form submission prevented due to validation errors.');
+            } else {
+                 console.log('Form is valid, attempting submission...');
+                 // Laisse l'événement de clic continuer (qui devrait déclencher le submit)
+                 // Si ça ne marche toujours pas, on pourrait forcer avec form.submit() ici, 
+                 // mais essayons sans d'abord.
+            }
+        });
+    }
+</script>
 
 <%- include('partials/footer') %>

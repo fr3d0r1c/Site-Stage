@@ -3,7 +3,7 @@
 <h1><%= t('nav.journal') %></h1>
 <nav>
     <% if (locals.username) { %>
-        <a href="/journal/nouvelle"><%= t('journal.add_entry') %></a> | 
+        <a href="/journal/nouvelle"><%= t('journal.add_entry') %></a> |
     <% } %>
     <a href="/"><%= t('nav.home') %></a>
 </nav>
@@ -19,12 +19,21 @@
                     <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
                 </a>
             <% } %>
-            
+
             <div class="card-body">
                 <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
                 <small><%= t('journal.published_on') %>: <%= new Date(entry.publication_date).toLocaleString(i18n.language) %></small>
+
+                <% if (entry.tags && entry.tags.length > 0) { %>
+                    <div class="tags-list">
+                        <% entry.tags.forEach(tag => { %>
+                            <span class="tag-item"><%= tag %></span>
+                        <% }); %>
+                    </div>
+                <% } %>
+
                 <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
-                
+
                 <% if (locals.username) { %>
                     <div class="actions">
                         <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
@@ -45,25 +54,17 @@
         <ul>
             <% if (currentPage > 1) { %>
                 <li><a href="/journal?page=<%= currentPage - 1 %>">Précédent</a></li>
-            <% } else { %>
-                <li class="disabled"><span>Précédent</span></li>
-            <% } %>
-
+            <% } else { %> <li class="disabled"><span>Précédent</span></li> <% } %>
             <% for (let i = 1; i <= totalPages; i++) { %>
-                <% if (i === currentPage) { %>
-                    <li class="active"><span><%= i %></span></li>
-                <% } else { %>
-                    <li><a href="/journal?page=<%= i %>"><%= i %></a></li>
-                <% } %>
+                <% if (i === currentPage) { %> <li class="active"><span><%= i %></span></li>
+                <% } else { %> <li><a href="/journal?page=<%= i %>"><%= i %></a></li> <% } %>
             <% } %>
-
             <% if (currentPage < totalPages) { %>
                 <li><a href="/journal?page=<%= currentPage + 1 %>">Suivant</a></li>
-            <% } else { %>
-                <li class="disabled"><span>Suivant</span></li>
-            <% } %>
+            <% } else { %> <li class="disabled"><span>Suivant</span></li> <% } %>
         </ul>
     </nav>
 <% } %>
+
 
 <%- include('partials/footer') %>

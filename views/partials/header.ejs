@@ -6,7 +6,6 @@
     <title><%= pageTitle %> | Carnet de Stage</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
 </head>
 <body>
     <header class="site-header">
@@ -28,12 +27,16 @@
                 <a href="/connexion" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.admin') %></a>
             <% } %>
         </nav>
+
+        <form action="/search" method="GET" class="search-form">
+            <input type="search" name="query" placeholder="Rechercher..." aria-label="Rechercher dans le journal">
+            <button type="submit">🔍</button>
+        </form>
         
         <div class="language-switcher" style="margin-left: 1.5rem;">
             <a href="?lng=fr" style="color: var(--c-text); font-weight: bold; text-decoration: <%= i18n.language === 'fr' ? 'underline' : 'none' %>;">FR</a>
             <span style="color: var(--c-text-light);">|</span>
             <a href="?lng=en" style="color: var(--c-text); font-weight: bold; text-decoration: <%= i18n.language === 'en' ? 'underline' : 'none' %>;">EN</a>
         </div>
-
         </header>
     <div class="container">

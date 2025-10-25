@@ -571,3 +571,83 @@ button:hover, .actions a:hover {
     background-color: var(--c-background);
     cursor: not-allowed;
 }
+
+/*
+=========================================
+--- 14. Formulaire de Recherche ---
+=========================================
+*/
+.search-form {
+    display: flex;
+    align-items: center;
+    margin-left: 1.5rem; /* Espace par rapport à la nav ou au sélecteur de langue */
+}
+
+.search-form input[type="search"] {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    border: 1px solid var(--c-border);
+    border-radius: 99px 0 0 99px; /* Coins arrondis à gauche */
+    background-color: var(--c-background);
+    color: var(--c-text);
+    min-width: 150px;
+    transition: all 0.2s ease;
+}
+.search-form input[type="search"]:focus {
+    border-color: var(--c-primary);
+    background-color: var(--c-surface);
+    box-shadow: none; /* Pas besoin d'ombre ici */
+}
+
+.search-form button {
+    padding: 6px 12px;
+    border-radius: 0 99px 99px 0; /* Coins arrondis à droite */
+    margin-left: -1px; /* Colle le bouton à l'input */
+    font-size: 1rem;
+    line-height: 1.2; /* Ajuste la hauteur de l'emoji */
+}
+
+/* Ajustements mobile pour la recherche */
+@media (max-width: 768px) {
+    .site-header {
+       justify-content: space-between; /* Re-ajuste l'espacement */
+    }
+    .search-form {
+        order: 4; /* Place la recherche en dernier sur mobile */
+        width: 100%; /* Prend toute la largeur */
+        margin-left: 0;
+        margin-top: 0.5rem; /* Espace sous le logo/langue */
+    }
+    .search-form input[type="search"] {
+        flex-grow: 1; /* Permet à l'input de s'étendre */
+        min-width: 0;
+    }
+}
+
+/*
+=========================================
+--- Styles pour les Tags ---
+=========================================
+*/
+.tags-list {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.tag-item {
+    display: inline-block;
+    background-color: var(--c-background);
+    color: var(--c-text-light);
+    padding: 3px 10px;
+    border-radius: 99px; /* Pill shape */
+    font-size: 0.8rem;
+    border: 1px solid var(--c-border);
+}
+
+/* Specific style for tags on detail page */
+.entry-tags {
+    margin-bottom: 1.5rem;
+}
