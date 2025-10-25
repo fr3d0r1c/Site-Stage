@@ -1,34 +1,35 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<div class="static-page contact-page"> <h1>Contactez-moi</h1>
-    <p>N'hésitez pas à me laisser un message via le formulaire ci-dessous.</p>
+<div class="tatic-page contact-page">
+    <h1><%= t('contact.title') %></h1>
+    <p><%= t('contact.intro') %></p>
     <hr>
 
     <% if (messageSent === true) { %>
         <div class="feedback-message success">
-            ✔️ Votre message a bien été envoyé ! Je vous répondrai dès que possible.
+            <%= t('contact.success_message') %>
         </div>
     <% } else if (messageSent === false) { %>
         <div class="feedback-message error">
-            ❌ Une erreur s'est produite lors de l'envoi. Veuillez réessayer ou me contacter autrement.
+            <%= t('contact.error_message') %>
         </div>
     <% } %>
 
     <form action="/contact" method="POST" class="contact-form">
         <div class="form-group">
-            <label for="name">Votre Nom :</label>
+            <label for="name"><%= t('contact.form_name') %> :</label>
             <input type="text" id="name" name="name" required>
         </div>
         <div class="form-group">
-            <label for="email">Votre Email :</label>
+            <label for="email"><%= t('contact.form_email') %> :</label>
             <input type="email" id="email" name="email" required>
         </div>
         <div class="form-group">
-            <label for="message">Votre Message :</label>
+            <label for="message"><%= t('contact.form_message') %> :</label>
             <textarea id="message" name="message" rows="8" required></textarea>
         </div>
         <div>
-            <button type="submit">Envoyer le Message</button>
+            <button type="submit"><%= t('contact.send_button') %></button>
         </div>
     </form>
 </div>

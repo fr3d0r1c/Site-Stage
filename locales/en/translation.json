@@ -98,5 +98,15 @@
     "internship_company_sector": "Industry",
     "internship_mission_title": "My Mission",
     "internship_mission_desc": "[Describe the main objectives of your internship here.]"
+  },
+  "contact": {
+    "title": "Contact Me",
+    "intro": "Feel free to leave me a message using the form below.",
+    "form_name": "Your Name",
+    "form_email": "Your Email",
+    "form_message": "Your Message",
+    "send_button": "Send Message",
+    "success_message": "✔️ Your message has been sent successfully! I will get back to you as soon as possible.",
+    "error_message": "❌ An error occurred while sending. Please try again or contact me another way."
   }
 }
