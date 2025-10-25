@@ -102,11 +102,10 @@ hr {
     background: var(--c-surface);
     color: var(--c-text);
     border-bottom: 1px solid var(--c-border);
-    padding: 0.8rem 2rem; /* Reduced vertical padding slightly */
+    padding: 0.8rem 2rem;
     display: flex;
-    /* Vertically align all items in the header */
-    align-items: center; 
-    gap: 1.5rem; /* Add some space between main sections */
+    align-items: center;
+    gap: 1.5rem;
     margin-bottom: 0;
     position: sticky;
     top: 0;
@@ -116,19 +115,19 @@ hr {
 }
 
 .logo {
-    flex-shrink: 0; /* Prevent logo from shrinking */
+    flex-shrink: 0;
 }
 .logo a {
     color: var(--c-text);
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     font-weight: 700;
+    display: block;
 }
 
-/* Push navigation to the right */
 .main-nav {
-    margin-left: auto; /* Pushes nav to the right, before search/lang */
-    display: flex; /* Ensure nav items are horizontal */
-    align-items: center; /* Align nav items vertically */
+    margin-left: auto;
+    display: flex;
+    align-items: center;
 }
 
 .main-nav a {
@@ -138,7 +137,7 @@ hr {
     font-weight: 500;
     padding: 5px 0;
     border-bottom: 2px solid transparent;
-    white-space: nowrap; /* Prevent nav links from wrapping */
+    white-space: nowrap;
 }
 .main-nav a:hover {
     color: var(--c-text);
@@ -149,59 +148,70 @@ hr {
     border-bottom-color: var(--c-primary);
 }
 
-/* Search Form adjustments */
+.header-controls { /* Container for lang + hamburger on mobile */
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Search Form */
 .search-form {
     display: flex;
     align-items: center;
-    margin-left: 0; /* Remove default margin */
-    flex-shrink: 0; /* Prevent shrinking */
+    margin-left: 0;
+    flex-shrink: 0;
 }
 .search-form input[type="search"] {
     padding: 6px 12px;
     font-size: 0.9rem;
     border: 1px solid var(--c-border);
-    border-right: none; /* Remove right border to merge with button */
+    border-right: none;
     border-radius: 99px 0 0 99px;
     background-color: var(--c-background);
     color: var(--c-text);
     min-width: 150px;
-    height: 36px; /* Match button height */
+    height: 36px;
     box-sizing: border-box;
+}
+.search-form input[type="search"]:focus {
+    border-color: var(--c-primary);
+    background-color: var(--c-surface);
+    box-shadow: none;
 }
 .search-form button {
     padding: 6px 12px;
     border-radius: 0 99px 99px 0;
     margin-left: -1px;
     font-size: 1rem;
-    line-height: 1; /* Adjust emoji alignment */
-    height: 36px; /* Match input height */
+    line-height: 1;
+    height: 36px;
     box-sizing: border-box;
-    border: 1px solid var(--c-primary); /* Add border matching input focus */
+    border: 1px solid var(--c-primary);
     background-color: var(--c-primary);
 }
 .search-form button:hover {
     opacity: 0.8;
 }
 
-/* Language Switcher adjustments */
+/* Language Switcher */
 .language-switcher {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-left: 0; /* Remove default margin */
-    padding: 0; /* Remove default padding */
-    flex-shrink: 0; /* Prevent shrinking */
+    margin-left: 0;
+    padding: 0;
+    flex-shrink: 0;
 }
 .language-switcher .fi {
-    font-size: 1.4em; /* Slightly larger flags */
+    font-size: 1.4em;
     line-height: 1;
-    display: block; /* Helps alignment */
+    display: block;
 }
-.language-switcher span { /* Separator */
+.language-switcher span {
      color: var(--c-border);
 }
 
-/* Styles du menu Hamburger (Base) */
+/* Hamburger Menu Base */
 .nav-toggle {
     display: none;
     cursor: pointer;
@@ -210,43 +220,18 @@ hr {
     padding: 0;
     width: 2em;
     height: 2em;
-    /* Important pour le positionnement sur mobile */
-    position: absolute;
-    top: 1.5rem;
-    right: 2rem;
-    z-index: 1001; /* Doit être au-dessus du .main-nav */
+    z-index: 1001;
 }
+.hamburger, .hamburger::before, .hamburger::after {
+    content: ''; display: block; background: var(--c-text); height: 3px;
+    width: 100%; border-radius: 3px; transition: all .3s ease-in-out;
+}
+.hamburger::before { transform: translateY(-8px); }
+.hamburger::after { transform: translateY(5px); }
+.nav-toggle.is-active .hamburger { background: transparent; }
+.nav-toggle.is-active .hamburger::before { transform: rotate(45deg); }
+.nav-toggle.is-active .hamburger::after { transform: rotate(-45deg) translateY(-3px) translateX(3px); }
 
-.hamburger,
-.hamburger::before,
-.hamburger::after {
-    content: '';
-    display: block;
-    background: var(--c-text); /* Couleur des barres */
-    height: 3px;
-    width: 100%;
-    border-radius: 3px;
-    transition: all .3s ease-in-out;
-}
-
-.hamburger::before {
-    transform: translateY(-8px);
-}
-
-.hamburger::after {
-    transform: translateY(5px);
-}
-
-/* Animation du hamburger en croix 'X' quand il est actif */
-.nav-toggle.is-active .hamburger {
-    background: transparent; /* La barre du milieu disparaît */
-}
-.nav-toggle.is-active .hamburger::before {
-    transform: rotate(45deg); /* La barre du haut pivote */
-}
-.nav-toggle.is-active .hamburger::after {
-    transform: rotate(-45deg) translateY(-3px) translateX(3px); /* La barre du bas pivote */
-}
 
 /*
 =========================================
@@ -279,6 +264,7 @@ article small {
     border-bottom: none;
     padding-bottom: 0;
     margin-top: 2em;
+    color: var(--c-text); /* Ensure headings inside content use text color */
 }
 
 .actions {
@@ -322,30 +308,14 @@ article small {
     margin-bottom: 0;
     border-radius: 0;
     border-bottom: 1px solid var(--c-border);
+    background-color: var(--c-surface); /* Background for dark theme */
 }
-.entry-card .card-image-link {
-    display: block;
-    height: 200px;
-    overflow: hidden;
-}
-.entry-card .card-body {
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-}
-.entry-card h2 {
-    font-size: 1.3rem;
-    border-bottom: none;
-    padding-bottom: 0;
-    margin-top: 0;
-}
+.entry-card .card-image-link { display: block; height: 200px; overflow: hidden; }
+.entry-card .card-body { padding: 1.25rem; display: flex; flex-direction: column; flex-grow: 1; }
+.entry-card h2 { font-size: 1.3rem; border-bottom: none; padding-bottom: 0; margin-top: 0; }
 .entry-card h2 a { color: var(--c-text); }
 .entry-card h2 a:hover { color: var(--c-primary); }
-.entry-card .actions {
-    margin-top: auto;
-    padding-top: 1rem;
-}
+.entry-card .actions { margin-top: auto; padding-top: 1rem; }
 
 /*
 =========================================
@@ -356,45 +326,27 @@ form div { margin-bottom: 1.5rem; }
 form small { color: var(--c-gray); font-size: 0.9rem; }
 
 input[type="text"], input[type="password"], textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid var(--c-border);
-    border-radius: 8px;
-    font-size: 1rem;
-    font-family: var(--font-main);
-    box-sizing: border-box;
-    background: var(--c-background);
-    color: var(--c-text);
-    transition: all 0.3s ease;
+    width: 100%; padding: 12px; border: 1px solid var(--c-border);
+    border-radius: 8px; font-size: 1rem; font-family: var(--font-main);
+    box-sizing: border-box; background: var(--c-background);
+    color: var(--c-text); transition: all 0.3s ease;
 }
 
 input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
     border-color: var(--c-primary);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 20%, transparent);
-    background: var(--c-surface);
-    outline: none;
+    background: var(--c-surface); outline: none;
 }
 
 button, .actions a {
-    display: inline-block;
-    background-color: var(--c-primary);
-    color: var(--c-white);
-    padding: 10px 24px;
-    border: none;
-    border-radius: 99px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-align: center;
-    transition: all 0.3s ease;
-    transform: translateY(0);
+    display: inline-block; background-color: var(--c-primary); color: var(--c-white);
+    padding: 10px 24px; border: none; border-radius: 99px; cursor: pointer;
+    font-size: 0.9rem; font-weight: 500; text-align: center;
+    transition: all 0.3s ease; transform: translateY(0);
 }
 
 button:hover, .actions a:hover {
-    color: var(--c-white);
-    text-decoration: none;
-    transform: translateY(-2px);
-    opacity: 0.85;
+    color: var(--c-white); text-decoration: none; transform: translateY(-2px); opacity: 0.85;
 }
 .actions a { background-color: var(--c-gray); color: var(--c-surface); }
 .actions form button[type="submit"] { background-color: var(--c-danger); color: var(--c-white); }
@@ -406,12 +358,8 @@ button:hover, .actions a:hover {
 */
 .error-message {
     background-color: color-mix(in srgb, var(--c-danger) 10%, var(--c-surface));
-    color: var(--c-danger);
-    padding: 1rem;
-    border: 1px solid var(--c-danger);
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    text-align: center;
+    color: var(--c-danger); padding: 1rem; border: 1px solid var(--c-danger);
+    border-radius: 8px; margin-bottom: 1rem; text-align: center;
 }
 
 /*
@@ -420,11 +368,8 @@ button:hover, .actions a:hover {
 =========================================
 */
 .site-footer {
-    text-align: center;
-    padding: 3rem 1rem;
-    margin-top: 3rem;
-    background-color: var(--c-surface);
-    color: var(--c-gray);
+    text-align: center; padding: 3rem 1rem; margin-top: 3rem;
+    background-color: var(--c-surface); color: var(--c-gray);
     border-top: 1px solid var(--c-border);
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
@@ -437,342 +382,114 @@ button:hover, .actions a:hover {
 --- 9. Styles pour l'éditeur Markdown ---
 =========================================
 */
-.editor-container {
-    display: flex;
-    gap: 2rem;
-    margin: 2rem 0;
-}
-.editor-pane, .preview-pane {
-    flex: 1;
-    min-width: 0;
-}
+.editor-container { display: flex; gap: 2rem; margin: 2rem 0; }
+.editor-pane, .preview-pane { flex: 1; min-width: 0; }
 .preview-pane {
-    border: 1px solid var(--c-border);
-    border-radius: 8px;
-    padding: 1.5rem;
-    background: var(--c-background);
-    min-height: 400px;
+    border: 1px solid var(--c-border); border-radius: 8px; padding: 1.5rem;
+    background: var(--c-background); min-height: 400px;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
-#content-editor {
-    min-height: 400px;
-    resize: vertical;
-}
+#content-editor { /* EasyMDE overrides this */ }
 .editor-tool-btn {
-    background-color: var(--c-text-light);
-    color: var(--c-surface);
-    margin-bottom: 1rem;
-    margin-right: 0.5rem;
-    font-size: 0.9rem;
-    padding: 8px 15px;
+    background-color: var(--c-text-light); color: var(--c-surface);
+    margin-bottom: 1rem; margin-right: 0.5rem; font-size: 0.9rem; padding: 8px 15px;
 }
-.editor-tool-btn:hover { background-color: var(--c-text); }
+.editor-tool-btn:hover { background-color: var(--c-text); opacity: 1; transform: none;} /* Override button hover */
+
+/* EasyMDE Specific Styles (ensure visibility in dark mode) */
+.editor-toolbar a, .editor-toolbar span { color: var(--c-text-light) !important; }
+.editor-toolbar a.active, .editor-toolbar a:hover { background: var(--c-background) !important; border-color: var(--c-border) !important; color: var(--c-text) !important; }
+.CodeMirror { background: var(--c-surface) !important; color: var(--c-text) !important; border-color: var(--c-border) !important; }
+.CodeMirror-cursor { border-left-color: var(--c-text) !important; }
+.editor-statusbar { color: var(--c-text-light) !important; background: var(--c-surface) !important; border-top-color: var(--c-border) !important;}
+
 
 /*
 =========================================
 --- 10. Styles pour les Images ---
 =========================================
 */
-.cover-image {
-     background-color: var(--c-surface); /* Pour le thème sombre */
-}
-
 .article-content img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    display: block;
-    margin: 2rem auto;
-    border: 1px solid var(--c-border);
+    max-width: 100%; height: auto; border-radius: 8px; display: block;
+    margin: 2rem auto; border: 1px solid var(--c-border);
     transition: border-color 0.3s ease;
 }
 
 /*
 =========================================
---- 11. Styles pour les mobiles (Responsive) ---
+--- 11. Pagination ---
 =========================================
 */
-@media (max-width: 768px) {
-    .container {
-        padding: 0 1rem;
-        margin: 1rem auto;
-    }
-    .site-header {
-        padding: 1rem;
-        flex-wrap: wrap;
-        position: relative;
-        justify-content: space-between;
-    }
-    .logo {
-        flex-grow: 1;
-    }
-
-    .nav-toggle {
-        display: block;
-        position: static;
-        order: 3;
-        margin-left: 1rem;
-        width: 1.8em;
-        height: 1.8em;
-    }
-    .hamburger::before {
-        transform: translateY(-7px);
-    }
-    .hamburger::after { 
-        transform: translateY(4px); 
-    }
-    .nav-toggle.is-active .hamburger::after { 
-        transform: rotate(-45deg) translateY(-2px) translateX(2px); 
-    }
-
-    .language-switcher {
-        order: 2; /* Place it before the hamburger */
-        margin-left: auto; /* Push it towards the right, next to hamburger */
-        /* Align vertically with the logo/hamburger */
-        display: flex;
-        align-items: center;
-        padding: 0; /* Remove default padding */
-    }
-    .language-switcher a, .language-switcher span {
-        color: var(--c-text); /* Ensure visibility based on header background */
-    }
-
-    /* Styles du menu coulissant (inchangés) */
-    .main-nav { position: fixed; top: 0; right: 0; bottom: 0; background: var(--c-surface); width: 60%; transform: translateX(100%); transition: transform 0.3s ease-in-out; flex-direction: column; justify-content: center; align-items: center; display: flex; z-index: 1000;}
-    .main-nav.nav-visible { transform: translateX(0); }
-    .main-nav a { margin: 1.5rem 0; font-size: 1.2rem; }
-
-    /* Autres styles mobiles */
-    h1 { font-size: 1.8rem; }
-    h2 { font-size: 1.5rem; }
-    .editor-container { flex-direction: column; }
+.pagination { margin-top: 2rem; display: flex; justify-content: center; }
+.pagination ul { list-style: none; padding: 0; margin: 0; display: flex; gap: 0.5rem; }
+.pagination li a, .pagination li span {
+    display: block; padding: 8px 15px; border: 1px solid var(--c-border);
+    border-radius: 5px; color: var(--c-text-light); background-color: var(--c-surface);
+    transition: all 0.2s ease;
 }
+.pagination li a:hover { background-color: var(--c-background); color: var(--c-primary); border-color: var(--c-primary); text-decoration: none; }
+.pagination li.active span { background-color: var(--c-primary); color: var(--c-white); border-color: var(--c-primary); font-weight: bold; }
+.pagination li.disabled span { color: var(--c-gray); background-color: var(--c-background); cursor: not-allowed; }
 
 /*
 =========================================
 --- 12. Sélecteur de Thème ---
 =========================================
 */
-.theme-switcher {
-    margin-bottom: 1.5rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.theme-switcher span {
-    margin-right: 0.5rem;
-    font-size: 0.9rem;
-    color: var(--c-gray);
-}
-
+.theme-switcher { margin-bottom: 1.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; }
+.theme-switcher span { margin-right: 0.5rem; font-size: 0.9rem; color: var(--c-gray); }
 .theme-switcher button {
-    background: none;
-    border: 1px solid var(--c-border);
-    color: var(--c-text-light);
-    padding: 5px 12px;
-    border-radius: 99px;
-    font-size: 0.8rem;
-    cursor: pointer;
+    background: none; border: 1px solid var(--c-border); color: var(--c-text-light);
+    padding: 5px 12px; border-radius: 99px; font-size: 0.8rem; cursor: pointer;
     transition: all 0.2s ease;
 }
-
 .theme-switcher button:hover {
-    background: var(--c-background);
-    color: var(--c-text);
-    border-color: var(--c-text-light);
-    transform: none; /* Annule l'effet de soulèvement */
-    opacity: 1;
+    background: var(--c-background); color: var(--c-text); border-color: var(--c-text-light);
+    transform: none; opacity: 1;
 }
 
 /*
 =========================================
---- 13. Pagination ---
+--- 13. Styles Page Contact ---
 =========================================
 */
-.pagination {
-    margin-top: 2rem;
-    display: flex;
-    justify-content: center;
-}
-
-.pagination ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    gap: 0.5rem;
-}
-
-.pagination li a,
-.pagination li span {
-    display: block;
-    padding: 8px 15px;
-    border: 1px solid var(--c-border);
-    border-radius: 5px;
-    color: var(--c-text-light);
-    background-color: var(--c-surface);
-    transition: all 0.2s ease;
-}
-
-.pagination li a:hover {
-    background-color: var(--c-background);
-    color: var(--c-primary);
-    border-color: var(--c-primary);
-    text-decoration: none;
-}
-
-.pagination li.active span {
-    background-color: var(--c-primary);
-    color: var(--c-white);
-    border-color: var(--c-primary);
-    font-weight: bold;
-}
-
-.pagination li.disabled span {
-    color: var(--c-gray);
-    background-color: var(--c-background);
-    cursor: not-allowed;
-}
+.contact-page h1 { text-align: center; border-bottom: none; }
+.contact-page p:first-of-type { text-align: center; margin-bottom: 2rem; color: var(--c-text-light); }
+.contact-form .form-group { margin-bottom: 1.5rem; }
+.contact-form label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--c-text); }
+.feedback-message { padding: 1rem; border-radius: 8px; margin-bottom: 2rem; text-align: center; font-weight: 500; }
+.feedback-message.success { background-color: color-mix(in srgb, var(--c-primary) 15%, transparent); color: var(--c-primary); border: 1px solid var(--c-primary); }
+.feedback-message.error { background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); color: var(--c-danger); border: 1px solid var(--c-danger); }
 
 /*
 =========================================
---- 14. Formulaire de Recherche ---
+--- 14. Styles pour les mobiles (Responsive) ---
 =========================================
 */
-.search-form {
-    display: flex;
-    align-items: center;
-    margin-left: 1.5rem; /* Espace par rapport à la nav ou au sélecteur de langue */
-}
-
-.search-form input[type="search"] {
-    padding: 6px 10px;
-    font-size: 0.9rem;
-    border: 1px solid var(--c-border);
-    border-radius: 99px 0 0 99px; /* Coins arrondis à gauche */
-    background-color: var(--c-background);
-    color: var(--c-text);
-    min-width: 150px;
-    transition: all 0.2s ease;
-}
-.search-form input[type="search"]:focus {
-    border-color: var(--c-primary);
-    background-color: var(--c-surface);
-    box-shadow: none; /* Pas besoin d'ombre ici */
-}
-
-.search-form button {
-    padding: 6px 12px;
-    border-radius: 0 99px 99px 0; /* Coins arrondis à droite */
-    margin-left: -1px; /* Colle le bouton à l'input */
-    font-size: 1rem;
-    line-height: 1.2; /* Ajuste la hauteur de l'emoji */
-}
-
-/* Ajustements mobile pour la recherche */
 @media (max-width: 768px) {
-    .site-header {
-       justify-content: space-between; /* Re-ajuste l'espacement */
-    }
-    .search-form {
-        order: 4; /* Place la recherche en dernier sur mobile */
-        width: 100%; /* Prend toute la largeur */
-        margin-left: 0;
-        margin-top: 0.5rem; /* Espace sous le logo/langue */
-    }
-    .search-form input[type="search"] {
-        flex-grow: 1; /* Permet à l'input de s'étendre */
-        min-width: 0;
-    }
-}
+    .container { padding: 0 1rem; margin: 1rem auto; }
+    .site-header { padding: 0.8rem 1rem; flex-wrap: nowrap; justify-content: space-between; }
+    .logo a { font-size: 1.4rem; }
+    .main-nav { display: none; /* Hide desktop nav */ }
 
-/*
-=========================================
---- Styles pour les Tags ---
-=========================================
-*/
-.tags-list {
-    margin-top: 0.5rem;
-    margin-bottom: 1rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
+    .header-controls { display: flex; align-items: center; gap: 1rem; order: 2; }
+    .language-switcher { margin-left: 0; }
+    .language-switcher .fi { font-size: 1.3em; }
 
-.tag-item {
-    display: inline-block;
-    background-color: var(--c-background);
-    color: var(--c-text-light);
-    padding: 3px 10px;
-    border-radius: 99px; /* Pill shape */
-    font-size: 0.8rem;
-    border: 1px solid var(--c-border);
-}
+    .nav-toggle { display: block; position: static; /* Let it flow in header-controls */ }
 
-/* Specific style for tags on detail page */
-.entry-tags {
-    margin-bottom: 1.5rem;
-}
+    .search-form { order: 3; width: 100%; margin: 0.5rem 0 0 0; flex-basis: 100%; }
+    .search-form input[type="search"] { flex-grow: 1; min-width: 0; }
 
-/* Style au survol pour les tags cliquables */
-.tag-item:hover {
-    background-color: var(--c-primary);
-    color: var(--c-white);
-    border-color: var(--c-primary);
-}
+    /* Styles du menu coulissant */
+    .main-nav { position: fixed; top: 0; right: 0; bottom: 0; background: var(--c-surface); width: 70%; transform: translateX(100%); transition: transform 0.3s ease-in-out; flex-direction: column; justify-content: center; align-items: center; display: flex; z-index: 1000; padding: 2rem 0;}
+    .main-nav.nav-visible { transform: translateX(0); box-shadow: -5px 0 15px rgba(0,0,0,0.2); }
+    .main-nav a { margin: 1.5rem 0; font-size: 1.2rem; }
 
-/*
-=========================================
---- 15. Styles Page Contact ---
-=========================================
-*/
-
-.contact-page h1 {
-    text-align: center; /* Center the main title */
-    border-bottom: none; /* Remove the line under H1 on this page */
-}
-
-.contact-page p:first-of-type {
-    text-align: center; /* Center the intro paragraph */
-    margin-bottom: 2rem;
-    color: var(--c-text-light);
-}
-
-.contact-form .form-group {
-    margin-bottom: 1.5rem; /* Slightly more space */
-}
-
-.contact-form label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: var(--c-text);
-}
-
-/* Style for feedback messages */
-.feedback-message {
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 2rem;
-    text-align: center;
-    font-weight: 500;
-}
-
-.feedback-message.success {
-    background-color: color-mix(in srgb, var(--c-primary) 15%, transparent); /* Light primary color */
-    color: var(--c-primary);
-    border: 1px solid var(--c-primary);
-}
-
-.feedback-message.error {
-    background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); /* Light danger color */
-    color: var(--c-danger);
-    border: 1px solid var(--c-danger);
-}
-
-.language-switcher .fi {
-    font-size: 1.2em; /* Adjust size as needed */
-    line-height: 1; /* Helps vertical alignment */
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.5rem; }
+    .editor-container { flex-direction: column; }
+    .entries-grid { grid-template-columns: 1fr; } /* Stack cards on smallest screens */
+    .pagination ul { gap: 0.3rem;}
+    .pagination li a, .pagination li span { padding: 6px 10px; font-size: 0.9rem;}
 }
