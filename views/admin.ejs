@@ -1,0 +1,16 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <h1>Panneau d'Administration</h1>
+    <p>Bienvenue, <%= locals.username %>.</p>
+    <hr>
+
+    <h2>Actions</h2>
+    <ul>
+        <li><a href="/journal/nouvelle">Ajouter une nouvelle entrée</a></li>
+        <li><a href="/change-password">Changer le mot de passe</a></li>
+        <li><a href="/deconnexion"><%= t('nav.logout') %></a></li>
+        </ul>
+</div>
+
+<%- include('partials/footer') %>

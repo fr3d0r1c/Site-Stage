@@ -3,6 +3,7 @@
 // =================================================================
 require('dotenv').config(); // Pour lire le .env (identifiants email, etc.)
 const deepl = require('deepl-node');
+const crypto = require('crypto');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
@@ -165,7 +166,10 @@ const createUserTable = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL
+  password TEXT NOT NULL,
+  email TEXT UNIQUE,
+  reset_token TEXT,
+  reset_token_expires INTEGER
 );
 `;
 db.run(createUserTable);
@@ -393,10 +397,17 @@ app.get('/tags/:tagName', (req, res) => {
 
 // Affiche le formulaire de connexion
 app.get('/connexion', (req, res) => {
+    const resetSuccess = req.query.reset === 'success'; // Check for query parameter
     const sql = "SELECT COUNT(*) as count FROM users";
     db.get(sql, [], (err, row) => {
         if (err) { return res.status(500).send("Erreur serveur"); }
-        res.render('login', { pageTitle: req.t('page_titles.login'), error: null, adminExists: row.count > 0, activePage: 'admin' });
+        res.render('login', { 
+            pageTitle: req.t('page_titles.login'), 
+            error: null, 
+            adminExists: row.count > 0, 
+            activePage: 'admin',
+            resetSuccess: resetSuccess
+         });
     });
 });
 
@@ -431,13 +442,31 @@ app.get('/inscription', checkAdminExists, (req, res) => {
 
 // Traite la création du premier admin
 app.post('/inscription', checkAdminExists, (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, email } = req.body;
+
+    if (!email || !email.includes('@')) {
+         return res.render('register', { pageTitle: req.t('general.page_title_register'), activePage: 'admin', error: 'Adresse email invalide.' });
+    }
+    if (!password || password.length < 8) {
+         return res.render('register', { pageTitle: req.t('general.page_title_register'), activePage: 'admin', error: 'Le mot de passe doit faire au moins 8 caractères.' });
+    }
+
     const saltRounds = 10;
     bcrypt.hash(password, saltRounds, (err, hash) => {
         if (err) { return res.status(500).send("Erreur hachage."); }
-        const sql = 'INSERT INTO users (username, password) VALUES (?, ?)';
-        db.run(sql, [username, hash], function(err) {
-            if (err) { return res.status(400).send("Erreur création compte."); }
+
+        const sql = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
+
+        db.run(sql, [username, hash, email], function(err) {
+            if (err) {
+                let errorMessage = "Erreur création compte.";
+                if (err.message.includes('UNIQUE constraint failed: users.username')) {
+                    errorMessage = "Ce nom d'utilisateur est déjà pris.";
+                } else if (err.message.includes('UNIQUE constraint failed: users.email')) {
+                    errorMessage = "Cette adresse email est déjà utilisée.";
+                }
+                return res.render('register', { pageTitle: req.t('general.page_title_register'), activePage: 'admin', error: errorMessage });
+            }
             res.redirect('/connexion');
         });
     });
@@ -567,6 +596,217 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
     });
 });
 
+// Affiche le formulaire pour changer le mot de passe
+app.get('/change-password', isAuthenticated, (req, res) => {
+    res.render('change-password', {
+        pageTitle: 'Changer le Mot de Passe',
+        activePage: 'admin', // Ou une autre page active si pertinent
+        error: null,    // Pour afficher les erreurs
+        success: null   // Pour afficher le succès
+    });
+});
+
+// Traite la demande de changement de mot de passe
+app.post('/change-password', isAuthenticated, async (req, res) => { // Ajout de async
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const userId = req.session.userId; // Récupère l'ID de l'utilisateur connecté
+
+    // Vérifie si les nouveaux mots de passe correspondent
+    if (newPassword !== confirmPassword) {
+        return res.render('change-password', {
+            pageTitle: 'Changer le Mot de Passe', activePage: 'admin',
+            error: 'Les nouveaux mots de passe ne correspondent pas.', success: null
+        });
+    }
+
+    // Ajout d'une vérification de longueur minimale (ex: 8 caractères)
+     if (newPassword.length < 8) {
+         return res.render('change-password', {
+             pageTitle: 'Changer le Mot de Passe', activePage: 'admin',
+             error: 'Le nouveau mot de passe doit faire au moins 8 caractères.', success: null
+         });
+     }
+
+    // Récupère l'utilisateur actuel pour vérifier son mot de passe
+    const sqlGetUser = 'SELECT * FROM users WHERE id = ?';
+    db.get(sqlGetUser, [userId], (err, user) => {
+        if (err || !user) {
+            return res.render('change-password', {
+                pageTitle: 'Changer le Mot de Passe', activePage: 'admin',
+                error: 'Utilisateur non trouvé ou erreur serveur.', success: null
+            });
+        }
+
+        // Compare le mot de passe actuel fourni avec celui haché dans la BDD
+        bcrypt.compare(currentPassword, user.password, (errCompare, result) => {
+            if (errCompare || !result) {
+                return res.render('change-password', {
+                    pageTitle: 'Changer le Mot de Passe', activePage: 'admin',
+                    error: 'Le mot de passe actuel est incorrect.', success: null
+                });
+            }
+
+            // Si le mot de passe actuel est correct, on hache le nouveau
+            const saltRounds = 10;
+            bcrypt.hash(newPassword, saltRounds, (errHash, newHash) => {
+                if (errHash) {
+                    return res.render('change-password', {
+                        pageTitle: 'Changer le Mot de Passe', activePage: 'admin',
+                        error: 'Erreur lors du hachage du nouveau mot de passe.', success: null
+                    });
+                }
+
+                // Met à jour le mot de passe dans la base de données
+                const sqlUpdatePass = 'UPDATE users SET password = ? WHERE id = ?';
+                db.run(sqlUpdatePass, [newHash, userId], (errUpdate) => {
+                    if (errUpdate) {
+                         return res.render('change-password', {
+                            pageTitle: 'Changer le Mot de Passe', activePage: 'admin',
+                            error: 'Erreur lors de la mise à jour du mot de passe.', success: null
+                        });
+                    }
+
+                    // Succès ! On affiche un message
+                    res.render('change-password', {
+                        pageTitle: 'Changer le Mot de Passe', activePage: 'admin',
+                        error: null, success: 'Mot de passe mis à jour avec succès !'
+                    });
+                });
+            });
+        });
+    });
+});
+
+// Show forgot password form
+app.get('/forgot-password', (req, res) => {
+    res.render('forgot-password', {
+        pageTitle: 'Mot de Passe Oublié',
+        activePage: 'admin', // Or appropriate page
+        error: null,
+        info: null
+    });
+});
+
+// Handle forgot password request (generate token & send email)
+app.post('/forgot-password', async (req, res) => {
+    const email = req.body.email;
+    if (!email) {
+        return res.render('forgot-password', { /* ... error: 'Email requis' ... */ });
+    }
+    if (!transporter) { // Check if Nodemailer is configured
+         return res.render('forgot-password', { /* ... error: 'Service email non configuré' ... */ });
+    }
+
+    // Find user by email
+    const sqlFindUser = 'SELECT * FROM users WHERE email = ?';
+    db.get(sqlFindUser, [email], async (err, user) => {
+        if (err || !user) {
+            // IMPORTANT: Don't reveal if the email exists or not for security
+            return res.render('forgot-password', { /* ... info: 'Si un compte existe..., un email a été envoyé.' ... */ });
+        }
+
+        // Generate a secure random token
+        const token = crypto.randomBytes(32).toString('hex');
+        // Set expiration time (e.g., 1 hour from now)
+        const expires = Date.now() + 3600000; // 1 hour in milliseconds
+
+        // Store token and expiration in the database
+        const sqlUpdateToken = 'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?';
+        db.run(sqlUpdateToken, [token, expires, user.id], (errUpdate) => {
+            if (errUpdate) {
+                 console.error("Error saving reset token:", errUpdate);
+                 return res.render('forgot-password', { /* ... error: 'Erreur serveur' ... */ });
+            }
+
+            // Send the email
+            const resetLink = `http://${req.headers.host}/reset-password/${token}`; // Construct reset link
+            const mailOptions = {
+                to: user.email,
+                from: process.env.EMAIL_USER,
+                subject: 'Réinitialisation de votre mot de passe - Carnet de Stage',
+                text: `Vous recevez cet email car vous (ou quelqu'un d'autre) avez demandé la réinitialisation du mot de passe de votre compte.\n\n` +
+                      `Cliquez sur le lien suivant, ou copiez-le dans votre navigateur pour compléter le processus :\n\n` +
+                      `${resetLink}\n\n` +
+                      `Si vous n'avez pas demandé ceci, ignorez cet email et votre mot de passe restera inchangé.\n` +
+                      `Ce lien expirera dans une heure.\n`,
+                // You can add an HTML version too
+            };
+
+            transporter.sendMail(mailOptions, (errMail) => {
+                if (errMail) {
+                     console.error("Error sending reset email:", errMail);
+                     return res.render('forgot-password', { /* ... error: 'Erreur envoi email' ... */ });
+                }
+                res.render('forgot-password', { /* ... info: 'Email de réinitialisation envoyé.' ... */ });
+            });
+        });
+    });
+});
+
+// Show password reset form (if token is valid)
+app.get('/reset-password/:token', (req, res) => {
+    const token = req.params.token;
+    // Find user by token and check expiration
+    const sqlFindToken = 'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?';
+    db.get(sqlFindToken, [token, Date.now()], (err, user) => {
+        if (err || !user) {
+            // Token invalid or expired
+            return res.render('forgot-password', { /* ... error: 'Lien invalide ou expiré.' ... */ });
+        }
+        // Show the reset form, passing the token
+        res.render('reset-password', {
+            pageTitle: 'Réinitialiser le Mot de Passe',
+            activePage: 'admin',
+            token: token,
+            error: null
+        });
+    });
+});
+
+// Handle password reset submission
+app.post('/reset-password/:token', (req, res) => {
+    const token = req.params.token;
+    const { newPassword, confirmPassword } = req.body;
+
+    if (newPassword !== confirmPassword || newPassword.length < 8) {
+        // Passwords don't match or too short
+        return res.render('reset-password', { /* ... error: 'Mots de passe invalides.', token: token ... */ });
+    }
+
+    // Find user by token again (double check validity)
+    const sqlFindToken = 'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?';
+    db.get(sqlFindToken, [token, Date.now()], (err, user) => {
+        if (err || !user) {
+            return res.render('forgot-password', { /* ... error: 'Lien invalide ou expiré.' ... */ });
+        }
+
+        // Hash the new password
+        const saltRounds = 10;
+        bcrypt.hash(newPassword, saltRounds, (errHash, newHash) => {
+            if (errHash) {
+                return res.render('reset-password', { /* ... error: 'Erreur hachage.', token: token ... */ });
+            }
+
+            // Update password and clear the reset token fields
+            const sqlUpdatePass = 'UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?';
+            db.run(sqlUpdatePass, [newHash, user.id], (errUpdate) => {
+                if (errUpdate) {
+                     return res.render('reset-password', { /* ... error: 'Erreur mise à jour.', token: token ... */ });
+                }
+                // Redirect to login page with success message (using query parameter)
+                res.redirect('/connexion?reset=success');
+            });
+        });
+    });
+});
+
+// --- PAGE ADMINISTRATION ---
+app.get('/admin', isAuthenticated, (req, res) => {
+    res.render('admin', {
+        pageTitle: 'Panneau d\'Administration',
+        activePage: 'admin' // Garde le lien "Administration" actif
+    });
+});
 
 // =================================================================
 // 7. DÉMARRAGE DU SERVEUR

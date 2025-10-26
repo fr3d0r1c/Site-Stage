@@ -1,67 +1,81 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<h1><%= t('auth.register_title') %></h1>
-<p><%= t('auth.register_info') %></p>
-<hr>
+<div class="static-page">
+    <h1><%= t('auth.register_title') %></h1>
+    <p class="feedback-message" style="background-color: #fff3cd; color: #664d03; border-color: #ffecb5;">
+        ⚠️ <%= t('auth.register_info') %>
+    </p>
+    <hr>
 
-<form action="/inscription" method="POST">
-    <div>
-        <label for="username"><%= t('forms.username') %> :</label><br>
-        <input type="text" id="username" name="username" required>
-    </div>
-    <div>
-        <label for="password"><%= t('forms.password') %> :</label><br>
-        <input type="password" id="password" name="password" required>
-        <div id="password-strength-feedback" style="margin-top: 5px; font-size: 0.9em;"></div>
-    </div>
-    <div>
-        <button type="submit"><%= t('forms.create_account_button') %></button>
-    </div>
-</form>
+    <form action="/inscription" method="POST">
+        <div class="form-group">
+            <label for="username"><%= t('forms.username') %> :</label><br>
+            <input type="text" id="username" name="username" required>
+        </div>
+
+        <div class="form-group">
+            <label for="email"><%= t('contact.form_email') %> :</label><br> <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-group password-container">
+            <label for="password"><%= t('forms.password') %> :</label><br>
+            <div style="position: relative;">
+                <input type="password" id="password" name="password" required minlength="8"> <button type="button" id="togglePassword" class="toggle-password-btn">Voir</button>
+            </div>
+            <div id="password-strength-feedback" style="margin-top: 5px; font-size: 0.9em;"></div>
+        </div>
+
+        <div>
+            <button type="submit"><%= t('forms.create_account_button') %></button>
+        </div>
+    </form>
+</div>
 
 <script>
-    const passwordInput = document.getElementById('password');
+    // --- Script Voir/Cacher Mot de Passe ---
+    const passwordInputToggle = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    if (passwordInputToggle && togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', function() {
+            const currentType = passwordInputToggle.getAttribute('type');
+            if (currentType === 'password') {
+                passwordInputToggle.setAttribute('type', 'text');
+                this.textContent = 'Cacher';
+            } else {
+                passwordInputToggle.setAttribute('type', 'password');
+                this.textContent = 'Voir';
+            }
+        });
+    }
+
+    // --- Script Force du Mot de Passe ---
+    const passwordInputStrength = document.getElementById('password');
     const feedbackDiv = document.getElementById('password-strength-feedback');
+    if (passwordInputStrength && feedbackDiv) {
+        passwordInputStrength.addEventListener('input', () => {
+            const password = passwordInputStrength.value;
+            let strength = 0;
+            let feedbackText = '';
+            let feedbackColor = 'grey';
 
-    passwordInput.addEventListener('input', () => {
-        const password = passwordInput.value;
-        let strength = 0;
-        let feedbackText = '';
-        let feedbackColor = 'grey';
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]/)) strength++;
+            if (password.match(/[A-Z]/)) strength++;
+            if (password.match(/[0-9]/)) strength++;
+            if (password.match(/[^a-zA-Z0-9]/)) strength++;
 
-        if (password.length >= 8) strength++; // Longueur min
-        if (password.match(/[a-z]/)) strength++; // Minuscules
-        if (password.match(/[A-Z]/)) strength++; // Majuscules
-        if (password.match(/[0-9]/)) strength++; // Chiffres
-        if (password.match(/[^a-zA-Z0-9]/)) strength++; // Caractères spéciaux
-
-        switch (strength) {
-            case 0:
-            case 1:
-            case 2:
-                feedbackText = 'Faible';
-                feedbackColor = '#e74c3c'; // Rouge (danger)
-                break;
-            case 3:
-                feedbackText = 'Moyen';
-                feedbackColor = '#f39c12'; // Orange
-                break;
-            case 4:
-            case 5:
-                feedbackText = 'Fort';
-                feedbackColor = '#2ecc71'; // Vert
-                break;
-            default:
-                 feedbackText = '';
-        }
-
-        if (password.length === 0) {
-             feedbackDiv.textContent = ''; // Vide si pas de mdp
-        } else {
-             feedbackDiv.textContent = `Force : ${feedbackText}`;
-             feedbackDiv.style.color = feedbackColor;
-        }
-    });
+            switch (strength) {
+                case 0: case 1: case 2:
+                    feedbackText = 'Faible'; feedbackColor = 'var(--c-danger)'; break;
+                case 3:
+                    feedbackText = 'Moyen'; feedbackColor = '#f39c12'; break; // Orange
+                case 4: case 5:
+                    feedbackText = 'Fort'; feedbackColor = '#2ecc71'; break; // Vert
+            }
+            if (password.length === 0) { feedbackDiv.textContent = ''; }
+            else { feedbackDiv.textContent = `Force : ${feedbackText}`; feedbackDiv.style.color = feedbackColor; }
+        });
+    }
 </script>
 
 <%- include('partials/footer') %>

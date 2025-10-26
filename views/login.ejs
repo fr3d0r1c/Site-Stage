@@ -1,5 +1,9 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
+<% if (locals.resetSuccess) { %>
+    <p class="feedback-message success">Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter.</p>
+<% } %>
+
 <h1><%= t('auth.login_title') %></h1>
 
 <% if (error) { %>
@@ -22,6 +26,7 @@
         <button type="submit"><%= t('forms.login_button') %></button>
     </div>
 </form>
+<p style="margin-top: 1rem;"><a href="/forgot-password">Mot de passe oublié ?</a></p> <% if (!adminExists) { /* ... Create account link ... */ } %>
 
 <% if (!adminExists) { %>
     <p><%= t('auth.no_admin') %> <a href="/inscription"><%= t('auth.create_now') %></a>.</p>

@@ -18,7 +18,7 @@
             <a href="/journal" class="<%= activePage === 'journal' ? 'active' : '' %>"><%= t('nav.journal') %></a>
             <a href="/contact" class="<%= activePage === 'contact' ? 'active' : '' %>"><%= t('page_titles.contact') %></a>
             <% if (locals.username) { %>
-                <a href="/deconnexion" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.logout') %> (<%= locals.username %>)</a>
+                <a href="/admin" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.admin') %></a>
             <% } else { %>
                 <a href="/connexion" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.admin') %></a>
             <% } %>
