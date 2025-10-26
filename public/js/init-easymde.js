@@ -1,73 +1,91 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Éléments Français ---
+    // --- French Elements ---
     const frenchEditorTextarea = document.getElementById('content-editor-fr');
-    const frenchPreviewDiv = document.getElementById('content-preview-fr');
+    const frenchPreviewDiv = document.getElementById('preview_fr'); // Corrected ID
     const frenchTitleInput = document.getElementById('title_fr');
     let easyMDE_fr = null;
 
-    // --- Éléments Anglais ---
-    const englishEditorTextarea = document.getElementById('content-editor-en');
-    const englishPreviewDiv = document.getElementById('content-preview-en');
-    const englishTitleInput = document.getElementById('title_en');
-    let easyMDE_en = null;
+    // --- Control Variables ---
+    let isUpdatingFromEditor = false;
+    let isUpdatingFromTitle = false;
+    let contentDebounceTimer; // Debounce timer for translation trigger
 
-    // --- Variables de contrôle ---
-    let isUpdatingFromEditor = false; // Verrou pour éviter boucle Editeur -> Titre -> Editeur
-    let isUpdatingFromTitle = false;  // Verrou pour éviter boucle Titre -> Editeur -> Titre
-
-    // --- Initialisation Editeur Français ---
+    // --- Initialize French Editor ---
     if (frenchEditorTextarea) {
         easyMDE_fr = new EasyMDE({ element: frenchEditorTextarea, spellChecker: false, status: ["lines", "words"] });
 
         easyMDE_fr.codemirror.on("change", () => {
-            if (isUpdatingFromTitle) return; // Si c'est le titre qui a déclenché, on ignore
+            if (isUpdatingFromTitle) return;
             isUpdatingFromEditor = true;
 
             const markdownText = easyMDE_fr.value();
+
+            // Update FR Preview
             if (frenchPreviewDiv && typeof marked !== 'undefined') {
                 frenchPreviewDiv.innerHTML = marked.parse(markdownText);
             }
+
+            // Update FR Title from H1
             if (frenchTitleInput) {
                 const lines = markdownText.split('\n');
                 if (lines.length > 0 && lines[0].startsWith('# ')) {
                     const potentialTitle = lines[0].substring(2).trim();
                     if (potentialTitle && frenchTitleInput.value !== potentialTitle) {
                          frenchTitleInput.value = potentialTitle;
+                         // Trigger title translation (from title input listener)
+                         frenchTitleInput.dispatchEvent(new Event('input'));
                     }
                 }
             }
+
+             // --- Trigger Content Translation (with debounce) ---
+             clearTimeout(contentDebounceTimer);
+             if (markdownText.trim()) {
+                 contentDebounceTimer = setTimeout(() => {
+                     // Check if the global translateText function exists
+                     if (typeof window.translateText === 'function') {
+                         window.translateText(markdownText, 'en-GB', 'content'); // Pass 'content' type
+                     }
+                 }, 500); // 500ms delay
+             } else {
+                 // Clear EN preview if FR is empty
+                 const previewEnDiv = document.getElementById('preview_en');
+                 if (previewEnDiv) previewEnDiv.innerHTML = '';
+                 const contentEnTextarea = document.getElementById('content_en');
+                 if (contentEnTextarea) contentEnTextarea.value = ''; // Clear hidden EN textarea too
+             }
+             // --- End Translation Trigger ---
+
             isUpdatingFromEditor = false;
         });
+
+        // Initial FR Preview
         if (frenchPreviewDiv && typeof marked !== 'undefined') {
              frenchPreviewDiv.innerHTML = marked.parse(easyMDE_fr.value());
         }
     }
 
-    // --- Synchronisation Titre FR -> Editeur FR ---
+    // --- Sync FR Title -> FR Editor ---
      if (frenchTitleInput && easyMDE_fr) {
         let titleSyncTimeout;
         frenchTitleInput.addEventListener('input', () => {
-             if (isUpdatingFromEditor) return; // Si c'est l'éditeur qui a déclenché, on ignore
+             if (isUpdatingFromEditor) return;
              isUpdatingFromTitle = true;
-
              clearTimeout(titleSyncTimeout);
              titleSyncTimeout = setTimeout(() => {
                 const newTitle = frenchTitleInput.value;
                 const currentContent = easyMDE_fr.value();
                 const lines = currentContent.split('\n');
                 let titleUpdated = false;
-
                 if (lines.length > 0 && lines[0].startsWith('# ')) {
                     if (lines[0] !== '# ' + newTitle) { lines[0] = '# ' + newTitle; titleUpdated = true; }
                 } else if (newTitle) {
                     lines.unshift('# ' + newTitle); titleUpdated = true;
                 }
-
                 if (titleUpdated) {
                     const cursorPos = easyMDE_fr.codemirror.getCursor();
                     easyMDE_fr.value(lines.join('\n'));
                     easyMDE_fr.codemirror.setCursor(cursorPos);
-                    // On force la mise à jour de l'aperçu car l'event 'change' a été bloqué
                     if (frenchPreviewDiv && typeof marked !== 'undefined') {
                        frenchPreviewDiv.innerHTML = marked.parse(easyMDE_fr.value());
                     }
@@ -77,71 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
      }
 
-    // --- Initialisation Editeur Anglais ---
-    if (englishEditorTextarea) {
-        easyMDE_en = new EasyMDE({ element: englishEditorTextarea, spellChecker: false, status: ["lines", "words"] });
-
-        easyMDE_en.codemirror.on("change", () => {
-             if (isUpdatingFromTitle) return;
-             isUpdatingFromEditor = true;
-
-             const markdownText = easyMDE_en.value();
-             if (englishPreviewDiv && typeof marked !== 'undefined') {
-                 englishPreviewDiv.innerHTML = marked.parse(markdownText);
-             }
-             if (englishTitleInput) {
-                 const lines = markdownText.split('\n');
-                 if (lines.length > 0 && lines[0].startsWith('# ')) {
-                     const potentialTitle = lines[0].substring(2).trim();
-                     if (potentialTitle && englishTitleInput.value !== potentialTitle) {
-                          englishTitleInput.value = potentialTitle;
-                     }
-                 }
-             }
-             isUpdatingFromEditor = false;
-        });
-         if (englishPreviewDiv && typeof marked !== 'undefined') {
-              englishPreviewDiv.innerHTML = marked.parse(easyMDE_en.value());
-         }
+    // --- Make FR instance globally accessible ---
+    if (easyMDE_fr) {
+        window.easyMDEInstance = easyMDE_fr; // Keep using single instance name for uploader
+        console.log("EasyMDE FR instance created.");
     }
-
-    // --- Synchronisation Titre EN -> Editeur EN ---
-     if (englishTitleInput && easyMDE_en) {
-        let titleSyncTimeoutEn;
-         englishTitleInput.addEventListener('input', () => {
-             if (isUpdatingFromEditor) return;
-             isUpdatingFromTitle = true;
-
-             clearTimeout(titleSyncTimeoutEn);
-             titleSyncTimeoutEn = setTimeout(() => {
-                const newTitle = englishTitleInput.value;
-                const currentContent = easyMDE_en.value();
-                const lines = currentContent.split('\n');
-                let titleUpdated = false;
-
-                if (lines.length > 0 && lines[0].startsWith('# ')) {
-                   if (lines[0] !== '# ' + newTitle) { lines[0] = '# ' + newTitle; titleUpdated = true; }
-                } else if (newTitle) {
-                    lines.unshift('# ' + newTitle); titleUpdated = true;
-                }
-
-                if (titleUpdated) {
-                    const cursorPos = easyMDE_en.codemirror.getCursor();
-                    easyMDE_en.value(lines.join('\n'));
-                    easyMDE_en.codemirror.setCursor(cursorPos);
-                    // On force la mise à jour de l'aperçu EN
-                    if (englishPreviewDiv && typeof marked !== 'undefined') {
-                       englishPreviewDiv.innerHTML = marked.parse(easyMDE_en.value());
-                    }
-                }
-                 isUpdatingFromTitle = false;
-             }, 300);
-         });
-     }
-
-    // --- Rendre les instances accessibles globalement ---
-    window.easyMDEInstances = {
-        fr: easyMDE_fr,
-        en: easyMDE_en
-    };
 });

@@ -44,6 +44,8 @@ body.theme-sepia {
     --c-gray: #9e8a78;
 }
 
+/* ... (Le reste du fichier CSS complet que je t'ai fourni précédemment va ici) ... */
+
 /*
 =========================================
 --- 2. Style Général ---
@@ -409,6 +411,10 @@ button:hover, .actions a:hover {
 --- 10. Styles pour les Images ---
 =========================================
 */
+.cover-image {
+     background-color: var(--c-surface); /* Pour le thème sombre */
+}
+
 .article-content img {
     max-width: 100%; height: auto; border-radius: 8px; display: block;
     margin: 2rem auto; border: 1px solid var(--c-border);
@@ -461,6 +467,7 @@ button:hover, .actions a:hover {
 .feedback-message.success { background-color: color-mix(in srgb, var(--c-primary) 15%, transparent); color: var(--c-primary); border: 1px solid var(--c-primary); }
 .feedback-message.error { background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); color: var(--c-danger); border: 1px solid var(--c-danger); }
 
+
 /*
 =========================================
 --- 14. Styles pour les mobiles (Responsive) ---
@@ -468,11 +475,11 @@ button:hover, .actions a:hover {
 */
 @media (max-width: 768px) {
     .container { padding: 0 1rem; margin: 1rem auto; }
-    .site-header { padding: 0.8rem 1rem; flex-wrap: nowrap; justify-content: space-between; }
+    .site-header { padding: 0.8rem 1rem; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
+    .logo { flex-grow: 1; flex-basis: auto; text-align: left; margin-bottom: 0;}
     .logo a { font-size: 1.4rem; }
-    .main-nav { display: none; /* Hide desktop nav */ }
 
-    .header-controls { display: flex; align-items: center; gap: 1rem; order: 2; }
+    .header-controls { display: flex; align-items: center; gap: 1rem; order: 2; margin-left: auto; }
     .language-switcher { margin-left: 0; }
     .language-switcher .fi { font-size: 1.3em; }
 
@@ -482,8 +489,8 @@ button:hover, .actions a:hover {
     .search-form input[type="search"] { flex-grow: 1; min-width: 0; }
 
     /* Styles du menu coulissant */
-    .main-nav { position: fixed; top: 0; right: 0; bottom: 0; background: var(--c-surface); width: 70%; transform: translateX(100%); transition: transform 0.3s ease-in-out; flex-direction: column; justify-content: center; align-items: center; display: flex; z-index: 1000; padding: 2rem 0;}
-    .main-nav.nav-visible { transform: translateX(0); box-shadow: -5px 0 15px rgba(0,0,0,0.2); }
+    .main-nav { display: none; /* Hide desktop nav */ position: fixed; top: 0; right: 0; bottom: 0; background: var(--c-surface); width: 70%; transform: translateX(100%); transition: transform 0.3s ease-in-out; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; padding: 2rem 0;}
+    .main-nav.nav-visible { display: flex; transform: translateX(0); box-shadow: -5px 0 15px rgba(0,0,0,0.2); }
     .main-nav a { margin: 1.5rem 0; font-size: 1.2rem; }
 
     h1 { font-size: 1.8rem; }
@@ -492,4 +499,31 @@ button:hover, .actions a:hover {
     .entries-grid { grid-template-columns: 1fr; } /* Stack cards on smallest screens */
     .pagination ul { gap: 0.3rem;}
     .pagination li a, .pagination li span { padding: 6px 10px; font-size: 0.9rem;}
+}
+
+/*
+=========================================
+--- 15. Styles pour l'éditeur double (FR/EN) ---
+=========================================
+*/
+.dual-editor-layout {
+    display: flex;
+    flex-direction: row; /* Met les enfants côte à côte */
+    gap: 2rem; /* Espace entre les deux éditeurs complets */
+    align-items: flex-start; /* Aligne les hauts des éditeurs */
+}
+
+/* Chaque éditeur (FR et EN) prend la moitié de l'espace */
+.dual-editor-layout > .editor-container {
+    flex: 1; /* Prend 50% de la largeur disponible */
+    min-width: 0; /* Important pour flexbox */
+    margin: 0; /* Annule la marge par défaut de .editor-container */
+}
+
+/* Ajustements responsives pour l'éditeur double */
+@media (max-width: 1024px) { /* Sur écrans plus petits, repasse en vertical */
+    .dual-editor-layout {
+        flex-direction: column; /* Met les éditeurs l'un SOUS l'autre */
+        gap: 3rem; /* Espace vertical entre les éditeurs */
+    }
 }

@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!easyMDE_fr && !easyMDE_en) {
             console.warn("No EasyMDE instances found for uploader.");
-            return;
+            return; // Don't proceed if the editor isn't initialized
         }
 
         function insertTextAtCursor(easyMDEInstance, text) {
@@ -71,9 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (data.imageUrl) {
                             const markdownImage = `\n![Description](${data.imageUrl})\n`;
                             insertTextAtCursor(targetEditorInstance, markdownImage); // Use target
-                        } else { /* ... error handling ... */ }
+                        } else { alert("Erreur d'upload: " + (data.error || 'Inconnue')); }
                     })
-                    .catch(error => { /* ... error handling ... */ })
+                    .catch(error => { console.error("Erreur fetch upload:", error); alert(`Échec upload: ${error.message || error.statusText || 'Erreur réseau'}`); })
                     .finally(() => {
                          fileInput.value = '';
                          targetEditorInstance = null; // Reset target

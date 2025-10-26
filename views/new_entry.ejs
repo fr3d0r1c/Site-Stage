@@ -1,78 +1,113 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+</head>
+
 <h1><%= t('journal.add_entry') %></h1>
 
-<form action="/journal" method="POST">
-    <div>
+<form action="/journal" method="POST" id="entry-form"> <div>
         <label for="title_fr"><%= t('forms.title_fr') %> :</label><br>
         <input type="text" id="title_fr" name="title_fr" required>
     </div>
     <div>
         <label for="title_en"><%= t('forms.title_en') %> :</label><br>
-        <input type="text" id="title_en" name="title_en" required>
-    </div>
+        <input type="text" id="title_en" name="title_en" required readonly> </div>
     <hr>
-    <div class="editor-container">
+
+    <div class="form-group editor-preview-container">
         <div class="editor-pane">
-            <label for="content-editor-fr"><%= t('forms.content_fr') %> :</label><br>
+            <label for="content-editor-fr"><%= t('forms.content_fr') %> :</label>
             <button type="button" id="upload-image-btn" class="editor-tool-btn"><%= t('general.upload_image') %></button>
             <button type="button" id="add-url-image-btn" class="editor-tool-btn"><%= t('general.add_image_url') %></button>
-            <textarea id="content-editor-fr" name="content_fr" rows="20"></textarea> </div>
+            <textarea id="content-editor-fr" name="content_fr" rows="20"><%= (typeof article !== 'undefined' && article.content_fr) ? article.content_fr : '' %></textarea>
+        </div>
         <div class="preview-pane">
-            <label><%= t('general.preview') %> (FR) :</label><br>
-            <div id="content-preview-fr" class="article-content"></div>
+            <label><%= t('general.preview') %> (FR) :</label>
+            <div id="preview_fr" class="article-content"></div>
         </div>
     </div>
     <hr>
-    <div class="editor-container">
-        <div class="editor-pane">
-            <label for="content-editor-en"><%= t('forms.content_en') %> :</label><br>
-            <button type="button" id="upload-image-btn-en" class="editor-tool-btn"><%= t('general.upload_image') %> (EN)</button>
-            <button type="button" id="add-url-image-btn-en" class="editor-tool-btn"><%= t('general.add_image_url') %> (EN)</button>
-            <textarea id="content-editor-en" name="content_en" rows="20" required></textarea>
-        </div>
-        <div class="preview-pane">
-            <label><%= t('general.preview') %> (EN) :</label><br>
-            <div id="content-preview-en" class="article-content"></div>
-        </div>
-    </div>
+
+    <div class="form-group preview-pane">
+        <label><%= t('general.preview') %> (EN) (Auto):</label>
+        <div id="preview_en" class="article-content"></div> </div>
+    <textarea id="content_en" name="content_en" style="display: none;"><%= (typeof article !== 'undefined' && article.content_en) ? article.content_en : '' %></textarea>
     <hr>
-    <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
+
     <div>
         <label for="cover_image_url"><%= t('forms.cover_image_url') %> :</label><br>
         <input type="text" id="cover_image_url" name="cover_image_url" placeholder="Collez l'URL d'une image ici...">
         <small><%= t('forms.cover_image_hint') %></small>
     </div>
+
     <div>
         <label for="tags">Tags (séparés par des virgules) :</label><br>
         <input type="text" id="tags" name="tags" placeholder="Ex: Travail, Culture, Voyage">
     </div>
+
     <div>
         <button type="submit" id="submit-button"><%= t('forms.create_entry') %></button>
     </div>
 </form>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="/js/init-easymde.js"></script>
-<script src="/js/uploader.js"></script>
+<script src="/js/auto-translate-preview.js"></script>
 <script>
-    const submitBtn = document.getElementById('submit-button'); const form = document.querySelector('form');
-    if (submitBtn && form) { submitBtn.addEventListener('click', function(event) {
-        if (window.easyMDEInstances && window.easyMDEInstances.fr) { window.easyMDEInstances.fr.codemirror.save(); }
-        if (window.easyMDEInstances && window.easyMDEInstances.en) { window.easyMDEInstances.en.codemirror.save(); }
-        let isValid = true; const requiredInputs = form.querySelectorAll('[required]');
-        requiredInputs.forEach(input => {
-            if (input.id === 'content-editor-fr' && window.easyMDEInstances && window.easyMDEInstances.fr) {
-                if (window.easyMDEInstances.fr.value().trim() === '') { isValid = false; alert('Le contenu français ne peut pas être vide.'); }
-            } else if (input.id === 'content-editor-en' && window.easyMDEInstances && window.easyMDEInstances.en) {
-                 if (window.easyMDEInstances.en.value().trim() === '') { isValid = false; alert('Le contenu anglais ne peut pas être vide.'); }
-            } else if (!input.value.trim()) {
-                 isValid = false; const label = form.querySelector(`label[for="${input.id}"]`); const fieldName = label ? label.innerText.replace(':', '') : input.name;
-                 alert(`Le champ "${fieldName}" est requis.`); input.focus();
-            }});
-        if (!isValid) { event.preventDefault(); }
-    });}
+    const submitBtn = document.getElementById('submit-button');
+    const form = document.querySelector('form'); // Use querySelector for simplicity
+
+    if (submitBtn && form) {
+        submitBtn.addEventListener('click', function(event) {
+            // Force EasyMDE to update the original textarea
+            if (window.easyMDEInstance) {
+                window.easyMDEInstance.codemirror.save();
+            }
+
+            let isValid = true;
+            const requiredInputs = form.querySelectorAll('input[required], textarea[required]'); // Includes hidden content_en
+
+            requiredInputs.forEach(input => {
+                // Special check for hidden EN textarea - ensure it's not empty or showing error
+                if (input.id === 'content_en') {
+                    if (!input.value.trim() || input.value === 'Translation Error.' || input.value === 'Translating...') {
+                         isValid = false;
+                         alert('La traduction anglaise du contenu est requise ou n\'est pas terminée/valide.');
+                         console.error('Validation failed: English content missing or invalid.');
+                    }
+                }
+                // Standard check for other required fields
+                else if (!input.value.trim()) {
+                     isValid = false;
+                     const label = form.querySelector(`label[for="${input.id}"]`);
+                     const fieldName = label ? label.innerText.replace(':', '') : input.name;
+                     alert(`Le champ "${fieldName}" est requis.`);
+                     try { input.focus(); } catch (e) {} // Try to focus, ignore if hidden
+                     console.error(`Validation failed: Field "${input.name}" is empty.`);
+                }
+            });
+
+            // Check French content (EasyMDE) manually as it's not 'required'
+             const frenchContent = window.easyMDEInstance ? window.easyMDEInstance.value() : '';
+             if (!frenchContent.trim()) {
+                 isValid = false;
+                 alert('Le contenu français ne peut pas être vide.');
+                 console.error('Validation failed: French content is empty in EasyMDE');
+                 // Try focusing EasyMDE's editor area
+                 try { window.easyMDEInstance.codemirror.focus(); } catch(e){}
+            }
+
+
+            if (!isValid) {
+                 event.preventDefault(); // Stop submission if validation fails
+                 console.log('Form submission prevented due to validation errors.');
+            } else {
+                 console.log('Form is valid, attempting submission...');
+            }
+        });
+    }
 </script>
 
 <%- include('partials/footer') %>

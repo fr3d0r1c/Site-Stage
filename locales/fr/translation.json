@@ -99,7 +99,7 @@
     "internship_mission_title": "Ma Mission",
     "internship_mission_desc": "[Décrivez ici les objectifs principaux de votre stage.]"
   },
-  "contact": {
+   "contact": {
     "title": "Contactez-moi",
     "intro": "N'hésitez pas à me laisser un message via le formulaire ci-dessous.",
     "form_name": "Votre Nom",

@@ -2,6 +2,7 @@
 // 1. IMPORTS (DÉPENDANCES)
 // =================================================================
 require('dotenv').config(); // Pour lire le .env (identifiants email, etc.)
+const deepl = require('deepl-node');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
@@ -67,6 +68,19 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
     console.warn("AVERTISSEMENT : Identifiants email manquants dans .env. Le formulaire de contact sera désactivé.");
 }
 
+const deeplApiKey = process.env.DEEPL_API_KEY;
+let translator = null;
+if (!deeplApiKey) {
+    console.warn("AVERTISSEMENT : Clé API DeepL manquante. Traduction auto désactivée.");
+} else {
+    try {
+        translator = new deepl.Translator(deeplApiKey);
+        console.log("Client DeepL initialisé.");
+    } catch (error) {
+        console.error("Erreur initialisation DeepL:", error);
+    }
+}
+
 
 // =================================================================
 // 3. MIDDLEWARES
@@ -99,15 +113,12 @@ app.use((req, res, next) => {
 
 // Middleware "garde" pour vérifier si l'utilisateur est authentifié
 function isAuthenticated(req, res, next) {
-    if (req.session.userId) {
-        return next();
+    if (req.session.userId) { return next(); }
+    // Return JSON error for API requests or unauthenticated page access needing login
+    if (req.originalUrl.startsWith('/api/') || req.method !== 'GET') { // Check if API or non-GET request
+         return res.status(401).json({ error: 'Accès non autorisé.' });
     }
-    // Pour les requêtes API (comme /upload-image), renvoie JSON
-    if (req.originalUrl.startsWith('/upload-image')) {
-       return res.status(401).json({ error: 'Accès non autorisé. Veuillez vous reconnecter.' });
-    }
-    // Pour les pages normales, redirige
-    res.redirect('/connexion');
+    res.redirect('/connexion'); // Redirect only for standard GET page requests
 }
 
 // Middleware pour vérifier si un compte admin existe déjà
@@ -430,6 +441,29 @@ app.post('/inscription', checkAdminExists, (req, res) => {
             res.redirect('/connexion');
         });
     });
+});
+
+app.post('/api/translate', isAuthenticated, async (req, res) => {
+    if (!translator) {
+        return res.status(503).json({ error: 'Service de traduction non disponible.' });
+    }
+    const textToTranslate = req.body.text;
+    const targetLanguage = req.body.targetLang || 'en-GB';
+    if (!textToTranslate) {
+        return res.status(400).json({ error: 'Le champ "text" est manquant.' });
+    }
+    try {
+        const result = await translator.translateText(textToTranslate, 'fr', targetLanguage);
+        if (result && typeof result.text === 'string') {
+           res.json({ translatedText: result.text });
+        } else {
+            console.error("[DeepL] Réponse invalide:", result);
+            res.status(500).json({ error: 'Réponse invalide du service de traduction.' });
+        }
+    } catch (error) {
+        console.error("Erreur DeepL:", error);
+        res.status(500).json({ error: `Échec traduction: ${error.message || 'Erreur inconnue'}` });
+    }
 });
 
 // Endpoint d'API pour l'upload d'images

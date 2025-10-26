@@ -13,13 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (theme === 'sepia') {
             body.classList.add('theme-sepia');
         } else if (theme === 'light') {
-            // Pas besoin d'ajouter de classe pour le thème clair par défaut
+            // Pas besoin d'ajouter de classe pour le thème clair par défaut ('theme-light')
+            // car les styles par défaut (:root) s'appliquent.
         } else { // Thème "system"
             // On vérifie la préférence système
             if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 body.classList.add('theme-dark');
+            } else {
+                 // Si le système est en mode clair, on n'ajoute pas de classe (utilise :root)
             }
-            // Si le système est en mode clair, aucune classe n'est ajoutée
         }
     }
 
