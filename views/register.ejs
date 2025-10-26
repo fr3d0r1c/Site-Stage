@@ -48,32 +48,61 @@
         });
     }
 
-    // --- Script Force du Mot de Passe ---
+    // --- Script Force du Mot de Passe (Amélioré) ---
     const passwordInputStrength = document.getElementById('password');
     const feedbackDiv = document.getElementById('password-strength-feedback');
     if (passwordInputStrength && feedbackDiv) {
         passwordInputStrength.addEventListener('input', () => {
             const password = passwordInputStrength.value;
-            let strength = 0;
+            const criteria = {
+                length: password.length >= 8,
+                lowercase: /[a-z]/.test(password),
+                uppercase: /[A-Z]/.test(password), // Check specifically for uppercase
+                digit: /[0-9]/.test(password),
+                special: /[^a-zA-Z0-9]/.test(password) // Check for non-alphanumeric
+            };
+
+            criteria.letter = criteria.lowercase || criteria.uppercase;
+
+            let score = 0;
+            if (criteria.length) score++;
+            if (criteria.letter) score++; // Counts if at least one letter type is present
+            if (criteria.digit) score++;
+            if (criteria.special) score++;
+
             let feedbackText = '';
             let feedbackColor = 'grey';
+            let requirementsMet = criteria.length && criteria.letter && criteria.digit && criteria.special;
 
-            if (password.length >= 8) strength++;
-            if (password.match(/[a-z]/)) strength++;
-            if (password.match(/[A-Z]/)) strength++;
-            if (password.match(/[0-9]/)) strength++;
-            if (password.match(/[^a-zA-Z0-9]/)) strength++;
-
-            switch (strength) {
-                case 0: case 1: case 2:
-                    feedbackText = 'Faible'; feedbackColor = 'var(--c-danger)'; break;
-                case 3:
-                    feedbackText = 'Moyen'; feedbackColor = '#f39c12'; break; // Orange
-                case 4: case 5:
-                    feedbackText = 'Fort'; feedbackColor = '#2ecc71'; break; // Vert
+            if (password.length > 0) {
+                if (requirementsMet) {
+                     feedbackText = 'Fort';
+                     feedbackColor = '#2ecc71'; // Vert
+                 } else if (score >= 3 && criteria.length) { // Good length + 2 other criteria
+                     feedbackText = 'Moyen';
+                     feedbackColor = '#f39c12'; // Orange
+                 } else {
+                     feedbackText = 'Faible';
+                     feedbackColor = 'var(--c-danger)'; // Rouge
+                 }
             }
-            if (password.length === 0) { feedbackDiv.textContent = ''; }
-            else { feedbackDiv.textContent = `Force : ${feedbackText}`; feedbackDiv.style.color = feedbackColor; }
+
+            let detailedFeedback = '';
+            if (password.length > 0) {
+                detailedFeedback += `Force : ${feedbackText}. `;
+                let missing = [];
+                if (!criteria.length) missing.push("8 caractères min");
+                if (!criteria.letter) missing.push("lettres");
+                if (!criteria.digit) missing.push("chiffres");
+                if (!criteria.special) missing.push("caractères spéciaux");
+
+                if (missing.length > 0) {
+                    detailedFeedback += ` (Manque : ${missing.join(', ')})`;
+                }
+            }
+
+            feedbackDiv.textContent = detailedFeedback;
+            feedbackDiv.style.color = feedbackColor;
         });
     }
 </script>
