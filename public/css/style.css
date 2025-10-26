@@ -527,3 +527,36 @@ button:hover, .actions a:hover {
         gap: 3rem; /* Espace vertical entre les éditeurs */
     }
 }
+
+/*
+=========================================
+--- Bouton "Afficher Mot de Passe" ---
+=========================================
+*/
+.password-container div {
+    position: relative; /* Nécessaire pour positionner le bouton */
+}
+
+.toggle-password-btn {
+    /* Style du bouton */
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--c-text-light);
+    font-weight: 500;
+    /* On annule le style "pill" par défaut */
+    border-radius: 4px; 
+    transition: color 0.2s ease;
+}
+
+.toggle-password-btn:hover {
+    color: var(--c-primary);
+    transform: translateY(-50%); /* Annule l'effet de soulèvement */
+    opacity: 1;
+}

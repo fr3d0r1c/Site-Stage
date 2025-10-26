@@ -12,10 +12,56 @@
     <div>
         <label for="password"><%= t('forms.password') %> :</label><br>
         <input type="password" id="password" name="password" required>
+        <div id="password-strength-feedback" style="margin-top: 5px; font-size: 0.9em;"></div>
     </div>
     <div>
         <button type="submit"><%= t('forms.create_account_button') %></button>
     </div>
 </form>
+
+<script>
+    const passwordInput = document.getElementById('password');
+    const feedbackDiv = document.getElementById('password-strength-feedback');
+
+    passwordInput.addEventListener('input', () => {
+        const password = passwordInput.value;
+        let strength = 0;
+        let feedbackText = '';
+        let feedbackColor = 'grey';
+
+        if (password.length >= 8) strength++; // Longueur min
+        if (password.match(/[a-z]/)) strength++; // Minuscules
+        if (password.match(/[A-Z]/)) strength++; // Majuscules
+        if (password.match(/[0-9]/)) strength++; // Chiffres
+        if (password.match(/[^a-zA-Z0-9]/)) strength++; // Caractères spéciaux
+
+        switch (strength) {
+            case 0:
+            case 1:
+            case 2:
+                feedbackText = 'Faible';
+                feedbackColor = '#e74c3c'; // Rouge (danger)
+                break;
+            case 3:
+                feedbackText = 'Moyen';
+                feedbackColor = '#f39c12'; // Orange
+                break;
+            case 4:
+            case 5:
+                feedbackText = 'Fort';
+                feedbackColor = '#2ecc71'; // Vert
+                break;
+            default:
+                 feedbackText = '';
+        }
+
+        if (password.length === 0) {
+             feedbackDiv.textContent = ''; // Vide si pas de mdp
+        } else {
+             feedbackDiv.textContent = `Force : ${feedbackText}`;
+             feedbackDiv.style.color = feedbackColor;
+        }
+    });
+</script>
 
 <%- include('partials/footer') %>

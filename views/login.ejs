@@ -11,10 +11,13 @@
         <label for="username"><%= t('forms.username') %> :</label><br>
         <input type="text" id="username" name="username" required>
     </div>
-    <div>
-        <label for="password"><%= t('forms.password') %> :</label><br>
-        <input type="password" id="password" name="password" required>
+    
+    <div class="form-group password-container"> <label for="password"><%= t('forms.password') %> :</label><br>
+        <div style="position: relative;"> <input type="password" id="password" name="password" required>
+            <button type="button" id="togglePassword" class="toggle-password-btn">Voir</button>
+        </div>
     </div>
+
     <div>
         <button type="submit"><%= t('forms.login_button') %></button>
     </div>
@@ -23,5 +26,24 @@
 <% if (!adminExists) { %>
     <p><%= t('auth.no_admin') %> <a href="/inscription"><%= t('auth.create_now') %></a>.</p>
 <% } %>
+
+<script>
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+
+    if (passwordInput && togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', function() {
+            // Bascule le type de l'input entre 'password' et 'text'
+            const currentType = passwordInput.getAttribute('type');
+            if (currentType === 'password') {
+                passwordInput.setAttribute('type', 'text');
+                this.textContent = 'Cacher'; // Change le texte du bouton
+            } else {
+                passwordInput.setAttribute('type', 'password');
+                this.textContent = 'Voir'; // Remet le texte initial
+            }
+        });
+    }
+</script>
 
 <%- include('partials/footer') %>
