@@ -803,7 +803,7 @@ app.post('/reset-password/:token', (req, res) => {
 // --- PAGE ADMINISTRATION ---
 app.get('/admin', isAuthenticated, (req, res) => {
     res.render('admin', {
-        pageTitle: 'Panneau d\'Administration',
+        pageTitle: req.t('admin_page.title'),
         activePage: 'admin' // Garde le lien "Administration" actif
     });
 });

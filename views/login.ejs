@@ -26,7 +26,7 @@
         <button type="submit"><%= t('forms.login_button') %></button>
     </div>
 </form>
-<p style="margin-top: 1rem;"><a href="/forgot-password">Mot de passe oublié ?</a></p> <% if (!adminExists) { /* ... Create account link ... */ } %>
+<p style="margin-top: 1rem;"><a href="/forgot-password"><%= t('auth.forgot_password_link') %></a></p> <% if (!adminExists) { /* ... Create account link ... */ } %>
 
 <% if (!adminExists) { %>
     <p><%= t('auth.no_admin') %> <a href="/inscription"><%= t('auth.create_now') %></a>.</p>

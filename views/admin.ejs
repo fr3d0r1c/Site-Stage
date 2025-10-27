@@ -1,16 +1,16 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <div class="static-page">
-    <h1>Panneau d'Administration</h1>
-    <p>Bienvenue, <%= locals.username %>.</p>
+    <h1><%= t('admin_page.title') %></h1>
+    <p><%= t('admin_page.welcome') %>, <%= locals.username %>.</p>
     <hr>
 
-    <h2>Actions</h2>
+    <h2><%= t('admin_page.actions_title') %></h2>
     <ul>
-        <li><a href="/journal/nouvelle">Ajouter une nouvelle entrée</a></li>
-        <li><a href="/change-password">Changer le mot de passe</a></li>
+        <li><a href="/journal/nouvelle"><%= t('admin_page.action_new_entry') %></a></li>
+        <li><a href="/change-password"><%= t('admin_page.action_change_password') %></a></li>
         <li><a href="/deconnexion"><%= t('nav.logout') %></a></li>
-        </ul>
+    </ul>
 </div>
 
 <%- include('partials/footer') %>
