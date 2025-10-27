@@ -1,54 +1,56 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
+<h1><%= t('auth.login_title') %></h1>
+
 <% if (locals.resetSuccess) { %>
     <p class="feedback-message success">Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter.</p>
 <% } %>
-
-<h1><%= t('auth.login_title') %></h1>
 
 <% if (error) { %>
     <p class="error-message"><%= error %></p>
 <% } %>
 
 <form action="/connexion" method="POST">
-    <div>
+    <div class="form-group">
         <label for="username"><%= t('forms.username') %> :</label><br>
         <input type="text" id="username" name="username" required>
     </div>
-    
-    <div class="form-group password-container"> <label for="password"><%= t('forms.password') %> :</label><br>
-        <div style="position: relative;"> <input type="password" id="password" name="password" required>
-            <button type="button" id="togglePassword" class="toggle-password-btn">Voir</button>
+    <div class="form-group password-container">
+        <label for="password"><%= t('forms.password') %> :</label><br>
+        <div style="position: relative;">
+            <input type="password" id="password" name="password" required>
+            <i class="fas fa-eye toggle-password-icon" id="togglePassword"></i>
         </div>
     </div>
-
     <div>
         <button type="submit"><%= t('forms.login_button') %></button>
     </div>
 </form>
-<p style="margin-top: 1rem;"><a href="/forgot-password"><%= t('auth.forgot_password_link') %></a></p> <% if (!adminExists) { /* ... Create account link ... */ } %>
+
+<p style="margin-top: 1rem;"><a href="/forgot-password"><%= t('auth.forgot_password_link') %></a></p>
 
 <% if (!adminExists) { %>
     <p><%= t('auth.no_admin') %> <a href="/inscription"><%= t('auth.create_now') %></a>.</p>
 <% } %>
 
+<%- include('partials/footer') %>
+
 <script>
     const passwordInput = document.getElementById('password');
-    const togglePasswordBtn = document.getElementById('togglePassword');
+    const togglePasswordIcon = document.getElementById('togglePassword');
 
-    if (passwordInput && togglePasswordBtn) {
-        togglePasswordBtn.addEventListener('click', function() {
-            // Bascule le type de l'input entre 'password' et 'text'
+    if (passwordInput && togglePasswordIcon) {
+        togglePasswordIcon.addEventListener('click', function() {
             const currentType = passwordInput.getAttribute('type');
             if (currentType === 'password') {
                 passwordInput.setAttribute('type', 'text');
-                this.textContent = 'Cacher'; // Change le texte du bouton
+                this.classList.remove('fa-eye');
+                this.classList.add('fa-eye-slash');
             } else {
                 passwordInput.setAttribute('type', 'password');
-                this.textContent = 'Voir'; // Remet le texte initial
+                this.classList.remove('fa-eye-slash');
+                this.classList.add('fa-eye');
             }
         });
     }
 </script>
-
-<%- include('partials/footer') %>

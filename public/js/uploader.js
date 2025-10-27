@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const formData = new FormData();
                 formData.append('image', file);
 
-                fetch('/upload-image', { /* ... fetch options ... */ credentials: 'include' })
+                fetch('/upload-image', { method: 'POST', body: formData, credentials: 'include' })
                     .then(response => response.ok ? response.json() : Promise.reject(response))
                     .then(data => {
                         if (data.imageUrl) {

@@ -72,11 +72,11 @@
   },
   "auth": {
     "login_title": "Administration - Connexion",
-    "forgot_password_link": "Mot de passe oublié ?",
     "register_title": "Créer le compte Administrateur",
     "register_info": "Ce formulaire n'est accessible que pour la création du premier et unique compte.",
     "no_admin": "Aucun compte administrateur n'existe.",
-    "create_now": "Créez-le maintenant"
+    "create_now": "Créez-le maintenant",
+    "forgot_password_link": "Mot de passe oublié ?"
   },
   "static_pages": {
     "profile_title": "À propos de moi",
@@ -115,6 +115,7 @@
     "welcome": "Bienvenue",
     "actions_title": "Actions",
     "action_new_entry": "Ajouter une nouvelle entrée",
-    "action_change_password": "Changer le mot de passe"
+    "action_change_password": "Changer le mot de passe",
+    "action_logout": "Déconnexion"
   }
 }

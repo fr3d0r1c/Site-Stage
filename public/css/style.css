@@ -44,8 +44,6 @@ body.theme-sepia {
     --c-gray: #9e8a78;
 }
 
-/* ... (Le reste du fichier CSS complet que je t'ai fourni précédemment va ici) ... */
-
 /*
 =========================================
 --- 2. Style Général ---
@@ -355,7 +353,7 @@ button:hover, .actions a:hover {
 
 /*
 =========================================
---- 7. Messages d'erreur ---
+--- 7. Messages d'erreur & Feedback ---
 =========================================
 */
 .error-message {
@@ -363,6 +361,10 @@ button:hover, .actions a:hover {
     color: var(--c-danger); padding: 1rem; border: 1px solid var(--c-danger);
     border-radius: 8px; margin-bottom: 1rem; text-align: center;
 }
+.feedback-message { padding: 1rem; border-radius: 8px; margin-bottom: 2rem; text-align: center; font-weight: 500; }
+.feedback-message.success { background-color: color-mix(in srgb, var(--c-primary) 15%, transparent); color: var(--c-primary); border: 1px solid var(--c-primary); }
+.feedback-message.error { background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); color: var(--c-danger); border: 1px solid var(--c-danger); }
+
 
 /*
 =========================================
@@ -398,10 +400,10 @@ button:hover, .actions a:hover {
 }
 .editor-tool-btn:hover { background-color: var(--c-text); opacity: 1; transform: none;} /* Override button hover */
 
-/* EasyMDE Specific Styles (ensure visibility in dark mode) */
+/* EasyMDE Specific Styles */
 .editor-toolbar a, .editor-toolbar span { color: var(--c-text-light) !important; }
 .editor-toolbar a.active, .editor-toolbar a:hover { background: var(--c-background) !important; border-color: var(--c-border) !important; color: var(--c-text) !important; }
-.CodeMirror { background: var(--c-surface) !important; color: var(--c-text) !important; border-color: var(--c-border) !important; }
+.CodeMirror { background: var(--c-surface) !important; color: var(--c-text) !important; border-color: var(--c-border) !important; border-radius: 8px !important; }
 .CodeMirror-cursor { border-left-color: var(--c-text) !important; }
 .editor-statusbar { color: var(--c-text-light) !important; background: var(--c-surface) !important; border-top-color: var(--c-border) !important;}
 
@@ -411,10 +413,6 @@ button:hover, .actions a:hover {
 --- 10. Styles pour les Images ---
 =========================================
 */
-.cover-image {
-     background-color: var(--c-surface); /* Pour le thème sombre */
-}
-
 .article-content img {
     max-width: 100%; height: auto; border-radius: 8px; display: block;
     margin: 2rem auto; border: 1px solid var(--c-border);
@@ -463,14 +461,32 @@ button:hover, .actions a:hover {
 .contact-page p:first-of-type { text-align: center; margin-bottom: 2rem; color: var(--c-text-light); }
 .contact-form .form-group { margin-bottom: 1.5rem; }
 .contact-form label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--c-text); }
-.feedback-message { padding: 1rem; border-radius: 8px; margin-bottom: 2rem; text-align: center; font-weight: 500; }
-.feedback-message.success { background-color: color-mix(in srgb, var(--c-primary) 15%, transparent); color: var(--c-primary); border: 1px solid var(--c-primary); }
-.feedback-message.error { background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); color: var(--c-danger); border: 1px solid var(--c-danger); }
 
 
 /*
 =========================================
---- 14. Styles pour les mobiles (Responsive) ---
+--- 14. Styles pour les Tags ---
+=========================================
+*/
+.tags-list {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.tag-item {
+    display: inline-block; background-color: var(--c-background); color: var(--c-text-light);
+    padding: 3px 10px; border-radius: 99px; font-size: 0.8rem;
+    border: 1px solid var(--c-border); transition: all 0.2s ease;
+}
+.tag-item:hover { background-color: var(--c-primary); color: var(--c-white); border-color: var(--c-primary); text-decoration: none; }
+.entry-tags { margin-bottom: 1.5rem; }
+
+
+/*
+=========================================
+--- 15. Styles pour les mobiles (Responsive) ---
 =========================================
 */
 @media (max-width: 768px) {
@@ -503,60 +519,37 @@ button:hover, .actions a:hover {
 
 /*
 =========================================
---- 15. Styles pour l'éditeur double (FR/EN) ---
+--- 16. Styles pour l'éditeur double (FR/EN) ---
 =========================================
 */
 .dual-editor-layout {
     display: flex;
-    flex-direction: row; /* Met les enfants côte à côte */
-    gap: 2rem; /* Espace entre les deux éditeurs complets */
-    align-items: flex-start; /* Aligne les hauts des éditeurs */
+    flex-direction: row;
+    gap: 2rem;
+    align-items: flex-start;
 }
-
-/* Chaque éditeur (FR et EN) prend la moitié de l'espace */
 .dual-editor-layout > .editor-container {
-    flex: 1; /* Prend 50% de la largeur disponible */
-    min-width: 0; /* Important pour flexbox */
-    margin: 0; /* Annule la marge par défaut de .editor-container */
+    flex: 1;
+    min-width: 0;
+    margin: 0;
 }
-
-/* Ajustements responsives pour l'éditeur double */
-@media (max-width: 1024px) { /* Sur écrans plus petits, repasse en vertical */
+@media (max-width: 1024px) {
     .dual-editor-layout {
-        flex-direction: column; /* Met les éditeurs l'un SOUS l'autre */
-        gap: 3rem; /* Espace vertical entre les éditeurs */
+        flex-direction: column;
+        gap: 3rem;
     }
 }
 
 /*
 =========================================
---- Bouton "Afficher Mot de Passe" ---
+--- 17. Icône "Afficher Mot de Passe" ---
 =========================================
 */
-.password-container div {
-    position: relative; /* Nécessaire pour positionner le bouton */
+.password-container div { position: relative; }
+
+.toggle-password-icon {
+    position: absolute; top: 50%; right: 15px; transform: translateY(-50%);
+    cursor: pointer; color: var(--c-gray); font-size: 1rem; transition: color 0.2s ease;
 }
 
-.toggle-password-btn {
-    /* Style du bouton */
-    position: absolute;
-    top: 50%;
-    right: 10px;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    padding: 5px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    color: var(--c-text-light);
-    font-weight: 500;
-    /* On annule le style "pill" par défaut */
-    border-radius: 4px; 
-    transition: color 0.2s ease;
-}
-
-.toggle-password-btn:hover {
-    color: var(--c-primary);
-    transform: translateY(-50%); /* Annule l'effet de soulèvement */
-    opacity: 1;
-}
+.toggle-password-icon:hover { color: var(--c-primary); }

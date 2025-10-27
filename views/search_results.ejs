@@ -1,6 +1,6 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<h1><%= pageTitle %></h1>
+<h1><%= pageTitle %></h1> <%# Le titre est déjà traduit via server.js %>
 
 <% if (articles.length > 0) { %>
     <p><%= t('search.results_count') %> : <%= articles.length %></p>

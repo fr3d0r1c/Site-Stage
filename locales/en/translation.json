@@ -72,11 +72,11 @@
   },
   "auth": {
     "login_title": "Administration - Login",
-    "forgot_password_link": "Forgot password?",
     "register_title": "Create Administrator Account",
     "register_info": "This form is only available for creating the first and only account.",
     "no_admin": "No administrator account exists.",
-    "create_now": "Create it now"
+    "create_now": "Create it now",
+    "forgot_password_link": "Forgot password?"
   },
   "static_pages": {
     "profile_title": "About Me",
@@ -115,6 +115,7 @@
     "welcome": "Welcome",
     "actions_title": "Actions",
     "action_new_entry": "Add New Entry",
-    "action_change_password": "Change Password"
+    "action_change_password": "Change Password",
+    "action_logout": "Logout"
   }
 }
