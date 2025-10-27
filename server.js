@@ -174,11 +174,12 @@ CREATE TABLE IF NOT EXISTS users (
 `;
 db.run(createUserTable);
 
-// Création de la table 'tags'
+// Création de la table 'tags' (bilingue)
 const createTagsTable = `
 CREATE TABLE IF NOT EXISTS tags (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT UNIQUE NOT NULL
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name_fr TEXT UNIQUE NOT NULL, -- Nom français (unique)
+    name_en TEXT UNIQUE NOT NULL  -- Nom anglais (unique)
 );
 `;
 db.run(createTagsTable);
@@ -201,21 +202,36 @@ db.run(createArticleTagsTable);
 async function processTags(articleId, tagNames) {
     const tagIds = [];
     for (const name of tagNames) {
+        // Check if tag exists (using French name as the primary input)
         let tag = await new Promise((resolve, reject) => {
-            db.get('SELECT id FROM tags WHERE name = ?', [name], (err, row) => err ? reject(err) : resolve(row));
+            db.get('SELECT id FROM tags WHERE name_fr = ?', [name], (err, row) => err ? reject(err) : resolve(row));
         });
-        if (!tag) {
+
+        if (!tag) { // If it doesn't exist, create it with both names set to the input
              tag = await new Promise((resolve, reject) => {
-                 db.run('INSERT INTO tags (name) VALUES (?)', [name], function(err) {
-                     err ? reject(err) : resolve({ id: this.lastID });
+                 // Insert the same name for both FR and EN initially
+                 db.run('INSERT INTO tags (name_fr, name_en) VALUES (?, ?)', [name, name], function(err) {
+                     // Handle potential UNIQUE constraint error if EN name already exists
+                     if (err && err.message.includes('UNIQUE constraint failed')) {
+                         db.get('SELECT id FROM tags WHERE name_en = ?', [name], (errFind, rowFind) => {
+                             if (errFind || !rowFind) { reject(err); }
+                             else { resolve(rowFind); }
+                         });
+                     } else if (err) { reject(err); }
+                     else { resolve({ id: this.lastID }); }
                  });
              });
         }
-        tagIds.push(tag.id);
+        if (tag) { tagIds.push(tag.id); }
+        else { console.warn(`Could not find or create tag for name: ${name}`); }
     }
+
+    // Remove old links
     await new Promise((resolve, reject) => {
          db.run('DELETE FROM article_tags WHERE article_id = ?', [articleId], (err) => err ? reject(err) : resolve());
     });
+
+    // Add new links
     if (tagIds.length > 0) {
         const placeholders = tagIds.map(() => '(?, ?)').join(',');
         const values = tagIds.reduce((acc, tagId) => acc.concat([articleId, tagId]), []);
@@ -237,9 +253,16 @@ async function processTags(articleId, tagNames) {
 app.get('/', (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
     const sql = `
-        SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name) as tags
-        FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id
-        GROUP BY a.id ORDER BY a.publication_date DESC LIMIT 3
+        SELECT 
+            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.cover_image_url, a.publication_date,
+            GROUP_CONCAT(t.name_${lang}) as tags -- Selects name_fr or name_en
+        FROM articles a 
+        LEFT JOIN article_tags at ON a.id = at.article_id 
+        LEFT JOIN tags t ON at.tag_id = t.id
+        GROUP BY a.id 
+        ORDER BY a.publication_date DESC 
+        LIMIT 3
     `;
     db.all(sql, [], (err, rows) => {
         if (err) { return res.status(500).send("Erreur BDD"); }
@@ -274,9 +297,16 @@ app.get('/journal', (req, res) => {
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
     const lang = req.language === 'en' ? 'en' : 'fr';
     const sqlEntries = `
-        SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name) as tags
-        FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id
-        GROUP BY a.id ORDER BY a.publication_date DESC LIMIT ? OFFSET ?
+        SELECT
+            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.cover_image_url, a.publication_date,
+            GROUP_CONCAT(t.name_${lang}) as tags -- Select name_fr or name_en
+        FROM articles a
+        LEFT JOIN article_tags at ON a.id = at.article_id
+        LEFT JOIN tags t ON at.tag_id = t.id
+        GROUP BY a.id
+        ORDER BY a.publication_date DESC
+        LIMIT ? OFFSET ?
     `;
     const sqlCount = `SELECT COUNT(*) as totalCount FROM articles`;
     db.all(sqlEntries, [ITEMS_PER_PAGE, offset], (err, rows) => {
@@ -309,7 +339,11 @@ app.get('/entree/:id', (req, res) => {
         SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date
         FROM articles WHERE id = ?
     `;
-    const sqlTags = `SELECT t.name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
+    const sqlTags = `
+        SELECT t.name_${lang} as name FROM tags t -- Selects name_fr or name_en, aliases as 'name'
+        JOIN article_tags at ON t.id = at.tag_id
+        WHERE at.article_id = ?
+    `;
     db.get(sqlArticle, id, (err, article) => {
         if (err || !article) { return res.status(404).send("Entrée non trouvée !"); }
         db.all(sqlTags, id, (errTags, tagRows) => {
@@ -335,10 +369,18 @@ app.get('/search', (req, res) => {
     }
     const searchTerm = `%${query}%`;
     const sql = `
-        SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name) as tags
-        FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id
-        WHERE a.title_fr LIKE ? OR a.title_en LIKE ? OR a.content_fr LIKE ? OR a.content_en LIKE ?
-        GROUP BY a.id ORDER BY a.publication_date DESC
+        SELECT 
+            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.cover_image_url, a.publication_date,
+            GROUP_CONCAT(t.name_${lang}) as tags -- Selects name_fr or name_en
+        FROM articles a 
+        LEFT JOIN article_tags at ON a.id = at.article_id 
+        LEFT JOIN tags t ON at.tag_id = t.id
+        WHERE 
+            a.title_fr LIKE ? OR a.title_en LIKE ? OR 
+            a.content_fr LIKE ? OR a.content_en LIKE ?
+        GROUP BY a.id 
+        ORDER BY a.publication_date DESC
     `;
     db.all(sql, [searchTerm, searchTerm, searchTerm, searchTerm], (err, rows) => {
         if (err) { return res.status(500).send("Erreur BDD recherche"); }
@@ -360,7 +402,7 @@ app.get('/tags/:tagName', (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-    const sqlFindTag = `SELECT id FROM tags WHERE name = ?`;
+    const sqlFindTag = `SELECT id FROM tags WHERE name_${lang} = ?`;
     db.get(sqlFindTag, [tagName], (errTag, tag) => {
         if (errTag) { return res.status(500).send("Erreur BDD (recherche tag)"); }
         if (!tag) {
@@ -368,9 +410,18 @@ app.get('/tags/:tagName', (req, res) => {
         }
         const tagId = tag.id;
         const sqlEntries = `
-            SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name) as tags
-            FROM articles a JOIN article_tags at ON a.id = at.article_id LEFT JOIN article_tags at_all ON a.id = at_all.article_id LEFT JOIN tags t ON at_all.tag_id = t.id
-            WHERE at.tag_id = ? GROUP BY a.id ORDER BY a.publication_date DESC LIMIT ? OFFSET ?
+            SELECT 
+                a.id, a.title_${lang} as title, a.content_${lang} as content,
+                a.cover_image_url, a.publication_date,
+                GROUP_CONCAT(t.name_${lang}) as tags -- Selects name_fr or name_en for display
+            FROM articles a 
+            JOIN article_tags at ON a.id = at.article_id 
+            LEFT JOIN article_tags at_all ON a.id = at_all.article_id 
+            LEFT JOIN tags t ON at_all.tag_id = t.id
+            WHERE at.tag_id = ? 
+            GROUP BY a.id 
+            ORDER BY a.publication_date DESC 
+            LIMIT ? OFFSET ?
         `;
         const sqlCount = `SELECT COUNT(*) as totalCount FROM article_tags WHERE tag_id = ?`;
         db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
