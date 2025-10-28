@@ -2,44 +2,41 @@
 
 <h1><%= t('general.page_title_edit_entry') %></h1>
 
-<form action="/entree/<%= article.id %>/edit" method="POST" id="entry-form"> <div>
-        <label for="title_fr"><%= t('forms.title_fr') %> :</label><br>
-        <input type="text" id="title_fr" name="title_fr" value="<%= article.title_fr %>" required>
-    </div>
-    <div>
-        <label for="title_en"><%= t('forms.title_en') %> :</label><br>
-        <input type="text" id="title_en" name="title_en" value="<%= article.title_en %>" required>
-    </div>
-    <hr>
+<form action="/entree/<%= article.id %>/edit" method="POST" id="entry-form"> 
+    
+    <div class="title-layout">
+        <div class="title-field"> 
+            <label for="title_fr"><%= t('forms.title_fr') %> :</label><br>
+            <input type="text" id="title_fr" name="title_fr" required <%= (typeof article !== 'undefined' && article.title_fr) ? 'value="' + article.title_fr + '"' : '' %>>
+        </div>
+        <div class="title-field"> 
+            <label for="title_en"><%= t('forms.title_en') %> :</label><br>
+            <input type="text" id="title_en" name="title_en" required readonly <%= (typeof article !== 'undefined' && article.title_en) ? 'value="' + article.title_en + '"' : '' %>>
+        </div>
+    </div> <hr>
 
-    <div class="dual-editor-layout">
+    <div class="editor-container-main">
 
-        <div class="editor-container">
+        <div class="editor-and-preview-fr">
             <div class="editor-pane">
                 <label for="content-editor-fr"><%= t('forms.content_fr') %> :</label><br>
-                <button type="button" id="upload-image-btn" class="editor-tool-btn"><%= t('general.upload_image') %></button>
-                <button type="button" id="add-url-image-btn" class="editor-tool-btn"><%= t('general.add_image_url') %></button>
-                <textarea id="content-editor-fr" name="content_fr" rows="20"><%= article.content_fr %></textarea> </div>
+                <textarea id="content-editor-fr" name="content_fr" rows="20"></textarea>
+            </div>
             <div class="preview-pane">
                 <label><%= t('general.preview') %> (FR) :</label><br>
-                <div id="content-preview-fr" class="article-content"></div>
+                <div id="preview_fr" class="article-content"></div>
             </div>
         </div>
 
-        <div class="editor-container">
-            <div class="editor-pane">
-                <label for="content-editor-en"><%= t('forms.content_en') %> :</label><br>
-                <button type="button" id="upload-image-btn-en" class="editor-tool-btn"><%= t('general.upload_image') %> (EN)</button>
-                <button type="button" id="add-url-image-btn-en" class="editor-tool-btn"><%= t('general.add_image_url') %> (EN)</button>
-                <textarea id="content-editor-en" name="content_en" rows="20" required><%= article.content_en %></textarea>
-            </div>
-            <div class="preview-pane">
-                <label><%= t('general.preview') %> (EN) :</label><br>
-                <div id="content-preview-en" class="article-content"></div>
-            </div>
+        <div class="preview-pane-en-standalone">
+            <label><%= t('general.preview') %> (EN) (Auto):</label><br>
+            <div id="preview_en" class="article-content"></div>
         </div>
 
     </div> <hr>
+
+    <textarea id="content_en" name="content_en" style="display: none;" required><%= article.content_en %></textarea> 
+    <hr>
 
     <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
 
@@ -62,11 +59,72 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
 <script src="/js/init-easymde.js"></script>
+<script src="/js/auto-translate-preview.js"></script>
 <script src="/js/uploader.js"></script>
 <script>
-    // Le script de forçage de soumission (identique à new_entry.ejs) va ici
-    const submitBtn = document.getElementById('submit-button'); const form = document.getElementById('entry-form');
-    // ... (reste du script) ...
+    const submitBtn = document.getElementById('submit-button');
+    const form = document.getElementById('entry-form');
+    const contentEnTextarea = document.getElementById('content_en'); // Textarea cachée EN
+
+    if (submitBtn && form && contentEnTextarea) {
+        submitBtn.addEventListener('click', function(event) {
+            // Force EasyMDE FR à copier son contenu dans la textarea cachée 'content_fr'
+            if (window.easyMDEInstance) {
+                window.easyMDEInstance.codemirror.save();
+            }
+
+            let isValid = true;
+            // Sélectionne tous les champs requis visibles + la textarea EN cachée
+            const requiredInputs = form.querySelectorAll('input[required], textarea[required]');
+
+            requiredInputs.forEach(input => {
+                 // Vérifie si la textarea EN cachée (qui est requise) a un contenu valide
+                 if (input.id === 'content_en') {
+                     if (!input.value.trim() || input.value.includes('Translating...') || input.value.includes('Translation Error.')) {
+                          isValid = false;
+                          alert('La traduction anglaise du contenu est requise ou n\'est pas terminée/valide.');
+                          console.error('Validation failed: English content missing or invalid.');
+                     }
+                 }
+                 // Vérification standard pour les autres champs requis
+                 else if (!input.value.trim()) {
+                     isValid = false;
+                     const label = form.querySelector(`label[for="${input.id}"]`);
+                     const fieldName = label ? label.innerText.replace(':', '') : input.name;
+                     alert(`Le champ "${fieldName}" est requis.`);
+                     try { input.focus(); } catch(e){} // Tente de mettre le focus
+                     console.error(`Validation failed: Field "${input.name}" is empty.`);
+                 }
+            });
+
+            // Vérification manuelle du contenu FR dans EasyMDE (puisque sa textarea n'est pas 'required')
+             const frenchContent = window.easyMDEInstance ? window.easyMDEInstance.value() : '';
+             if (!frenchContent.trim()) {
+                 isValid = false;
+                 alert('Le contenu français ne peut pas être vide.');
+                 console.error('Validation failed: French content is empty in EasyMDE');
+                 try { window.easyMDEInstance.codemirror.focus(); } catch(e){} // Tente de mettre le focus
+            }
+
+            // Empêche l'envoi si invalide
+            if (!isValid) {
+                 event.preventDefault();
+                 console.log('Form submission prevented due to validation errors.');
+            } else {
+                 console.log('Form is valid, attempting submission...');
+            }
+        });
+
+        // Déclenche la traduction initiale sur la page de modification
+         const contentFrEditor = document.getElementById('content-editor-fr');
+          if (contentFrEditor && contentFrEditor.value.trim() && typeof window.translateText === 'function') {
+              setTimeout(()=> { if(contentFrEditor.value.trim()){ window.translateText(contentFrEditor.value, 'en-GB', 'content'); }}, 200);
+          }
+          const titleFrInput = document.getElementById('title_fr');
+          if (titleFrInput && titleFrInput.value.trim() && typeof window.translateText === 'function') {
+              setTimeout(()=> { if(titleFrInput.value.trim()){ window.translateText(titleFrInput.value, 'en-GB', 'title'); }}, 200);
+          }
+    }
 </script>
 
 <%- include('partials/footer') %>

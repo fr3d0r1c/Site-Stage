@@ -15,7 +15,26 @@ document.addEventListener('DOMContentLoaded', () => {
         easyMDE_fr = new EasyMDE({
             element: frenchEditorTextarea,
             spellChecker: false,
-            status: ["lines", "words"]
+            status: ["lines", "words"],
+            // Configuration de la barre d'outils pour déclencher l'upload
+            toolbar: [
+                "bold", "italic", "heading", "|",
+                "quote", "unordered-list", "ordered-list", "|",
+                "link",
+                { // Configuration personnalisée pour le bouton image
+                    name: "image",
+                    action: function customImage(editor) {
+                        // Ouvre la sélection de fichier quand on clique sur l'icône image
+                        const fileInput = document.getElementById('image-upload-input');
+                        if (fileInput) {
+                            fileInput.click();
+                        }
+                    },
+                    className: "fa fa-image", // Utilise l'icône Font Awesome
+                    title: "Insérer Image (Upload)",
+                },
+                 "|", "preview", "side-by-side", "fullscreen", "|", "guide"
+            ]
         });
 
         // --- Synchronisation EasyMDE -> Aperçu FR, Titre FR, et Déclenchement Traduction EN ---
@@ -28,7 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 1. Mettre à jour l'aperçu FR
                 if (frenchPreviewDiv && typeof marked !== 'undefined') {
-                    frenchPreviewDiv.innerHTML = marked.parse(markdownText);
+                    try {
+                        frenchPreviewDiv.innerHTML = marked.parse(markdownText);
+                    } catch (e) {
+                         console.error("Error parsing French Markdown:", e);
+                         frenchPreviewDiv.innerHTML = "<p style='color:red;'>Erreur rendu Markdown FR.</p>"
+                    }
                 }
 
                 // 2. Mettre à jour le Titre FR depuis le H1 de l'éditeur
@@ -55,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      }, 500); // 500ms delay
                  } else {
                      // Clear EN preview and hidden textarea if FR is empty
-                     const previewEnDiv = document.getElementById('preview_en');
+                     const previewEnDiv = document.getElementById('preview_en'); // Use correct ID
                      if (previewEnDiv) previewEnDiv.innerHTML = '';
                      const contentEnTextarea = document.getElementById('content_en'); // Hidden EN
                      if (contentEnTextarea) contentEnTextarea.value = '';
@@ -67,7 +91,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Mise à jour initiale de l'aperçu FR au chargement
              if (frenchPreviewDiv && typeof marked !== 'undefined') {
-                 frenchPreviewDiv.innerHTML = marked.parse(easyMDE_fr.value());
+                 try {
+                     frenchPreviewDiv.innerHTML = marked.parse(easyMDE_fr.value());
+                 } catch (e) {
+                      console.error("Error parsing initial French Markdown:", e);
+                 }
              }
         }
 
@@ -96,7 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         easyMDE_fr.codemirror.setCursor(cursorPos);
                         // Force FR preview update since 'change' event was blocked
                         if (frenchPreviewDiv && typeof marked !== 'undefined') {
-                           frenchPreviewDiv.innerHTML = marked.parse(easyMDE_fr.value());
+                           try {
+                               frenchPreviewDiv.innerHTML = marked.parse(easyMDE_fr.value());
+                           } catch(e){ console.error("Error parsing French Markdown after title sync:", e);}
                         }
                     }
                      isUpdatingFromTitle = false;
@@ -109,5 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (easyMDE_fr) {
         window.easyMDEInstance = easyMDE_fr; // Keep using the single instance name
         console.log("EasyMDE FR instance created.");
+    } else if (frenchEditorTextarea) {
+         console.error("EasyMDE FR initialization failed but textarea exists.");
     }
 });

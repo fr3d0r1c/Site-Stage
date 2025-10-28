@@ -386,27 +386,92 @@ button:hover, .actions a:hover {
 --- 9. Styles pour l'éditeur Markdown ---
 =========================================
 */
-.editor-container { display: flex; gap: 2rem; margin: 2rem 0; }
-.editor-pane, .preview-pane { flex: 1; min-width: 0; }
+
+.editor-container {
+    display: flex;
+    gap: 2rem;
+    /* margin: 2rem 0; Retiré car géré par dual-editor-layout ou editor-container-main */
+}
+.editor-pane, .preview-pane { /* S'applique à l'aperçu FR et EN */
+    flex: 1;
+    min-width: 0;
+}
 .preview-pane {
     border: 1px solid var(--c-border); border-radius: 8px; padding: 1.5rem;
     background: var(--c-background); min-height: 400px;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
-#content-editor { /* EasyMDE overrides this */ }
-.editor-tool-btn {
-    background-color: var(--c-text-light); color: var(--c-surface);
-    margin-bottom: 1rem; margin-right: 0.5rem; font-size: 0.9rem; padding: 8px 15px;
+
+/* Styles spécifiques pour EasyMDE (l'éditeur FR) */
+
+/* Container around CodeMirror and toolbar */
+.easymde-container {
+     border: 1px solid var(--c-border) !important;
+     border-radius: 8px !important;
+     transition: border-color 0.3s ease;
 }
-.editor-tool-btn:hover { background-color: var(--c-text); opacity: 1; transform: none;} /* Override button hover */
 
-/* EasyMDE Specific Styles */
-.editor-toolbar a, .editor-toolbar span { color: var(--c-text-light) !important; }
-.editor-toolbar a.active, .editor-toolbar a:hover { background: var(--c-background) !important; border-color: var(--c-border) !important; color: var(--c-text) !important; }
-.CodeMirror { background: var(--c-surface) !important; color: var(--c-text) !important; border-color: var(--c-border) !important; border-radius: 8px !important; }
+.editor-toolbar {
+    /* --- Styles pour la barre d'outils --- */
+    display: flex !important; /* Force flexbox layout */
+    flex-wrap: wrap !important; /* Allow wrapping only if needed */
+    align-items: center !important; /* Vertically center buttons */
+    padding: 4px 8px !important; /* Adjust padding if needed */
+    border-bottom: 1px solid var(--c-border) !important;
+    background: var(--c-surface) !important; /* Use surface color of the theme */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Default state for buttons and separators */
+.editor-toolbar a,
+.editor-toolbar span {
+    color: var(--c-text-light) !important; /* Use light text color of the theme */
+    margin: 2px !important;
+    height: auto !important;
+    line-height: 1.5 !important;
+    background: none !important; /* Ensure no background by default */
+    border: 1px solid transparent !important; /* Transparent border for spacing */
+    border-radius: 4px !important;
+    padding: 2px 4px !important; /* Add padding for click area */
+    box-shadow: none !important; /* Remove any shadows */
+}
+
+/* Separators "|" */
+.editor-toolbar span.separator {
+    color: var(--c-border) !important; /* Use border color for separator */
+    margin: 0 5px !important;
+    border: none !important; /* No border for separators */
+    padding: 0 !important;
+}
+
+/* Hover/Active state for buttons */
+.editor-toolbar a.active,
+.editor-toolbar a:hover {
+    background: var(--c-background) !important; /* Use background color for hover */
+    border-color: var(--c-border) !important;
+    color: var(--c-text) !important; /* Use main text color for hover */
+}
+
+/* CodeMirror Editor Area */
+.CodeMirror {
+    background: var(--c-surface) !important;
+    color: var(--c-text) !important;
+    border: none !important; /* Remove border from CodeMirror itself */
+    border-radius: 0 0 8px 8px !important; /* Round bottom corners if container has border */
+    min-height: 400px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
 .CodeMirror-cursor { border-left-color: var(--c-text) !important; }
-.editor-statusbar { color: var(--c-text-light) !important; background: var(--c-surface) !important; border-top-color: var(--c-border) !important;}
 
+/* Status Bar */
+.editor-statusbar {
+    color: var(--c-text-light) !important;
+    background: var(--c-surface) !important;
+    border-top: 1px solid var(--c-border) !important; /* Add border top */
+    border-radius: 0 0 8px 8px !important; /* Round bottom corners */
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
 
 /*
 =========================================
@@ -519,24 +584,77 @@ button:hover, .actions a:hover {
 
 /*
 =========================================
---- 16. Styles pour l'éditeur double (FR/EN) ---
+--- 16. Styles pour les éditeurs (FR/EN empilés) ---
 =========================================
 */
-.dual-editor-layout {
+
+/* Conteneur principal qui empile FR et EN */
+.editor-container-main {
     display: flex;
-    flex-direction: row;
+    flex-direction: column; /* Empile les enfants (FR et EN) verticalement */
+    gap: 2rem; /* Espace entre les blocs FR et EN */
+    margin: 2rem 0; /* Marge autour de l'ensemble */
+}
+
+/* Le conteneur de l'éditeur FR et de son aperçu FR (qui restent côte à côte) */
+.editor-and-preview-fr {
+    display: flex;
+    flex-direction: row; /* FR editor et FR preview côte à côte */
     gap: 2rem;
-    align-items: flex-start;
-}
-.dual-editor-layout > .editor-container {
-    flex: 1;
+    flex: 1; /* Prend toute la largeur disponible dans le parent */
     min-width: 0;
-    margin: 0;
 }
+
+/* L'aperçu EN (standalone) */
+.preview-pane-en-standalone {
+    flex: 1; /* Prend toute la largeur disponible dans le parent */
+    min-width: 0;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    background: var(--c-background);
+    min-height: 400px; /* Hauteur minimale */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Ajustements responsives pour l'éditeur double */
 @media (max-width: 1024px) {
-    .dual-editor-layout {
+    /* Sur écrans plus petits, l'éditeur FR et l'aperçu FR passent aussi en colonne */
+    .editor-and-preview-fr {
         flex-direction: column;
-        gap: 3rem;
+        gap: 2rem;
+    }
+    /* Le layout principal .editor-container-main est déjà en colonne, pas besoin de changer */
+}
+
+/*
+Ces règles viennent compléter les règles existantes pour .editor-pane et .preview-pane
+dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-preview-fr.
+*/
+
+/*
+=========================================
+--- Styles pour les titres côte à côte ---
+=========================================
+*/
+
+.title-layout {
+    display: flex;
+    flex-direction: row; /* Met les enfants côte à côte */
+    gap: 2rem; /* Espace entre les deux champs */
+    align-items: flex-start; /* Aligne le haut des labels */
+}
+
+.title-field {
+    flex: 1; /* Chaque champ prend 50% de la largeur */
+    min-width: 0; /* Important pour flexbox */
+}
+
+/* Optionnel : Empiler sur petits écrans si besoin */
+ @media (max-width: 600px) {
+    .title-layout {
+        flex-direction: column;
+        gap: 1.5rem;
     }
 }
 
@@ -545,11 +663,21 @@ button:hover, .actions a:hover {
 --- 17. Icône "Afficher Mot de Passe" ---
 =========================================
 */
-.password-container div { position: relative; }
-
-.toggle-password-icon {
-    position: absolute; top: 50%; right: 15px; transform: translateY(-50%);
-    cursor: pointer; color: var(--c-gray); font-size: 1rem; transition: color 0.2s ease;
+/* Conteneur pour positionnement relatif */
+.password-container div {
+    position: relative;
 }
-
-.toggle-password-icon:hover { color: var(--c-primary); }
+/* Style de l'icône oeil */
+.toggle-password-icon {
+    position: absolute;
+    top: 50%;
+    right: 15px; /* Ajuste l'espacement du bord droit */
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--c-gray); /* Couleur de l'icône par défaut */
+    font-size: 1rem; /* Taille de l'icône */
+    transition: color 0.2s ease;
+}
+.toggle-password-icon:hover {
+    color: var(--c-primary); /* Couleur au survol */
+}
