@@ -5,7 +5,7 @@ node_modules
 *.db
 
 # Dossier des uploads (la structure est sur GitHub, mais pas les fichiers dedans)
-public/uploads/
+./public/uploads/
 
 # Fichiers système
 .DS_Store

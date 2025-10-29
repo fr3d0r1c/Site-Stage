@@ -54,7 +54,17 @@ app.set('views', path.join(__dirname, 'views')); // Chemin vers le dossier views
 const storage = multer.diskStorage({
     destination: './public/uploads/',
     filename: function(req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
+        // 1. Nettoie le nom original
+        const safeOriginalName = file.originalname
+            .replace(/\s+/g, '-') // Remplace les espaces par des tirets
+            .replace(/[^a-zA-Z0-9\-._]/g, ''); // Supprime les caractères non autorisés (sauf tirets, points, underscores)
+        
+        // 2. Crée le nom de fichier unique avec le nom nettoyé
+        const uniqueSuffix = Date.now();
+        const extension = path.extname(safeOriginalName); // Récupère l'extension
+        const baseName = path.basename(safeOriginalName, extension); // Récupère le nom sans extension
+
+        cb(null, `${uniqueSuffix}-${baseName}${extension}`); // Ex: 176...-Image-Benji.jpg
     }
 });
 const upload = multer({ storage: storage });
@@ -397,23 +407,67 @@ app.get('/journal', (req, res) => {
     });
 });
 
-// Page de détail d'une entrée
+// Page de détail d'une entrée (avec tags et parsing Markdown)
 app.get('/entree/:id', (req, res) => {
     const id = req.params.id;
     const lang = req.language === 'en' ? 'en' : 'fr';
     const sqlArticle = `SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date FROM articles WHERE id = ?`;
     const sqlTags = `SELECT t.name_${lang} as name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
+
     db.get(sqlArticle, id, (err, article) => {
         if (err) { console.error(`Erreur BDD (GET /entree/${id} article):`, err); return res.status(500).send("Erreur serveur."); }
         if (!article) { return res.status(404).send("Entrée non trouvée !"); }
+
+        // LOG 1: Contenu brut de la BDD
+        console.log(`[DEBUG /entree/${id}] Contenu brut BDD (${lang}):`, article.content ? article.content.substring(0, 100) + '...' : 'VIDE');
+
         db.all(sqlTags, id, (errTags, tagRows) => {
-            if (errTags) { console.error(`Erreur BDD (GET /entree/${id} tags):`, errTags); return res.status(500).send("Erreur serveur."); }
-            article.tags = tagRows.map(tag => tag.name);
-            let finalContent = article.content;
+            if (errTags) { console.error(`Erreur BDD (GET /entree/${id} tags):`, errTags); article.tags = []; }
+            else { article.tags = tagRows.map(tag => tag.name); }
+
+            // Nettoyage du contenu (enlève le H1 si présent)
+            let finalContent = article.content || ''; // Assure que ce n'est pas null
             const markdownTitle = '# ' + article.title;
-            if (finalContent.trim().startsWith(markdownTitle)) { finalContent = finalContent.substring(markdownTitle.length).trim(); }
-            article.content = marked.parse(finalContent);
-            res.render('entry_detail', { article: article, pageTitle: article.title, activePage: 'journal' });
+            if (finalContent.trim().startsWith(markdownTitle)) {
+                finalContent = finalContent.substring(markdownTitle.length).trim();
+            }
+
+            // LOG 2: Contenu après nettoyage (avant parsing)
+            console.log(`[DEBUG /entree/${id}] Contenu après nettoyage:`, finalContent.substring(0, 100) + '...');
+
+            // Conversion Markdown -> HTML
+            let parsedHtml = '';
+            try {
+                parsedHtml = marked.parse(finalContent);
+                // LOG 3: Contenu HTML après parsing (début)
+                console.log(`[DEBUG /entree/${id}] Contenu HTML parsé (début):`, parsedHtml.substring(0, 200) + '...');
+            } catch (parseError) {
+                console.error(`Erreur lors du parsing Markdown pour l'article ${id}:`, parseError);
+                parsedHtml = "<p style='color:red;'>Erreur lors de l'affichage du contenu Markdown.</p>";
+            }
+            article.content = parsedHtml; // Assigne le HTML parsé
+
+            // --- TEST ISOLÉ DE MARKED ---
+            const testMarkdownImage = "![Test Image](https://via.placeholder.com/150)";
+            let testHtmlOutput = "Erreur lors du test isolé.";
+            try {
+                testHtmlOutput = marked.parse(testMarkdownImage);
+                console.log("--- TEST MARKED ISOLÉ ---");
+                console.log("Input:", testMarkdownImage);
+                console.log("Output:", testHtmlOutput);
+                console.log("--- FIN TEST ---");
+                // Temporairement, on remplace le contenu de l'article par le résultat du test
+                article.content = `<h2>Résultat Test Isolé :</h2> ${testHtmlOutput} <hr> <h2>Contenu Original (après parsing) :</h2> ${article.content}`;
+            } catch (testError) {
+                console.error("Erreur durant le test marqué isolé:", testError);
+                article.content = `<p style='color:red;'>Erreur durant le test marqué isolé.</p> ${article.content}`;
+            }
+
+            res.render('entry_detail', {
+                article: article,
+                pageTitle: article.title,
+                activePage: 'journal'
+            });
         });
     });
 });
