@@ -14,10 +14,30 @@ const FsBackend = require('i18next-fs-backend');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto'); // Pour le token de reset password
 const path = require('path'); // Pour le chemin des vues
+const deepl = require('deepl-node');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
 // =================================================================
+
+// === Initialisation de DeepL ===
+const deeplApiKey = process.env.DEEPL_API_KEY;
+let translator = null;
+if (!deeplApiKey) {
+    // Affiche un avertissement si la clé manque
+    console.warn("AVERTISSEMENT : Clé API DeepL manquante dans .env. La traduction automatique sera désactivée.");
+} else {
+    try {
+        // Crée l'objet translator uniquement si la clé existe
+        translator = new deepl.Translator(deeplApiKey);
+        console.log("Client Deepl initialisé.");
+    } catch (error) {
+        // Affiche une erreur si l'initialisation échoue (ex: clé invalide au format)
+        console.error("Erreur lors de l'initialisation du client DeepL:", error);
+        // translator reste null dans ce cas
+    }
+}
+
 const app = express();
 const port = process.env.PORT || 3000;
 const ITEMS_PER_PAGE = 5; // Pour la pagination
@@ -37,23 +57,23 @@ const upload = multer({ storage: storage });
 
 // --- CONFIGURATION i18n (TRADUCTION INTERFACE + DÉTECTION) ---
 i18next
-  .use(FsBackend)
-  .use(i18nextMiddleware.LanguageDetector)
-  .init({
+.use(FsBackend) // Charge les traductions depuis les fichiers (locales/...)
+.use(i18nextMiddleware.LanguageDetector) // Détecte la langue
+.init({
     backend: {
-      loadPath: __dirname + '/locales/{{lng}}/translation.json',
-    },
-    fallbackLng: 'fr',
-    preload: ['fr', 'en'],
-    detection: {
-      order: ['querystring', 'cookie', 'header'],
-      caches: ['cookie'],
-      cookieOptions: {
-          path: '/',
-          maxAge: 30 * 24 * 60 * 60 * 1000 // 30 jours
-      }
-    }
-  });
+        loadPath: __dirname + '/locales/{{lng}}/translation.json', // Chemin vers tes fichiers JSON
+        },
+        fallbackLng: 'fr',
+        preload: ['fr', 'en'],
+        detection: {
+            order: ['querystring', 'cookie', 'header'], // Ordre de détection
+            caches: ['cookie'],
+            cookieOptions: {
+                path: '/',
+                maxAge: 30 * 24 * 60 * 60 * 1000
+            }
+        }
+    });
 
 // --- NODEMAILER CONFIGURATION ---
 let transporter = null;
@@ -414,7 +434,10 @@ app.get('/deconnexion', (req, res) => {
 });
 
 // Affiche/Traite le formulaire d'inscription (conditionnel)
-app.get('/inscription', checkAdminExists, (req, res) => { res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); });
+app.get('/inscription', checkAdminExists, (req, res) => { 
+    res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); 
+});
+
 app.post('/inscription', checkAdminExists, (req, res) => {
     const { username, password, email } = req.body;
     if (!email || !email.includes('@')) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Adresse email invalide.' }); }
@@ -437,7 +460,10 @@ app.post('/inscription', checkAdminExists, (req, res) => {
 });
 
 // --- MOT DE PASSE OUBLIÉ ---
-app.get('/forgot-password', (req, res) => { res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: null, info: null }); });
+app.get('/forgot-password', (req, res) => { 
+    res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: null, info: null }); 
+});
+
 app.post('/forgot-password', async (req, res) => {
     const email = req.body.email;
     if (!email) { return res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: 'Email requis.', info: null }); }
@@ -495,7 +521,10 @@ app.post('/reset-password/:token', (req, res) => {
 });
 
 // --- CHANGER MOT DE PASSE (LOGGED IN) ---
-app.get('/change-password', isAuthenticated, (req, res) => { res.render('change-password', { pageTitle: 'Changer Mot de Passe', activePage: 'admin', error: null, success: null }); });
+app.get('/change-password', isAuthenticated, (req, res) => { 
+    res.render('change-password', { pageTitle: 'Changer Mot de Passe', activePage: 'admin', error: null, success: null }); 
+});
+
 app.post('/change-password', isAuthenticated, async (req, res) => {
     const { currentPassword, newPassword, confirmPassword } = req.body;
     const userId = req.session.userId;
@@ -589,6 +618,54 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
     });
 });
 
+// --- API POUR LA TRADUCTION ---
+// Cette route est appelée par le script auto-translate-preview.js
+app.post('/api/translate', isAuthenticated, async (req, res) => {
+    // Vérifie si le client DeepL (translator) a bien été initialisé
+    // (cela dépend de la présence de la clé API dans .env au démarrage)
+    if (!translator) {
+        console.error("[/api/translate] Erreur: translator non initialisé !");
+        // Renvoie une erreur 503 (Service Unavailable) si DeepL n'est pas prêt
+        return res.status(503).json({ error: 'Service de traduction non disponible.' });
+    }
+
+    // Récupère le texte à traduire et la langue cible depuis le corps de la requête JSON
+    const textToTranslate = req.body.text;
+    const targetLanguage = req.body.targetLang || 'en-GB'; // Anglais britannique par défaut
+
+    // Vérifie si le texte est présent
+    if (!textToTranslate) {
+        console.log("[/api/translate] Erreur: textToTranslate est vide ou manquant.");
+        return res.status(400).json({ error: 'Le champ "text" est manquant.' });
+    }
+
+    console.log(`[/api/translate] Tentative de traduction vers ${targetLanguage}`);
+
+    try {
+        // --- Appel à l'API DeepL via la bibliothèque deepl-node ---
+        console.log("[/api/translate] >>> Appel à translator.translateText...");
+        const result = await translator.translateText(textToTranslate, 'fr', targetLanguage); // Traduit DE 'fr' VERS targetLanguage
+        console.log("[/api/translate] <<< Retour de translator.translateText.");
+        // --- Fin Appel ---
+
+        console.log("[/api/translate] Réponse brute de DeepL:", result);
+
+        // Vérifie si la réponse contient bien le texte traduit
+        if (result && typeof result.text === 'string') {
+            console.log("[/api/translate] Traduction OK:", result.text.substring(0, 50) + "...");
+            // Renvoie la traduction au format JSON
+            res.json({ translatedText: result.text });
+        } else {
+            console.error("[/api/translate] Réponse DeepL invalide:", result);
+            res.status(500).json({ error: 'Réponse invalide du service de traduction.' });
+        }
+
+    } catch (error) {
+        // Gère les erreurs lors de l'appel à DeepL (clé invalide, limite atteinte, etc.)
+        console.error("[/api/translate] Erreur DANS le bloc catch:", error);
+        res.status(500).json({ error: `Échec traduction: ${error.message || 'Erreur inconnue'}` });
+    }
+});
 
 // =================================================================
 // 7. DÉMARRAGE DU SERVEUR

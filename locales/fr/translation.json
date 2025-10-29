@@ -40,7 +40,8 @@
     "preview": "Aperçu",
     "latest_entries": "Les dernières entrées",
     "search_placeholder": "Rechercher...",
-    "search_button": "🔍"
+    "search_button": "🔍",
+    "cancel": "Annuler"
   },
   "homepage": {
     "title": "Mon Carnet de Stage",

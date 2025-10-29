@@ -40,7 +40,8 @@
     "preview": "Preview",
     "latest_entries": "Latest Entries",
     "search_placeholder": "Search...",
-    "search_button": "🔍"
+    "search_button": "🔍",
+    "cancel": "Cancel"
   },
   "homepage": {
     "title": "My Internship Log",
