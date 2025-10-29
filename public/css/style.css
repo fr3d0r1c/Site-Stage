@@ -708,3 +708,86 @@ dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-pr
     opacity: 1;
     text-decoration: none;
 }
+
+/*
+=========================================
+--- Styles pour la page Admin Tags ---
+=========================================
+*/
+.tags-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+}
+
+.tags-table th,
+.tags-table td {
+    border: 1px solid var(--c-border);
+    padding: 0.75rem;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.tags-table th {
+    background-color: var(--c-background);
+    font-weight: 500;
+}
+
+.tags-table input[type="text"] {
+    width: auto; /* Ajuste la largeur */
+    min-width: 150px;
+    display: inline-block; /* Pour aligner avec le bouton */
+}
+
+/* Styles pour les petits boutons */
+.button-small {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    border-radius: 5px; /* Moins arrondi que gélule */
+}
+.button-danger {
+     background-color: var(--c-danger);
+}
+.button-danger:hover {
+     opacity: 0.8;
+     background-color: var(--c-danger); /* Garde la couleur */
+}
+
+.tag-create-form {
+    max-width: 500px; /* Limite la largeur du formulaire */
+    margin-bottom: 2rem;
+}
+
+/*
+=========================================
+--- Styles pour la sélection des Tags ---
+=========================================
+*/
+.tags-checkbox-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Crée des colonnes */
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    background-color: var(--c-background);
+    max-height: 200px; /* Limite la hauteur et ajoute une scrollbar si besoin */
+    overflow-y: auto;
+}
+
+.tag-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tag-checkbox-item input[type="checkbox"] {
+    width: auto; /* Taille par défaut */
+    margin: 0;
+}
+
+.tag-checkbox-item label {
+    margin-bottom: 0; /* Annule la marge par défaut des labels de formulaire */
+    font-weight: normal; /* Texte normal */
+    cursor: pointer;
+}

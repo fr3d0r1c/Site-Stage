@@ -307,50 +307,36 @@ db.run(createArticleTagsTable, (err) => {
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
 // =================================================================
-async function processTags(articleId, tagNames) {
-    // Use Promises for better async control with db calls
-    const getTagId = (name) => new Promise((resolve, reject) => {
-        db.get('SELECT id FROM tags WHERE name_fr = ?', [name], (err, row) => err ? reject(err) : resolve(row));
-    });
-
-    const createTag = (name) => new Promise((resolve, reject) => {
-        db.run('INSERT INTO tags (name_fr, name_en) VALUES (?, ?)', [name, name], function(err) {
-             if (err && err.message.includes('UNIQUE constraint failed')) {
-                 db.get('SELECT id FROM tags WHERE name_en = ?', [name], (errFind, rowFind) => { // Try finding by EN name
-                     if (errFind || !rowFind) { reject(err); } else { resolve(rowFind); }
-                 });
-             } else if (err) { reject(err); }
-             else { resolve({ id: this.lastID }); }
-        });
-    });
-
+async function processTags(articleId, tagIds) {
+    // Utilisation de Promesses pour un meilleur contrôle asynchrone
     const deleteLinks = (artId) => new Promise((resolve, reject) => {
         db.run('DELETE FROM article_tags WHERE article_id = ?', [artId], (err) => err ? reject(err) : resolve());
     });
 
     const insertLinks = (artId, ids) => new Promise((resolve, reject) => {
-        if (ids.length === 0) return resolve();
-        const placeholders = ids.map(() => '(?, ?)').join(',');
-        const values = ids.reduce((acc, tagId) => acc.concat([artId, tagId]), []);
+        // Ne fait rien si aucun tag n'est sélectionné
+        if (!ids || ids.length === 0) return resolve();
+
+        // S'assure que les IDs sont bien des nombres valides (sécurité)
+        const validIds = ids.filter(id => typeof id === 'number' && !isNaN(id));
+        if (validIds.length === 0) return resolve();
+
+        // Crée les placeholders et les valeurs pour l'insertion multiple
+        const placeholders = validIds.map(() => '(?, ?)').join(',');
+        const values = validIds.reduce((acc, tagId) => acc.concat([artId, tagId]), []);
         const sql = `INSERT INTO article_tags (article_id, tag_id) VALUES ${placeholders}`;
+
         db.run(sql, values, (err) => err ? reject(err) : resolve());
     });
 
     try {
-        const tagIds = [];
-        for (const name of tagNames) {
-            let tag = await getTagId(name);
-            if (!tag) {
-                tag = await createTag(name);
-            }
-            if (tag) { tagIds.push(tag.id); }
-            else { console.warn(`Could not find or create tag for name: ${name}`); }
-        }
+        // 1. Supprime les anciens liens pour cet article
         await deleteLinks(articleId);
+        // 2. Ajoute les nouveaux liens basés sur les IDs reçus
         await insertLinks(articleId, tagIds);
     } catch (error) {
-         console.error("Error in processTags:", error);
-         throw error; // Re-throw error to be caught by the route
+        console.error(`Erreur dans processTags pour article ${articleId}:`, error);
+        throw error; // Relance l'erreur pour qu'elle soit attrapée par la route appelante
     }
 }
 
@@ -703,50 +689,117 @@ app.post('/contact', contactLimiter, (req, res) => {
 
 // --- GESTION DU CONTENU (ROUTES PROTÉGÉES) ---
 
-// Affiche le formulaire de création
-app.get('/journal/nouvelle', isAuthenticated, (req, res) => { res.render('new_entry', { pageTitle: req.t('page_titles.new_entry'), activePage: 'journal' }); });
+// Affiche le formulaire de création (avec la liste des tags)
+app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
+    const lang = req.language === 'en' ? 'en' : 'fr'; // Pour afficher les noms des tags
+    // Récupère tous les tags existants
+    const sqlTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
 
-// Traite la création d'une entrée (bilingue + tags)
-app.post('/journal', isAuthenticated, async (req, res) => {
-    const { title_fr, title_en, content_fr, content_en, cover_image_url, tags } = req.body;
-    const userId = req.session.userId;
-    const tagNames = tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-    const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?)';
-    db.run(sqlInsertArticle, [title_fr, title_en, content_fr, content_en, userId, cover_image_url], async function(err) {
-        if (err) { console.error("Erreur BDD (POST /journal insert):", err); return res.status(500).send("Erreur serveur."); }
-        const articleId = this.lastID;
-        try { await processTags(articleId, tagNames); res.redirect('/journal'); }
-        catch (tagError) { console.error("Erreur tags (POST /journal):", tagError); res.status(500).send("Erreur tags."); }
-    });
-});
-
-// Affiche le formulaire de modification (bilingue + tags)
-app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
-    const id = req.params.id;
-    const sqlArticle = "SELECT * FROM articles WHERE id = ?";
-    const sqlTags = `SELECT t.name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
-    db.get(sqlArticle, id, (err, article) => {
-        if (err) { console.error(`Erreur BDD (GET /entree/${id}/edit article):`, err); return res.status(500).send("Erreur serveur."); }
-        if (!article) { return res.status(404).send("Entrée non trouvée !");}
-        db.all(sqlTags, id, (errTags, tagRows) => {
-            if (errTags) { console.error(`Erreur BDD (GET /entree/${id}/edit tags):`, errTags); return res.status(500).send("Erreur serveur."); }
-            const tagString = tagRows.map(tag => tag.name).join(', ');
-            article.tags = tagString;
-            res.render('edit_entry', { article: article, pageTitle: `${req.t('page_titles.edit_entry')}: ${article.title_fr}`, activePage: 'journal' });
+    db.all(sqlTags, [], (err, allTags) => {
+        if (err) {
+            console.error("Erreur BDD (GET /journal/nouvelle tags):", err);
+            // Gérer l'erreur, peut-être afficher le formulaire sans tags ?
+            allTags = []; // Fallback
+        }
+        res.render('new_entry', {
+            pageTitle: req.t('page_titles.new_entry'),
+            activePage: 'journal',
+            allTags: allTags, // Passe la liste de tous les tags
+            articleTags: []   // Pas de tags pré-sélectionnés pour une nouvelle entrée
         });
     });
 });
 
-// Traite la modification d'une entrée (bilingue + tags)
-app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
+
+// Traite la création d'une entrée (avec sélection de tags par ID)
+app.post('/journal', isAuthenticated, async (req, res) => {
+    const { title_fr, title_en, content_fr, content_en, cover_image_url } = req.body;
+    const userId = req.session.userId;
+
+    // --- RÉCUPÉRATION DES IDs DES TAGS ---
+    let tagIds = req.body.tags; // Peut être undefined, un seul ID (string), ou un tableau d'IDs (string[])
+    if (tagIds === undefined) {
+        tagIds = []; // Si rien n'est coché, tableau vide
+    } else if (!Array.isArray(tagIds)) {
+        tagIds = [tagIds]; // Si une seule case est cochée, le met dans un tableau
+    }
+    // Convertit les IDs (qui arrivent en string) en nombres entiers
+    tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    // --- FIN RÉCUPÉRATION ---
+
+    const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?)';
+
+    db.run(sqlInsertArticle, [title_fr, title_en, content_fr, content_en, userId, cover_image_url], async function(err) {
+        if (err) { console.error("Erreur BDD (POST /journal insert):", err); return res.status(500).send("Erreur serveur."); }
+        const articleId = this.lastID;
+        try  {
+            // Passe le tableau d'IDs directement
+            await processTags(articleId, tagIds);
+            res.redirect('/journal');
+        } catch (tagError) {
+            console.error("Erreur traitement tags (création):", tagError);
+            res.status(500).send("Erreur tags.");
+        }
+    })
+})
+
+
+// Affiche le formulaire de modification (avec tous les tags et les tags actuels)
+app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
     const id = req.params.id;
-    const { title_fr, title_en, content_fr, content_en, cover_image_url, tags } = req.body;
-    const tagNames = tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const sqlArticle = "SELECT * FROM articles WHERE id = ?"; // Récupère l'article complet
+    const sqlArticleTags = `SELECT tag_id FROM article_tags WHERE article_id = ?`; // IDs des tags liés
+    const sqlAllTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`; // Tous les tags
+
+    // Utilise Promise.all pour exécuter les requêtes en parallèle
+    Promise.all([
+        new Promise((resolve, reject) => db.get(sqlArticle, id, (err, row) => err ? reject(err) : resolve(row))),new Promise((resolve, reject) => db.get(sqlArticle, id, (err, row) => err ? reject(err) : resolve(row))),
+        new Promise((resolve, reject) => db.all(sqlArticleTags, id, (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.all(sqlAllTags, [], (err, rows) => err ? reject(err) : resolve(rows)))
+    ]).then(([article, articleTagRows, allTags]) => {
+        if (!article) { return res.status(404).send("Entrée non trouvée !"); }
+
+        // Crée un Set des IDs des tags actuellement liés pour une recherche rapide
+        const articleTagIds = new Set(articleTagRows.map(row => row.tag_id));
+
+        res.render('edit_entry', {
+            article: article, // Contient title_fr, content_fr etc.
+            pageTitle: `${req.t('page_titles.edit_entry')}: ${article.title_fr}`,
+            activePage: 'journal',
+            allTags: allTags,          // Tous les tags disponibles
+            articleTagIds: articleTagIds // Les IDs des tags actuellement cochés
+        });
+    }).catch(err => {
+        console.error(`Erreur BDD (GET /entree/${id}/edit combined):`, err);
+        res.status(500).send("Erreur serveur lors de la récupération des données.");
+    });
+});
+
+// Traite la modification d'une entrée (avec sélection de tags par ID)
+app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
+    const id = req.params.id; // ID de l'article
+    const { title_fr, title_en, content_fr, content_en, cover_image_url } = req.body;
+
+    // --- RÉCUPÉRATION DES IDs DES TAGS (Identique à la création) ---
+    let tagIds = req.body.tags;
+    if (tagIds === undefined) { tagIds = []; }
+    else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
+    tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    // --- FIN RÉCUPÉRATION ---
+
     const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
+
     db.run(sqlUpdateArticle, [title_fr, title_en, content_fr, content_en, cover_image_url, id], async function(err) {
         if (err) { console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); return res.status(500).send("Erreur serveur."); }
-        try { await processTags(id, tagNames); res.redirect('/journal'); }
-        catch (tagError) { console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError); res.status(500).send("Erreur tags."); }
+        try {
+            // Passe le tableau d'IDs directement
+            await processTags(id, tagIds);
+            res.redirect('/journal');
+        } catch (tagError) {
+            console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
+            res.status(500).send("Erreur tags.");
+        }
     });
 });
 
@@ -808,6 +861,122 @@ app.post('/api/translate', isAuthenticated, async (req, res) => {
         res.status(500).json({ error: `Échec traduction: ${error.message || 'Erreur inconnue'}` });
     }
 });
+
+// --- GESTION DES TAGS (Admin) ---
+app.get('/admin/tags', isAuthenticated, (req, res) => {
+    // Récupère tous les tags depuis la base de données
+    const sql = 'SELECT * FROM tags ORDER BY name_fr ASC';
+    db.all(sql, [], (err, tags) => {
+        if (err) {
+            console.error("Erreur BDD (GET /admin/tags):", err);
+            return res.status(500).send("Erreur serveur lors de la récupération des tags.");
+        }
+
+        const message = req.session.flashMessage;
+        req.session.flashMessage = null; // Efface après lecture
+
+        res.render('admin-tags', {
+            pageTitle: 'Gérer les Tags',
+            activePage: 'admin',
+            tags: tags, // Passe la liste des tags à la vue
+            message: message // Pour afficher les messages de succès/erreur
+        });
+    });
+});
+
+// Traite la mise à jour d'un tag (nom anglais)
+app.post('/admin/tags/update/:id', isAuthenticated, (req, res) => {
+    const tagId = req.params.id;
+    const newNameEn = req.body.name_en;
+
+    if (!newNameEn) {
+        req.session.flashMessage = { type: 'error', text: 'Le nom anglais ne peut pas être vide.' };
+        return res.redirect('/admin/tags');
+    }
+
+    const sql = 'UPDATE tags SET name_en = ? WHERE id = ?';
+    db.run(sql, [newNameEn, tagId], function(err) {
+        let message;
+        if (err) {
+            console.error(`Erreur BDD (POST /admin/tags/update/${tagId}):`, err);
+            message = { type: 'error', text: 'Erreur lors de la mise à jour du tag. Le nom anglais existe peut-être déjà.' };
+        } else {
+            message = { type: 'success', text: `Tag #${tagId} mis à jour avec succès.` };
+        }
+        req.session.flashMessage = message;
+        res.redirect('/admin/tags');
+    })
+})
+
+// Traite la création d'un nouveau tag (avec traduction auto)
+app.post('/admin/tags/create', isAuthenticated, async (req, res) => { // Ajout de async
+    const name_fr = req.body.name_fr; // On récupère seulement le nom FR
+    // On ignore req.body.name_en pour l'instant, car on va le générer
+
+    if (!name_fr) {
+        req.session.flashMessage = { type: 'error', text: 'Le nom français est requis.' };
+        return res.redirect('/admin/tags');
+    }
+
+    let name_en = name_fr; // Valeur par défaut
+
+    // --- Traduction via DeepL ---
+    if (translator) { // Vérifie si le client DeepL est initialisé
+        try {
+            console.log(`[Tag Create] Traduction de "${name_fr}" vers EN...`);
+            const result = await translator.translateText(name_fr, 'fr', 'en-GB');
+            if (result && typeof result.text === 'string') {
+                name_en = result.text; // Utilise la traduction
+                console.log(`[Tag Create] Traduction réussie: "${name_en}"`);
+            } else {
+                console.warn("[Tag Create] Réponse DeepL invalide pour la traduction du tag.");
+            }
+        } catch (error) {
+            console.error("[Tag Create] Erreur lors de la traduction DeepL:", error);
+            // Si erreur, name_en garde la valeur de name_fr (fallback)
+        }
+    } else {
+        console.warn("[Tag Create] Client DeepL non initialisé, utilise le nom FR pour EN.");
+    }
+    // --- Fin Traduction ---
+
+    // Insertion dans la base de données avec les deux noms
+    const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
+    db.run(sql, [name_fr, name_en], function(err) {
+        let message;
+        if (err) {
+            console.error("Erreur BDD (POST /admin/tags/create):", err);
+            if (err.message.includes('UNIQUE constraint failed')) {
+                message = { type: 'error', text: 'Un tag avec ce nom (FR ou EN) existe déjà.' };
+            } else {
+                message = { type: 'error', text: 'Erreur lors de la création du tag.' };
+            }
+        } else {
+            message = { type: 'success', text: `Tag "${name_fr}" / "${name_en}" créé avec succès.` };
+        }
+        req.session.flashMessage = message;
+        res.redirect('/admin/tags');
+    });
+});
+
+app.post('/admin/tags/delete/:id', isAuthenticated, (req, res) => {
+    const tagId = req.params.id;
+    // ON DELETE CASCADE dans la table article_tags gère la suppression des liens
+    const sql = 'DELETE FROM tags WHERE id = ?';
+    db.run(sql, [tagId], function(err) {
+        let message;
+        if (err) {
+            console.error(`Erreur BDD (POST /admin/tags/delete/${tagId}):`, err);
+            message = { type: 'error', text: 'Erreur lors de la suppression du tag.' };
+        } else if (this.changes === 0) {
+            message = { type: 'error', text: 'Tag non trouvé pour la suppression.' };
+        } else {
+            message = { type: 'success', text: `Tag #${tagId} supprimé avec succès.` };
+        }
+        req.session.flashMessage = message;
+        res.redirect('/admin/tags');
+    });
+})
 
 // =================================================================
 // 7. DÉMARRAGE DU SERVEUR

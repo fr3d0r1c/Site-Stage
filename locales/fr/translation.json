@@ -117,6 +117,21 @@
     "actions_title": "Actions",
     "action_new_entry": "Ajouter une nouvelle entrée",
     "action_change_password": "Changer le mot de passe",
-    "action_logout": "Déconnexion"
+    "action_logout": "Déconnexion",
+    "manage_tags_title": "Gérer les Tags",
+    "add_new_tag_title": "Ajouter un Nouveau Tag",
+    "tag_name_fr": "Nom Français",
+    "tag_name_en": "Nom Anglais",
+    "add_tag_button": "Ajouter le Tag",
+    "existing_tags_title": "Tags Existants",
+    "table_header_id": "ID",
+    "table_header_fr": "Nom Français",
+    "table_header_en": "Nom Anglais",
+    "table_header_action": "Action",
+    "save_button": "Sauver",
+    "delete_button": "Supprimer",
+    "no_tags": "Aucun tag trouvé.",
+    "back_to_admin": "Retour au panneau d'administration",
+    "delete_confirm": "Voulez-vous vraiment supprimer ce tag ? Il sera retiré de toutes les entrées associées."
   }
 }

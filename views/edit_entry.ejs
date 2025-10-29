@@ -47,8 +47,26 @@
     </div>
 
     <div>
-        <label for="tags">Tags (séparés par des virgules) :</label><br>
-        <input type="text" id="tags" name="tags" placeholder="Ex: Travail, Culture, Voyage" value="<%= article.tags || '' %>">
+        <label>Tags :</label>
+        <div class="tags-checkbox-list">
+            <% if (allTags && allTags.length > 0) { %>
+                <% allTags.forEach(tag => { %>
+                    <div class="tag-checkbox-item">
+                        <input
+                        type="checkbox"
+                        name="tags" <%# Le name doit être identique pour toutes %>
+                        value="<%= tag.id %>" <%# La value est l'ID du tag %>
+                        id="tag-<%= tag.id %>"
+                        <%# Pour edit_entry.ejs, coche la case si l'ID est dans le Set %>
+                        <% if (typeof articleTagIds !== 'undefined' && articleTagIds.has(tag.id)) { %> checked <% } %>
+                        >
+                        <label for="tag-<%= tag.id %>"><%= tag.name %></label> <%# Affiche le nom du tag (déjà traduit) %>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <p><i>Aucun tag disponible. <a href="/admin/tags">Créez-en d'abord</a>.</i></p>
+            <% } %>
+        </div>
     </div>
 
     <div>
