@@ -17,6 +17,8 @@ const path = require('path'); // Pour le chemin des vues
 const deepl = require('deepl-node');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const sharp = require('sharp');
+const fs = require('fs'); // Module Node.js pour interagir avec les fichiers
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -621,10 +623,46 @@ app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
 });
 
 // --- API UPLOAD IMAGE ---
-app.post('/upload-image', isAuthenticated, apiLimiter, upload.single('image'), (req, res) => {
-    if (!req.file) { return res.status(400).json({ error: 'Aucun fichier reçu.' }); }
-    const imageUrl = '/uploads/' + req.file.filename;
-    res.json({ imageUrl: imageUrl });
+app.post('/upload-image', isAuthenticated, apiLimiter, upload.single('image'), async (req, res) => {
+    if (!req.file) { 
+        return res.status(400).json({ error: 'Aucun fichier reçu.' }); 
+    }
+
+    const originalPath = req.file.path; // Chemin du fichier original (ex: public/uploads/12345.jpg)
+    const originalFilename = req.file.filename; // Nom de fichier original
+    // On crée un nouveau nom de fichier pour la version optimisée (ex: 12345-opt.webp)
+    const optimizedFilename = originalFilename.replace(/(\.[\w\d_-]+)$/i, '-opt.webp');
+    const optimizedPath = path.join('public', 'uploads', optimizedFilename); // Chemin complet pour la sauvegarde
+
+    console.log(`[Sharp] Traitement de ${originalFilename} vers ${optimizedFilename}`);
+
+    try {
+        // 2. Traitement avec Sharp
+        await sharp(originalPath)
+            .resize({ width: 1200, withoutEnlargement: true }) // Redimensionne si > 1200px de large, sans agrandir les petites images
+            .webp({ quality: 80 }) // Convertit en WebP avec 80% de qualité (bon compromis)
+            .toFile(optimizedPath); // Sauvegarde l'image optimisée
+
+        console.log(`[Sharp] Image optimisée sauvegardée : ${optimizedPath}`);
+
+        // 3. Optionnel : Supprimer l'image originale (économise de l'espace)
+        fs.unlink(originalPath, (err) => {
+            if (err) console.error(`[Sharp] Erreur suppression original ${originalPath}:`, err);
+            else console.log(`[Sharp] Image originale supprimée : ${originalPath}`);
+        });
+
+        // 4. Renvoyer l'URL de l'image OPTIMISÉE
+        const optimizedImageUrl = '/uploads/' + optimizedFilename;
+        res.json({ imageUrl: optimizedImageUrl });
+    
+    } catch (error) {
+        console.error("[Sharp] Erreur lors de l'optimisation de l'image:", error);
+        // Si l'optimisation échoue, on pourrait renvoyer l'original ou une erreur
+        // Pour l'instant, on renvoie une erreur serveur
+        // On pourrait aussi essayer de supprimer l'original si l'optimisation plante
+        try { fs.unlinkSync(originalPath); } catch (e) {} // Tentative de nettoyage
+        res.status(500).json({ error: "Erreur lors du traitement de l'image." });
+    }
 });
 
 // --- FORMULAIRE CONTACT ---
