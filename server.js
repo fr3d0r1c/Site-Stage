@@ -15,6 +15,8 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto'); // Pour le token de reset password
 const path = require('path'); // Pour le chemin des vues
 const deepl = require('deepl-node');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -54,6 +56,39 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage: storage });
+
+// --- Configuration Rate Limiter ---
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // Fenêtre de 15 minutes
+    max: 100, // Limite chaque IP à 100 requêtes par fenêtre (pour les API générales comme l'upload)
+    standardHeaders: true, // Renvoie les informations de limite dans les headers `RateLimit-*`
+    legacyHeaders: false, // Désactive les headers `X-RateLimit-*` (obsolètes)
+    message: { error: 'Trop de requêtes depuis cette IP, veuillez réessayer après 15 minutes.' } // Message d'erreur JSON
+});
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // Fenêtre de 15 minutes
+    max: 5, // Limite les tentatives d'authentification/reset à 5 par fenêtre
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Trop de tentatives de connexion/reset depuis cette IP, veuillez réessayer après 15 minutes.' }
+});
+
+const contactLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // Fenêtre de 1 heure
+    max: 10, // Limite les envois de formulaire de contact à 10 par heure
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Pour les formulaires HTML, on peut rediriger ou rendre une vue avec une erreur
+    handler: (req, res, next, options) => {
+        res.status(options.statusCode).render('contact', { // Recharge la page contact
+            pageTitle: req.t('page_titles.contact'),
+            activePage: 'contact',
+            messageSent: false,
+            error: options.message.error // Affiche l'erreur du limiteur
+         });
+    }
+});
 
 // --- CONFIGURATION i18n (TRADUCTION INTERFACE + DÉTECTION) ---
 i18next
@@ -148,6 +183,57 @@ function checkAdminExists(req, res, next) {
         }
     });
 }
+
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self"],
+                scriptSrc: [
+                    "'self'",
+                    "https://cdn.jsdelivr.net/npm/marked/marked.min.js",
+                    "https://unpkg.com/easymde/dist/easymde.min.js",
+                ],
+                styleSrc: [
+                    "'self'",
+                    "https://unpkg.com/easymde/dist/easymde.min.css",      
+                    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/",
+                    "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
+                    "https://fonts.googleapis.com/", // <-- AJOUTÉ pour Google Fonts CSS
+                    "'unsafe-inline'"
+                ],
+                imgSrc: [
+                    "'self'", // Ton domaine (pour les uploads)
+                    "data:", // Pour les images encodées
+                    "https://via.placeholder.com", // Pour les images d'exemple
+                    "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // <-- AJOUTÉ pour les SVG des drapeaux
+                    // Ajoute d'autres domaines d'images si nécessaire
+                ],
+                fontSrc: [
+                    "'self'",
+                    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/", // Pour Font Awesome
+                    "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // Pour Flag Icon Fonts
+                    "https://fonts.gstatic.com" // Pour Google Fonts (si utilisé)
+                ],
+                connectSrc: [
+                    "'self'", // Autorise les connexions au même domaine (pour l'API upload)
+                    // Si tu utilises DeepL, ajoute son domaine API ici si nécessaire
+                    // Ex: "https://api-free.deepl.com"
+                ],
+                frameSrc: [
+                    // Si tu utilises Google Translate (Solution A), décommente :
+                    // "https://translate.google.com",
+                    // "https://*.google.com"
+                ], // Pour les iframes (Google Translate)
+                objectSrc: ["'none'"], // N'autorise pas <object>, <embed>, <applet>
+                upgradeInsecureRequests: [], // Redirige HTTP vers HTTPS si possible
+            },
+        },
+        // Autres options de Helmet (gardent les valeurs par défaut sécurisées)
+        crossOriginEmbedderPolicy: false, // Peut causer des problèmes avec certaines ressources externes
+        crossOriginResourcePolicy: { policy: "same-site" }, // Contrôle le partage de ressources cross-origin
+    })
+);
 
 // =================================================================
 // 4. CONNEXION À LA BASE DE DONNÉES ET CRÉATION DES TABLES
@@ -409,7 +495,7 @@ app.get('/connexion', (req, res) => {
 });
 
 // Traite la tentative de connexion
-app.post('/connexion', (req, res) => {
+app.post('/connexion', authLimiter, (req, res) => {
     const { username, password } = req.body;
     const sql = 'SELECT * FROM users WHERE username = ?';
     db.get(sql, [username], (err, user) => {
@@ -438,7 +524,7 @@ app.get('/inscription', checkAdminExists, (req, res) => {
     res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); 
 });
 
-app.post('/inscription', checkAdminExists, (req, res) => {
+app.post('/inscription', checkAdminExists, authLimiter, (req, res) => {
     const { username, password, email } = req.body;
     if (!email || !email.includes('@')) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Adresse email invalide.' }); }
     if (!password || password.length < 8) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Le mot de passe doit faire au moins 8 caractères.' }); }
@@ -464,7 +550,7 @@ app.get('/forgot-password', (req, res) => {
     res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: null, info: null }); 
 });
 
-app.post('/forgot-password', async (req, res) => {
+app.post('/forgot-password', authLimiter, async (req, res) => {
     const email = req.body.email;
     if (!email) { return res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: 'Email requis.', info: null }); }
     if (!transporter) { return res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: 'Service email non configuré.', info: null }); }
@@ -501,7 +587,7 @@ app.get('/reset-password/:token', (req, res) => {
     });
 });
 
-app.post('/reset-password/:token', (req, res) => {
+app.post('/reset-password/:token', authLimiter, (req, res) => {
     const token = req.params.token;
     const { newPassword, confirmPassword } = req.body;
     if (newPassword !== confirmPassword || newPassword.length < 8) { return res.render('reset-password', { pageTitle: 'Réinitialiser Mot de Passe', activePage: 'admin', error: 'Mots de passe invalides (doivent correspondre, min 8 caractères).', token: token }); }
@@ -525,7 +611,7 @@ app.get('/change-password', isAuthenticated, (req, res) => {
     res.render('change-password', { pageTitle: 'Changer Mot de Passe', activePage: 'admin', error: null, success: null }); 
 });
 
-app.post('/change-password', isAuthenticated, async (req, res) => {
+app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
     const { currentPassword, newPassword, confirmPassword } = req.body;
     const userId = req.session.userId;
     if (newPassword !== confirmPassword) { return res.render('change-password', { /* ... error: 'Correspondent pas.' ... */}); }
@@ -549,14 +635,70 @@ app.post('/change-password', isAuthenticated, async (req, res) => {
 });
 
 // --- API UPLOAD IMAGE ---
-app.post('/upload-image', isAuthenticated, upload.single('image'), (req, res) => {
+app.post('/upload-image', isAuthenticated, apiLimiter, upload.single('image'), (req, res) => {
     if (!req.file) { return res.status(400).json({ error: 'Aucun fichier reçu.' }); }
     const imageUrl = '/uploads/' + req.file.filename;
     res.json({ imageUrl: imageUrl });
 });
 
 // --- FORMULAIRE CONTACT ---
-app.post('/contact', (req, res) => { /* ... (code inchangé) ... */ });
+app.post('/contact', contactLimiter, (req, res) => { 
+    if (!transporter) {
+        console.error("Tentative d'envoi via /contact alors que Nodemailer n'est pas configuré.");
+        return res.status(503).render('contact', {
+            pageTitle: req.t('page_titles.contact'),
+            activePage: 'contact',
+            messageSent: false, // Indique une erreur
+            error: req.t('contact.error_message') // Message d'erreur générique
+        });
+    }
+
+    const { name, email, message } = req.body;
+
+    if (!name || !email || !message || !email.includes('@')) {
+        console.warn("Validation échouée pour le formulaire de contact:", { name, email, message });
+        return res.status(400).render('contact', {
+            pageTitle: req.t('page_titles.contact'),
+            activePage: 'contact',
+            messageSent: false,
+            error: "Veuillez remplir tous les champs correctement." // Message d'erreur spécifique
+        });
+    }
+
+    const mailOptions = {
+        from: `"${name}" <${process.env.EMAIL_USER}>`, // L'expéditeur affiché sera ton compte Gmail
+        replyTo: email, // Permet de répondre directement à l'expéditeur via le bouton "Répondre"
+        to: process.env.EMAIL_TO, // L'adresse où tu reçois les messages
+        subject: `Nouveau message de ${name} via le Carnet de Stage`, // Sujet de l'email
+        // Corps de l'email en texte brut (pour les clients mail simples)
+        text: `Nom: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
+        // Corps de l'email en HTML (pour un meilleur formatage)
+        html: `
+            <p><strong>Nom :</strong> ${name}</p>
+            <p><strong>Email :</strong> ${email}</p>
+            <hr>
+            <p><strong>Message :</strong></p>
+            <p>${message.replace(/\n/g, '<br>')}</p> <%# Convertit les sauts de ligne en <br> pour HTML %>
+        `
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        let messageStatus = null; // Variable pour le feedback sur la page
+        if (error) {
+            console.error("Erreur lors de l'envoi de l'email via /contact:", error);
+            messageStatus = false; // Indique un échec
+        } else {
+            console.log('Email de contact envoyé: ' + info.response);
+            messageStatus = true; // Indique un succès
+        }
+        res.render('contact', {
+            pageTitle: req.t('page_titles.contact'),
+            activePage: 'contact',
+            messageSent: messageStatus, // true ou false
+            error: !messageStatus ? req.t('contact.error_message') : null // Affiche l'erreur si échec
+        });
+    });
+});
 
 
 // --- GESTION DU CONTENU (ROUTES PROTÉGÉES) ---
