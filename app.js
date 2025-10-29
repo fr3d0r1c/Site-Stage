@@ -261,6 +261,11 @@ const db = new sqlite3.Database(dbPath, (err) => {
         process.exit(1); // Quitte l'application si la BDD ne peut pas s'ouvrir
     }
     console.log(`Connecté à la base de données SQLite : ${dbPath}`);
+
+    // Active les contraintes de clé étrangère (pour ON DELETE CASCADE)
+    db.run('PRAGMA foreign_keys = ON;', (errPragma) => {
+        if (errPragma) console.error("Erreur activation clés étrangères:", errPragma);
+    });
 });
 
 // Création de la table 'articles' (version bilingue + cover)
