@@ -24,8 +24,28 @@
          </div>
      <% } %>
 
-</article>
-
+</article> <nav class="prev-next-nav">
+    <div class="prev-link">
+        <% if (prevEntry) { %>
+            <a href="/entree/<%= prevEntry.id %>" title="<%= prevEntry.title %>">
+                &larr; Entrée Précédente <%# Utiliser t() si tu ajoutes les clés %>
+                <span class="prev-next-title"><%= prevEntry.title %></span>
+            </a>
+        <% } else { %>
+            <span>&nbsp;</span> <%# Placeholder pour garder l'espace %>
+        <% } %>
+    </div>
+    <div class="next-link">
+        <% if (nextEntry) { %>
+            <a href="/entree/<%= nextEntry.id %>" title="<%= nextEntry.title %>">
+                Entrée Suivante &rarr; <%# Utiliser t() si tu ajoutes les clés %>
+                <span class="prev-next-title"><%= nextEntry.title %></span>
+            </a>
+        <% } else { %>
+             <span>&nbsp;</span> <%# Placeholder pour garder l'espace %>
+        <% } %>
+    </div>
+</nav>
 <nav style="margin-top: 2rem;">
     <a href="/journal"><%= t('journal.back_to_journal') %></a>
 </nav>

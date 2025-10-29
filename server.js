@@ -407,67 +407,74 @@ app.get('/journal', (req, res) => {
     });
 });
 
-// Page de détail d'une entrée (avec tags et parsing Markdown)
+// Page de détail d'une entrée (avec tags, parsing Markdown, et liens Précédent/Suivant)
 app.get('/entree/:id', (req, res) => {
-    const id = req.params.id;
+    const id = parseInt(req.params.id); // Assure-toi que l'ID est un nombre
+    if (isNaN(id)) { return res.status(400).send("ID d'entrée invalide."); }
+
     const lang = req.language === 'en' ? 'en' : 'fr';
-    const sqlArticle = `SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date FROM articles WHERE id = ?`;
+
+    // Requête pour l'article actuel
+    const sqlArticle = `SELECT *, title_${lang} as title, content_${lang} as content FROM articles WHERE id = ?`;
+    // Requête pour les tags de l'article actuel
     const sqlTags = `SELECT t.name_${lang} as name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
 
+    // Requêtes pour Précédent/Suivant (basées sur la date)
+    // Note: On a besoin de la date de l'article actuel d'abord
     db.get(sqlArticle, id, (err, article) => {
         if (err) { console.error(`Erreur BDD (GET /entree/${id} article):`, err); return res.status(500).send("Erreur serveur."); }
         if (!article) { return res.status(404).send("Entrée non trouvée !"); }
 
-        // LOG 1: Contenu brut de la BDD
-        console.log(`[DEBUG /entree/${id}] Contenu brut BDD (${lang}):`, article.content ? article.content.substring(0, 100) + '...' : 'VIDE');
+        // Maintenant qu'on a l'article (et sa date), on cherche Précédent/Suivant
+        const currentPublicationDate = article.publication_date;
 
-        db.all(sqlTags, id, (errTags, tagRows) => {
-            if (errTags) { console.error(`Erreur BDD (GET /entree/${id} tags):`, errTags); article.tags = []; }
-            else { article.tags = tagRows.map(tag => tag.name); }
+        const sqlPrev = `
+            SELECT id, title_${lang} as title FROM articles
+            WHERE publication_date < ?
+            ORDER BY publication_date DESC LIMIT 1
+        `;
+        const sqlNext = `
+            SELECT id, title_${lang} as title FROM articles
+            WHERE publication_date > ?
+            ORDER BY publication_date ASC LIMIT 1
+        `;
+
+        // Utilise Promise.all pour exécuter les 3 requêtes restantes (tags, prev, next)
+        Promise.all([
+            new Promise((resolve, reject) => db.all(sqlTags, id, (errTags, tagRows) => errTags ? reject(errTags) : resolve(tagRows))),
+            new Promise((resolve, reject) => db.get(sqlPrev, [currentPublicationDate], (errPrev, prevRow) => errPrev ? reject(errPrev) : resolve(prevRow))),
+            new Promise((resolve, reject) => db.get(sqlNext, [currentPublicationDate], (errNext, nextRow) => errNext ? reject(errNext) : resolve(nextRow)))
+        ]).then(([tagRows, prevEntry, nextEntry]) => {
+
+            article.tags = tagRows.map(tag => tag.name);
 
             // Nettoyage du contenu (enlève le H1 si présent)
-            let finalContent = article.content || ''; // Assure que ce n'est pas null
+            let finalContent = article.content;
             const markdownTitle = '# ' + article.title;
-            if (finalContent.trim().startsWith(markdownTitle)) {
+            if (finalContent && finalContent.trim().startsWith(markdownTitle)) {
                 finalContent = finalContent.substring(markdownTitle.length).trim();
             }
 
-            // LOG 2: Contenu après nettoyage (avant parsing)
-            console.log(`[DEBUG /entree/${id}] Contenu après nettoyage:`, finalContent.substring(0, 100) + '...');
-
-            // Conversion Markdown -> HTML
-            let parsedHtml = '';
+            // Parse le contenu nettoyé
             try {
-                parsedHtml = marked.parse(finalContent);
-                // LOG 3: Contenu HTML après parsing (début)
-                console.log(`[DEBUG /entree/${id}] Contenu HTML parsé (début):`, parsedHtml.substring(0, 200) + '...');
+                article.content = marked.parse(finalContent || '');
             } catch (parseError) {
-                console.error(`Erreur lors du parsing Markdown pour l'article ${id}:`, parseError);
-                parsedHtml = "<p style='color:red;'>Erreur lors de l'affichage du contenu Markdown.</p>";
-            }
-            article.content = parsedHtml; // Assigne le HTML parsé
-
-            // --- TEST ISOLÉ DE MARKED ---
-            const testMarkdownImage = "![Test Image](https://via.placeholder.com/150)";
-            let testHtmlOutput = "Erreur lors du test isolé.";
-            try {
-                testHtmlOutput = marked.parse(testMarkdownImage);
-                console.log("--- TEST MARKED ISOLÉ ---");
-                console.log("Input:", testMarkdownImage);
-                console.log("Output:", testHtmlOutput);
-                console.log("--- FIN TEST ---");
-                // Temporairement, on remplace le contenu de l'article par le résultat du test
-                article.content = `<h2>Résultat Test Isolé :</h2> ${testHtmlOutput} <hr> <h2>Contenu Original (après parsing) :</h2> ${article.content}`;
-            } catch (testError) {
-                console.error("Erreur durant le test marqué isolé:", testError);
-                article.content = `<p style='color:red;'>Erreur durant le test marqué isolé.</p> ${article.content}`;
+                console.error(`Erreur parsing Markdown article ${id}:`, parseError);
+                article.content = "<p style='color:red;'>Erreur rendu Markdown.</p>";
             }
 
+            // Envoie toutes les données à la vue
             res.render('entry_detail', {
                 article: article,
                 pageTitle: article.title,
-                activePage: 'journal'
+                activePage: 'journal',
+                prevEntry: prevEntry || null, // Sera null s'il n'y a pas d'entrée précédente
+                nextEntry: nextEntry || null  // Sera null s'il n'y a pas d'entrée suivante
             });
+
+        }).catch(promiseErr => {
+            console.error(`Erreur BDD (GET /entree/${id} tags/prev/next):`, promiseErr);
+            res.status(500).send("Erreur serveur lors de la récupération des données.");
         });
     });
 });

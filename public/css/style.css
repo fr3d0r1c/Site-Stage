@@ -791,3 +791,61 @@ dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-pr
     font-weight: normal; /* Texte normal */
     cursor: pointer;
 }
+
+/*
+=========================================
+--- Navigation Précédent/Suivant ---
+=========================================
+*/
+.prev-next-nav {
+    display: flex;
+    justify-content: space-between; /* Pousse les liens aux extrémités */
+    align-items: flex-start; /* Aligne le haut des liens */
+    margin: 2rem 0;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--c-border);
+    border-bottom: 1px solid var(--c-border);
+    gap: 1rem; /* Espace si les liens deviennent trop longs */
+}
+
+.prev-link,
+.next-link {
+    flex-basis: 48%; /* Donne environ la moitié de la largeur à chaque lien */
+    min-width: 0;
+}
+
+.prev-next-nav a {
+    color: var(--c-text); /* Couleur normale du texte */
+    font-weight: 500;
+    display: block; /* Pour que le span soit en dessous */
+}
+.prev-next-nav a:hover {
+    color: var(--c-primary); /* Couleur primaire au survol */
+}
+
+.prev-next-nav .prev-next-title {
+    display: block; /* Met le titre sur la ligne suivante */
+    font-size: 0.9em;
+    color: var(--c-text-light); /* Couleur plus claire pour le titre */
+    margin-top: 0.3rem;
+    /* Empêche le texte de déborder */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.next-link {
+    text-align: right; /* Aligne le texte du lien "Suivant" à droite */
+}
+
+/* Responsive pour les liens Précédent/Suivant */
+@media (max-width: 600px) {
+    .prev-next-nav {
+        flex-direction: column; /* Empile les liens sur mobile */
+        align-items: stretch; /* Prend toute la largeur */
+    }
+    .next-link {
+        text-align: left; /* Aligne à gauche sur mobile */
+        margin-top: 1rem; /* Ajoute de l'espace */
+    }
+}
