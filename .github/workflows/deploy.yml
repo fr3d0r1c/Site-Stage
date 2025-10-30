@@ -1,0 +1,46 @@
+# Nom du workflow
+name: CI-CD Pipeline (Test & Deploy)
+
+# Déclencheur : s'exécute à chaque push sur la branche 'main'
+on:
+  push:
+    branches: [ "main" ]
+
+# Liste des jobs (tâches) à exécuter
+jobs:
+  # Job 1 : Construire et Tester
+  build_and_test:
+    name: Build & Test
+    # Utilise un serveur Linux standard de GitHub
+    runs-on: ubuntu-latest 
+
+    steps:
+    # Étape 1 : Récupérer ton code depuis GitHub
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Étape 2 : Mettre en place Node.js (utilise une version stable)
+    - name: Use Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    # Étape 3 : Installer les dépendances (npm install)
+    - name: Install dependencies
+      run: npm install
+
+    # Étape 4 : Lancer les tests
+    - name: Run tests
+      run: npm test
+
+  # Job 2 : Déployer (ne se lance que si 'build_and_test' réussit)
+  deploy:
+    name: Deploy to Render
+    # Ce job a besoin que le job 'build_and_test' soit terminé avec succès
+    needs: build_and_test
+    runs-on: ubuntu-latest
+
+    steps:
+    # Étape 1 : Appeler le Deploy Hook de Render
+    - name: Trigger Render Deploy
+      run: curl "${{ secrets.RENDER_DEPLOY_HOOK }}"

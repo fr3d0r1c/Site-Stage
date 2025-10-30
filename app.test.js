@@ -27,7 +27,7 @@ describe('Tests des routes publiques (GET)', () => {
         // On simule une requête GET sur la route '/'
         const response = await request(app).get('/');
         // On s'attend à ce que le statut de la réponse soit 200
-        expect(response.statusCode).toBe(201);
+        expect(response.statusCode).toBe(200);
     });
 
     // Test 2: Une page statique (Profil)
