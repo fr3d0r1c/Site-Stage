@@ -2,10 +2,12 @@
 
 <h1><%= t('auth.login_title') %></h1>
 
+<%# Affiche un message de succès si on vient de réinitialiser le mot de passe %>
 <% if (locals.resetSuccess) { %>
     <p class="feedback-message success">Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter.</p>
 <% } %>
 
+<%# Affiche les erreurs de connexion (ex: "mot de passe incorrect") %>
 <% if (error) { %>
     <p class="error-message"><%= error %></p>
 <% } %>
@@ -15,6 +17,7 @@
         <label for="username"><%= t('forms.username') %> :</label><br>
         <input type="text" id="username" name="username" required>
     </div>
+
     <div class="form-group password-container">
         <label for="password"><%= t('forms.password') %> :</label><br>
         <div style="position: relative;">
@@ -22,6 +25,7 @@
             <i class="fas fa-eye toggle-password-icon" id="togglePassword"></i>
         </div>
     </div>
+
     <div>
         <button type="submit"><%= t('forms.login_button') %></button>
     </div>
@@ -35,22 +39,4 @@
 
 <%- include('partials/footer') %>
 
-<script>
-    const passwordInput = document.getElementById('password');
-    const togglePasswordIcon = document.getElementById('togglePassword');
-
-    if (passwordInput && togglePasswordIcon) {
-        togglePasswordIcon.addEventListener('click', function() {
-            const currentType = passwordInput.getAttribute('type');
-            if (currentType === 'password') {
-                passwordInput.setAttribute('type', 'text');
-                this.classList.remove('fa-eye');
-                this.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.setAttribute('type', 'password');
-                this.classList.remove('fa-eye-slash');
-                this.classList.add('fa-eye');
-            }
-        });
-    }
-</script>
+<script src="/js/auth-ui.js"></script>

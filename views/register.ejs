@@ -7,6 +7,11 @@
     </p>
     <hr>
 
+    <%# Affiche les erreurs de validation (ex: "email déjà pris") %>
+    <% if (error) { %>
+        <p class="error-message"><%= error %></p>
+    <% } %>
+
     <form action="/inscription" method="POST">
         <div class="form-group">
             <label for="username"><%= t('forms.username') %> :</label><br>
@@ -14,13 +19,14 @@
         </div>
 
         <div class="form-group">
-            <label for="email"><%= t('contact.form_email') %> :</label><br> <input type="email" id="email" name="email" required>
+            <label for="email"><%= t('contact.form_email') %> :</label><br>
+            <input type="email" id="email" name="email" required>
         </div>
 
         <div class="form-group password-container">
             <label for="password"><%= t('forms.password') %> :</label><br>
             <div style="position: relative;">
-                <input type="password" id="password" name="password" required minlength="8"> 
+                <input type="password" id="password" name="password" required minlength="8">
                 <i class="fas fa-eye toggle-password-icon" id="togglePassword"></i>
             </div>
             <div id="password-strength-feedback" style="margin-top: 5px; font-size: 0.9em;"></div>
@@ -32,74 +38,6 @@
     </form>
 </div>
 
-<script>
-    // --- Script Voir/Cacher Mot de Passe ---
-    const passwordInput = document.getElementById('password');
-    const togglePasswordIcon = document.getElementById('togglePassword');
-
-    if (passwordInput && togglePasswordIcon) {
-        togglePasswordIcon.addEventListener('click', function() {
-            const currentType = passwordInput.getAttribute('type');
-            if (currentType === 'password') {
-                passwordInput.setAttribute('type', 'text');
-                this.classList.remove('fa-eye');
-                this.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.setAttribute('type', 'password');
-                this.classList.remove('fa-eye-slash');
-                this.classList.add('fa-eye');
-            }
-        });
-    }
-
-    // --- Script Force du Mot de Passe (Amélioré) ---
-    const passwordInputStrength = document.getElementById('password');
-    const feedbackDiv = document.getElementById('password-strength-feedback');
-    if (passwordInputStrength && feedbackDiv) {
-        passwordInputStrength.addEventListener('input', () => {
-            const password = passwordInputStrength.value;
-            const criteria = {
-                length: password.length >= 8,
-                lowercase: /[a-z]/.test(password),
-                uppercase: /[A-Z]/.test(password), // Check specifically for uppercase
-                digit: /[0-9]/.test(password),
-                special: /[^a-zA-Z0-9]/.test(password) // Check for non-alphanumeric
-            };
-            criteria.letter = criteria.lowercase || criteria.uppercase;
-            let score = 0;
-            if (criteria.length) score++;
-            if (criteria.letter) score++;
-            if (criteria.digit) score++;
-            if (criteria.special) score++;
-            let feedbackText = '';
-            let feedbackColor = 'grey';
-            let requirementsMet = criteria.length && criteria.letter && criteria.digit && criteria.special;
-
-            if (password.length > 0) {
-                 if (requirementsMet) {
-                     feedbackText = 'Fort'; feedbackColor = '#2ecc71';
-                 } else if (score >= 3 && criteria.length) {
-                     feedbackText = 'Moyen'; feedbackColor = '#f39c12';
-                 } else {
-                     feedbackText = 'Faible'; feedbackColor = 'var(--c-danger)';
-                 }
-            }
-            let detailedFeedback = '';
-            if (password.length > 0) {
-                detailedFeedback += `Force : ${feedbackText}. `;
-                let missing = [];
-                if (!criteria.length) missing.push("8 caractères min");
-                if (!criteria.letter) missing.push("lettres");
-                if (!criteria.digit) missing.push("chiffres");
-                if (!criteria.special) missing.push("caractères spéciaux");
-                if (missing.length > 0) {
-                    detailedFeedback += ` (Manque : ${missing.join(', ')})`;
-                }
-            }
-            feedbackDiv.textContent = detailedFeedback;
-            feedbackDiv.style.color = feedbackColor;
-        });
-    }
-</script>
-
 <%- include('partials/footer') %>
+
+<script src="/js/auth-ui.js"></script>

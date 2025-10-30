@@ -668,28 +668,32 @@ dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-pr
     }
 }
 
-/*
+/* 
 =========================================
 --- 17. Icône "Afficher Mot de Passe" ---
 =========================================
 */
-/* Conteneur pour positionnement relatif */
+
+/* 1. Crée un contexte de positionnement pour l'icône */
 .password-container div {
     position: relative;
 }
-/* Style de l'icône oeil */
+
+/* 2. Style et positionne l'icône elle-même */
 .toggle-password-icon {
-    position: absolute;
-    top: 50%;
-    right: 15px; /* Ajuste l'espacement du bord droit */
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: var(--c-gray); /* Couleur de l'icône par défaut */
+    position: absolute; /* Se positionne par-dessus l'input */
+    top: 50%; /* Centre verticalement (moitié haute) */
+    right: 15px; /* Se place à 15px du bord droit */
+    transform: translateY(-50%); /* Ajuste le centrage vertical parfait */
+    cursor: pointer; /* Montre une main au survol */
+    color: var(--c-gray); /* Couleur grise par défaut (adaptée au thème) */
     font-size: 1rem; /* Taille de l'icône */
-    transition: color 0.2s ease;
+    transition: color 0.2s ease; /* Effet de transition de couleur */
 }
+
+/* 3. Change la couleur au survol */
 .toggle-password-icon:hover {
-    color: var(--c-primary); /* Couleur au survol */
+    color: var(--c-primary); /* Utilise la couleur primaire au survol */
 }
 
 /* 
