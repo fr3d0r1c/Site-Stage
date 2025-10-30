@@ -132,6 +132,28 @@
     "delete_button": "Supprimer",
     "no_tags": "Aucun tag trouvé.",
     "back_to_admin": "Retour au panneau d'administration",
-    "delete_confirm": "Voulez-vous vraiment supprimer ce tag ? Il sera retiré de toutes les entrées associées."
+    "delete_confirm": "Voulez-vous vraiment supprimer ce tag ? Il sera retiré de toutes les entrées associées.",
+    "manage_comments_title": "Gérer les Commentaires",
+    "action_manage_comments": "Modérer les commentaires",
+    "comments_pending": "Commentaires en attente",
+    "comments_approved": "Commentaires approuvés",
+    "comment_author": "Auteur",
+    "comment_content": "Contenu",
+    "comment_article": "Article",
+    "comment_date": "Date",
+    "comment_action": "Actions",
+    "approve_button": "Approuver",
+    "no_pending_comments": "Aucun commentaire en attente.",
+    "no_approved_comments": "Aucun commentaire approuvé."
+  },
+  "comments": {
+    "title": "Commentaires",
+    "leave_comment": "Laissez un commentaire",
+    "form_name": "Votre Nom",
+    "form_comment": "Votre Commentaire",
+    "submit_button": "Soumettre le commentaire",
+    "pending_moderation": "Votre commentaire est en attente de modération.",
+    "no_comments": "Il n'y a pas encore de commentaires. Soyez le premier à réagir !",
+    "anonymous": "Anonyme"
   }
 }

@@ -132,6 +132,28 @@
     "delete_button": "Delete",
     "no_tags": "No tags found.",
     "back_to_admin": "Back to Administration Panel",
-    "delete_confirm": "Are you sure you want to delete this tag? It will be removed from all associated entries."
+    "delete_confirm": "Are you sure you want to delete this tag? It will be removed from all associated entries.",
+    "manage_comments_title": "Manage Comments",
+    "action_manage_comments": "Moderate Comments",
+    "comments_pending": "Pending Comments",
+    "comments_approved": "Approved Comments",
+    "comment_author": "Author",
+    "comment_content": "Comment",
+    "comment_article": "Article",
+    "comment_date": "Date",
+    "comment_action": "Actions",
+    "approve_button": "Approve",
+    "no_pending_comments": "No pending comments.",
+    "no_approved_comments": "No approved comments."
+  },
+  "comments": {
+    "title": "Comments",
+    "leave_comment": "Leave a Comment",
+    "form_name": "Your Name",
+    "form_comment": "Your Comment",
+    "submit_button": "Submit Comment",
+    "pending_moderation": "Your comment is awaiting moderation.",
+    "no_comments": "No comments yet. Be the first to react!",
+    "anonymous": "Anonymous"
   }
 }

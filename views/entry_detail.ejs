@@ -50,4 +50,51 @@
     <a href="/journal"><%= t('journal.back_to_journal') %></a>
 </nav>
 
+<hr>
+
+<section class="comments-section">
+    <h2><%= t('comments.title') %> (<%= comments.length %>)</h2>
+
+    <% if (messageSent === true) { %>
+        <p class="feedback-message success"><%= t('comments.pending_moderation') %></p>
+    <% } else if (messageSent === false) { %>
+        <p class="error-message">Une erreur s'est produite lors de l'envoi du commentaire.</p>
+    <% } %>
+
+    <div class="comments-list">
+        <% if (comments && comments.length > 0) { %>
+            <% comments.forEach(comment => { %>
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <strong><%= comment.author_name || t('comments.anonymous') %></strong>
+                        <small><%= new Date(comment.created_at).toLocaleString(i18n.language) %></small>
+                    </div>
+                    <div class="comment-body">
+                        <p><%= comment.content %></p>
+                    </div>
+                </div>
+            <% }); %>
+        <% } else { %>
+            <p><i><%= t('comments.no_comments') %></i></p>
+        <% } %>
+    </div>
+
+    <div class="comment-form">
+        <h3><%= t('comments.leave_comment') %></h3>
+        <form action="/article/<%= article.id %>/comment" method="POST">
+            <div class="form-group">
+                <label for="author_name"><%= t('comments.form_name') %> :</label>
+                <input type="text" id="author_name" name="author_name" required>
+            </div>
+            <div class="form-group">
+                <label for="comment_content"><%= t('comments.form_comment') %> :</label>
+                <textarea id="comment_content" name="content" rows="5" required></textarea>
+            </div>
+            <div>
+                <button type="submit"><%= t('comments.submit_button') %></button>
+            </div>
+        </form>
+    </div>
+</section>
+
 <%- include('partials/footer') %>

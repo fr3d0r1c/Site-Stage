@@ -849,3 +849,49 @@ dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-pr
         margin-top: 1rem; /* Ajoute de l'espace */
     }
 }
+
+/*
+=========================================
+--- 18. Section Commentaires ---
+=========================================
+*/
+.comments-section {
+    margin-top: 3rem;
+}
+
+.comments-list .comment-item {
+    background-color: var(--c-background); /* Fond légèrement différent */
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.comments-list .comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed var(--c-border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.comments-list .comment-header strong {
+    color: var(--c-text);
+}
+
+.comments-list .comment-header small {
+    color: var(--c-gray);
+    font-size: 0.85em;
+}
+
+.comments-list .comment-body p {
+    margin: 0.5rem 0 0 0;
+    white-space: pre-wrap; /* Respecte les sauts de ligne */
+}
+
+.comment-form {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--c-border);
+}

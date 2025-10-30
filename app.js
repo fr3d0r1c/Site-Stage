@@ -102,6 +102,14 @@ const contactLimiter = rateLimit({
     }
 });
 
+const commentLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000, // Fenêtre de 10 minutes
+    max: 5, // Limite chaque IP à 5 commentaires toutes les 10 minutes
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Trop de commentaires envoyés depuis cette IP, veuillez réessayer plus tard.' }
+});
+
 // --- CONFIGURATION i18n (TRADUCTION INTERFACE + DÉTECTION) ---
 i18next
 .use(FsBackend) // Charge les traductions depuis les fichiers (locales/...)
@@ -324,6 +332,22 @@ db.run(createArticleTagsTable, (err) => {
     if (err) console.error("Erreur création table article_tags:", err);
 });
 
+// Création de la table 'comments'
+const createCommentsTable = `
+CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id INTEGER NOT NULL,            -- L'ID de l'article auquel il est lié
+    author_name TEXT NOT NULL,              -- Le nom de l'auteur du commentaire
+    content TEXT NOT NULL,                  -- Le contenu du commentaire
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- La date de création
+    is_approved INTEGER DEFAULT 0,          -- 0 = En attente, 1 = Approuvé
+    FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE
+);
+`;
+db.run(createCommentsTable, (err) => {
+    if (err) console.error("Erreur création table comments:", err);
+})
+
 
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
@@ -416,9 +440,9 @@ app.get('/journal', (req, res) => {
     });
 });
 
-// Page de détail d'une entrée (avec tags, parsing Markdown, et liens Précédent/Suivant)
+// Page de détail d'une entrée (avec tags, parsing, nav, et commentaires)
 app.get('/entree/:id', (req, res) => {
-    const id = parseInt(req.params.id); // Assure-toi que l'ID est un nombre
+    const id = parseInt(req.params.id);
     if (isNaN(id)) { return res.status(400).send("ID d'entrée invalide."); }
 
     const lang = req.language === 'en' ? 'en' : 'fr';
@@ -427,6 +451,8 @@ app.get('/entree/:id', (req, res) => {
     const sqlArticle = `SELECT *, title_${lang} as title, content_${lang} as content FROM articles WHERE id = ?`;
     // Requête pour les tags de l'article actuel
     const sqlTags = `SELECT t.name_${lang} as name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
+    // NOUVELLE REQUÊTE : Récupérer les commentaires approuvés
+    const sqlComments = `SELECT author_name, content, created_at FROM comments WHERE article_id = ? AND is_approved = 1 ORDER BY created_at ASC`;
 
     // Requêtes pour Précédent/Suivant (basées sur la date)
     // Note: On a besoin de la date de l'article actuel d'abord
@@ -436,25 +462,17 @@ app.get('/entree/:id', (req, res) => {
 
         // Maintenant qu'on a l'article (et sa date), on cherche Précédent/Suivant
         const currentPublicationDate = article.publication_date;
+        const sqlPrev = `SELECT id, title_${lang} as title FROM articles WHERE publication_date < ? ORDER BY publication_date DESC LIMIT 1`;
+        const sqlNext = `SELECT id, title_${lang} as title FROM articles WHERE publication_date > ? ORDER BY publication_date ASC LIMIT 1`;
 
-        const sqlPrev = `
-            SELECT id, title_${lang} as title FROM articles
-            WHERE publication_date < ?
-            ORDER BY publication_date DESC LIMIT 1
-        `;
-        const sqlNext = `
-            SELECT id, title_${lang} as title FROM articles
-            WHERE publication_date > ?
-            ORDER BY publication_date ASC LIMIT 1
-        `;
-
-        // Utilise Promise.all pour exécuter les 3 requêtes restantes (tags, prev, next)
+        // On exécute les 4 requêtes restantes en parallèle
         Promise.all([
             new Promise((resolve, reject) => db.all(sqlTags, id, (errTags, tagRows) => errTags ? reject(errTags) : resolve(tagRows))),
             new Promise((resolve, reject) => db.get(sqlPrev, [currentPublicationDate], (errPrev, prevRow) => errPrev ? reject(errPrev) : resolve(prevRow))),
-            new Promise((resolve, reject) => db.get(sqlNext, [currentPublicationDate], (errNext, nextRow) => errNext ? reject(errNext) : resolve(nextRow)))
-        ]).then(([tagRows, prevEntry, nextEntry]) => {
-
+            new Promise((resolve, reject) => db.get(sqlNext, [currentPublicationDate], (errNext, nextRow) => errNext ? reject(errNext) : resolve(nextRow))),
+            new Promise((resolve, reject) => db.all(sqlComments, id, (err, rows) => err ? reject(err) : resolve(rows))) // 4. Ajout de la requête commentaires
+        ]).then(([tagRows, prevEntry, nextEntry, comments]) => {
+            
             article.tags = tagRows.map(tag => tag.name);
 
             // Nettoyage du contenu (enlève le H1 si présent)
@@ -463,7 +481,6 @@ app.get('/entree/:id', (req, res) => {
             if (finalContent && finalContent.trim().startsWith(markdownTitle)) {
                 finalContent = finalContent.substring(markdownTitle.length).trim();
             }
-
             // Parse le contenu nettoyé
             try {
                 article.content = marked.parse(finalContent || '');
@@ -477,8 +494,10 @@ app.get('/entree/:id', (req, res) => {
                 article: article,
                 pageTitle: article.title,
                 activePage: 'journal',
-                prevEntry: prevEntry || null, // Sera null s'il n'y a pas d'entrée précédente
-                nextEntry: nextEntry || null  // Sera null s'il n'y a pas d'entrée suivante
+                prevEntry: prevEntry || null,
+                nextEntry: nextEntry || null,
+                comments: comments || [], // 4. Passe les commentaires à la vue
+                messageSent: req.query.comment === 'success' ? true : (req.query.comment === 'error' ? false : null) // Pour le feedback du formulaire
             });
 
         }).catch(promiseErr => {
@@ -992,6 +1011,78 @@ app.get('/admin/tags', isAuthenticated, (req, res) => {
     });
 });
 
+// --- GESTION DES COMMENTAIRES (Admin) ---
+app.get('/admin/comments', isAuthenticated, (req, res) => {
+    // Récupère les commentaires en attente
+    const sqlPending = `
+        SELECT c.id, c.author_name, c.content, c.created_at, a.title_fr as article_title, a.id as article_id
+        FROM comments c
+        JOIN articles a ON c.article_id = a.id
+        WHERE c.is_approved = 0
+        ORDER BY c.created_at ASC
+    `;
+    // Récupère les commentaires déjà approuvés
+    const sqlApproved = `
+        SELECT c.id, c.author_name, c.content, c.created_at, a.title_fr as article_title, a.id as article_id
+        FROM comments c
+        JOIN articles a ON c.article_id = a.id
+        WHERE c.is_approved = 1
+        ORDER BY c.created_at DESC
+    `;
+
+    // Utilise Promise.all pour exécuter les deux requêtes
+    Promise.all([
+        new Promise((resolve, reject) => db.all(sqlPending, [], (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.all(sqlApproved, [], (err, rows) => err ? reject(err) : resolve(rows)))
+    ]).then(([pendingComments, approvedComments]) => {
+        res.render('admin-comments', {
+            pageTitle: req.t('admin_page.manage_comments_title'),
+            activePage: 'admin',
+            pendingComments: pendingComments,
+            approvedComments: approvedComments,
+            message: req.session.flashMessage // Pour les messages de succès/erreur
+        });
+        req.session.flashMessage = null; // Efface le message après l'avoir affiché
+    }).catch(err => {
+        console.error("Erreur BDD (GET /admin/comments):", err);
+        res.status(500).send("Erreur serveur lors de la récupération des commentaires.");
+    });
+});
+
+// NOUVEAU : Traite l'approbation d'un commentaire
+app.post('/admin/comments/approve/:id', isAuthenticated, (req, res) => {
+    const commentId = req.params.id;
+
+    const sql = 'UPDATE comments SET is_approved = 1 WHERE id = ?';
+
+    db.run(sql, [commentId], function(err) {
+        if (err) {
+            console.error(`Erreur BDD (POST /admin/comments/approve/${commentId}):`, err);
+            req.session.flashMessage = { type: 'error', text: 'Erreur lors de l\'approbation du commentaire.' };
+        } else {
+            req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} approuvé.` };
+        }
+        res.redirect('/admin/comments'); // Redirige vers la page de modération
+    });
+});
+
+// NOUVEAU : Traite la suppression d'un commentaire
+app.post('/admin/comments/delete/:id', isAuthenticated, (req, res) => {
+    const commentId = req.params.id;
+
+    const sql = 'DELETE FROM comments WHERE id = ?';
+
+    db.run(sql, [commentId], function(err) {
+        if (err) {
+            console.error(`Erreur BDD (POST /admin/comments/delete/${commentId}):`, err);
+            req.session.flashMessage = { type: 'error', text: 'Erreur lors de la suppression du commentaire.' };
+        } else {
+            req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} supprimé.` };
+        }
+        res.redirect('/admin/comments'); // Redirige vers la page de modération
+    });
+});
+
 // Traite la mise à jour d'un tag (nom anglais)
 app.post('/admin/tags/update/:id', isAuthenticated, (req, res) => {
     const tagId = req.params.id;
@@ -1084,7 +1175,38 @@ app.post('/admin/tags/delete/:id', isAuthenticated, (req, res) => {
         req.session.flashMessage = message;
         res.redirect('/admin/tags');
     });
-})
+});
+
+app.post('/article/:id/comment', commentLimiter, (req, res) => {
+    const articleId = req.params.id;
+    const { author_name, content } = req.body;
+
+    // 1. Validation simple des données
+    if (!author_name || !content || author_name.trim() === '' || content.trim() === '') {
+        // Si la validation échoue, redirige avec une erreur
+        // (Tu pourrais aussi re-rendre la vue 'entry_detail' avec un message d'erreur si tu récupérais toutes les données)
+        console.warn("Validation du commentaire échouée : champs vides.");
+        return res.redirect(`/entree/${articleId}?comment=error`);
+    }
+
+    // 2. Insertion dans la base de données
+    const sql = `
+        INSERT INTO comments (article_id, author_name, content, is_approved)
+        VALUES (?, ?, ?, 0)
+    `;
+    // is_approved est mis à 0 (en attente) par défaut
+
+    db.run(sql, [articleId, author_name, content], function(err) {
+        if (err) {
+            console.error("Erreur BDD (POST /article/:id/comment):", err);
+            return res.redirect(`/entree/${articleId}?comment=error`);
+        }
+
+        // 3. Succès ! Redirige avec un message de succès
+        console.log(`Nouveau commentaire créé (ID: ${this.lastID}) pour l'article ${articleId}, en attente de modération.`);
+        res.redirect(`/entree/${articleId}?comment=success`);
+    })
+});
 
 // =================================================================
 // 7. EXPORT DE L'APPLICATION

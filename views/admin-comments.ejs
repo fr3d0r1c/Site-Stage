@@ -1,0 +1,81 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <h1><%= t('admin_page.manage_comments_title') %></h1>
+
+    <% if (message) { %>
+        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>">
+            <%= message.text %>
+        </p>
+    <% } %>
+
+    <h2><%= t('admin_page.comments_pending') %></h2>
+    <% if (pendingComments && pendingComments.length > 0) { %>
+        <table class="tags-table" style="table-layout: fixed; width: 100%;">
+            <thead>
+                <tr>
+                    <th style="width: 15%;"><%= t('admin_page.comment_author') %></th>
+                    <th style="width: 35%;"><%= t('admin_page.comment_content') %></th>
+                    <th style="width: 25%;"><%= t('admin_page.comment_article') %></th>
+                    <th style="width: 25%;"><%= t('admin_page.comment_action') %></th>
+                </tr>
+            </thead>
+            <tbody>
+                <% pendingComments.forEach(comment => { %>
+                    <tr>
+                        <td><%= comment.author_name %></td>
+                        <td style="word-wrap: break-word;"><%= comment.content %></td>
+                        <td><a href="/entree/<%= comment.article_id %>"><%= comment.article_title %></a></td>
+                        <td>
+                            <form action="/admin/comments/approve/<%= comment.id %>" method="POST" style="display: inline;">
+                                <button type="submit" class="button-small"><%= t('admin_page.approve_button') %></button>
+                            </form>
+                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" style="display: inline;">
+                                <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p><i><%= t('admin_page.no_pending_comments') %></i></p>
+    <% } %>
+
+    <hr>
+
+    <h2><%= t('admin_page.comments_approved') %></h2>
+    <% if (approvedComments && approvedComments.length > 0) { %>
+        <table class="tags-table" style="table-layout: fixed; width: 100%;">
+             <thead>
+                <tr>
+                    <th style="width: 15%;"><%= t('admin_page.comment_author') %></th>
+                    <th style="width: 35%;"><%= t('admin_page.comment_content') %></th>
+                    <th style="width: 25%;"><%= t('admin_page.comment_article') %></th>
+                    <th style="width: 25%;"><%= t('admin_page.comment_action') %></th>
+                </tr>
+            </thead>
+            <tbody>
+                <% approvedComments.forEach(comment => { %>
+                    <tr>
+                        <td><%= comment.author_name %></td>
+                        <td style="word-wrap: break-word;"><%= comment.content %></td>
+                        <td><a href="/entree/<%= comment.article_id %>"><%= comment.article_title %></a></td>
+                        <td>
+                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" style="display: inline;">
+                                <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p><i><%= t('admin_page.no_approved_comments') %></i></p>
+    <% } %>
+
+    <hr>
+    <nav><a href="/admin"><%= t('admin_page.back_to_admin') %></a></nav>
+</div>
+
+<%- include('partials/footer') %>
