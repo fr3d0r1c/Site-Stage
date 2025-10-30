@@ -976,3 +976,53 @@ dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-pr
     pointer-events: none;
     visibility: hidden;
 }
+
+/* 
+=========================================
+--- 19. Preloader ---
+=========================================
+*/
+.preloader {
+    position: fixed; /* Reste en place même si on scrolle */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999; /* Au-dessus de tout le reste (même le header sticky) */
+
+    /* Utilise la couleur de fond de la surface du thème actuel */
+    background-color: var(--c-surface);
+
+    /* Centre le spinner */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* Prépare la transition de disparition */
+    transition: opacity 0.75s ease, visibility 0.75s ease;
+    opacity: 1;
+    visibility: visible;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid var(--c-border); /* Couleur de base du cercle */
+    border-top-color: var(--c-primary); /* Couleur de l'animation (couleur primaire du thème) */
+    border-radius: 50%;
+    animation: spin 1s linear infinite; /* Fait tourner le cercle */
+}
+
+/* L'animation de rotation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Classe pour cacher le preloader (ajoutée par JS) */
+.preloader.hidden {
+    opacity: 0;
+    visibility: hidden; /* Cache-le complètement */
+    pointer-events: none; /* N'intercepte plus les clics */
+}
