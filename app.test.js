@@ -71,6 +71,29 @@ describe('Tests des routes protégées (non authentifié)', () => {
         // On s'attend à ce que le corps de la réponse soit un JSON contenant une clé 'error'
         expect(response.body.error).toBeDefined();
     });
+
+    // Test 7: Échec de connexion avec un mauvais mot de passe
+    test('POST /connexion - Échoue avec un mauvais mot de passe', async () => {
+        // Note : On utilise 'request(app)' et non 'agent' car on ne veut PAS garder de session
+
+        // On suppose que l'utilisateur 'testadmin' existe (créé dans le bloc 'beforeAll' des tests admin)
+        // Mais ce test pourrait être plus robuste en s'assurant qu'il existe d'abord.
+        // Pour l'instant, on se fie à l'ordre d'exécution (le bloc 'beforeAll' s'exécute avant).
+
+        const response = await request(app)
+            .post('/connexion')
+            .send({
+                username: 'testadmin',
+                password: 'mauvaismotdepasse' // On envoie un mot de passe incorrect
+            });
+
+        // On s'attend à un statut 200 (OK), car la route `POST /connexion`
+        // ne renvoie pas d'erreur 401, elle *re-affiche la page de connexion*
+        expect(response.statusCode).toBe(200);
+
+        // On vérifie que la page de connexion rechargée contient un message d'erreur
+        expect(response.text).toContain("Nom d&#39;utilisateur ou mot de passe incorrect.");
+    })
 });
 
 describe('Tests des routes admin (authentifié)', () => {
@@ -284,4 +307,79 @@ describe('Tests des routes admin (authentifié)', () => {
         expect(deletedLinks).toHaveLength(0); // Confirme que les liens sont supprimés
     });
 
+    // Test 13: L'agent connecté peut modifier une entrée
+    test('POST /entree/:id/edit - Peut modifier une entrée et mettre à jour les tags', async () => {
+
+        // 1. CRÉATION D'UNE ENTRÉE DE TEST DANS LA BDD
+        const entryData = {
+            title_fr: 'Article à Modifier', title_en: 'Edit Me',
+            content_fr: 'Contenu Original FR', content_en: 'Contenu Original EN',
+            user_id: 1 // Admin
+        };
+        const creationResult = await new Promise((resolve, reject) => {
+            db.run(
+                'INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id) VALUES (?, ?, ?, ?, ?)',
+                [entryData.title_fr, entryData.title_en, entryData.content_fr, entryData.content_en, entryData.user_id],
+                function(err) { if (err) reject(err); resolve({ id: this.lastID }); }
+            );
+        });
+        const entryIdToEdit = creationResult.id;
+
+        // On lie un tag ('Test', ID 1) à cette entrée
+        const originalTagId = tagIds[0]; // 'tagIds' vient du beforeAll (ex: [1, 2, 3])
+        await new Promise((resolve, reject) => {
+            db.run('INSERT INTO article_tags (article_id, tag_id) VALUES (?, ?)', [entryIdToEdit, originalTagId], (err) => {
+                if (err) reject(err); resolve();
+            });
+        });
+
+        // 2. PRÉPARATION DES DONNÉES DE MISE À JOUR
+        // On va changer le titre EN et les tags
+        const updatedData = {
+            title_fr: 'Article à Modifier', // Garde le même
+            title_en: 'EDITED TITLE', // Nouveau titre EN
+            content_fr: 'Contenu Original FR', // Garde le même
+            content_en: 'Contenu Original EN', // Garde le même
+            cover_image_url: 'http://example.com/new-image.jpg', // Nouvelle image
+            tags: [tagIds[1], tagIds[2]] // Nouveaux tags (ID 2 et 3)
+        };
+
+        // 3. ENVOI DE LA REQUÊTE DE MISE À JOUR
+        // On utilise l'agent (connecté)
+        const response = await agent
+            .post(`/entree/${entryIdToEdit}/edit`)
+            .send(updatedData);
+
+        // 4. VÉRIFICATION DE LA RÉPONSE SERVEUR
+        expect(response.statusCode).toBe(302); // Redirection
+        expect(response.headers.location).toBe('/journal');
+
+        // 5. VÉRIFICATION DE LA BASE DE DONNÉES
+
+        // a) L'article doit être mis à jour
+        const updatedEntry = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM articles WHERE id = ?', [entryIdToEdit], (err, row) => {
+                if (err) reject(err); resolve(row);
+            });
+        });
+        expect(updatedEntry).toBeDefined();
+        expect(updatedEntry.title_en).toBe('EDITED TITLE'); // Vérifie le titre EN
+        expect(updatedEntry.cover_image_url).toBe('http://example.com/new-image.jpg'); // Vérifie l'image
+
+        // b) Les tags doivent être mis à jour
+        const updatedTags = await new Promise((resolve, reject) => {
+            db.all(
+                'SELECT t.name_fr FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ? ORDER BY t.id',
+                [entryIdToEdit],
+                (err, rows) => {
+                    if (err) reject(err); resolve(rows.map(r => r.name_fr));
+                }
+            );
+        });
+
+        expect(updatedTags).toHaveLength(2); // Doit avoir 2 tags
+        expect(updatedTags).toContain('Jest'); // 'Jest' (ID 2)
+        expect(updatedTags).toContain('JavaScript'); // 'JavaScript' (ID 3)
+        expect(updatedTags).not.toContain('Test'); // L'ancien tag 'Test' (ID 1) doit avoir disparu
+    });
 });
