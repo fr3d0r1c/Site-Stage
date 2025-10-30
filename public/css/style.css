@@ -332,34 +332,82 @@ article small {
 --- 6. Formulaires & Boutons ---
 =========================================
 */
-form div { margin-bottom: 1.5rem; }
-form small { color: var(--c-gray); font-size: 0.9rem; }
-
-input[type="text"], input[type="password"], textarea {
-    width: 100%; padding: 12px; border: 1px solid var(--c-border);
-    border-radius: 8px; font-size: 1rem; font-family: var(--font-main);
-    box-sizing: border-box; background: var(--c-background);
-    color: var(--c-text); transition: all 0.3s ease;
+form div.form-group { /* Cible plus spécifiquement les divs de formulaire */
+    margin-bottom: 1.5rem; 
+}
+form label {
+    display: block; /* S'assure que le label est sur sa propre ligne */
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--c-text);
+}
+form small { 
+    color: var(--c-gray); 
+    font-size: 0.9rem; 
+    margin-top: 0.25rem; /* Ajout d'un petit espace */
+    display: inline-block;
 }
 
-input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
+/* Règle harmonisée pour tous les champs de saisie */
+input[type="text"],
+input[type="password"],
+input[type="email"], /* Ajouté */
+textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: var(--font-main);
+    box-sizing: border-box; /* Crucial pour que width: 100% fonctionne */
+    background: var(--c-background);
+    color: var(--c-text);
+    transition: all 0.3s ease;
+}
+
+/* Règle harmonisée pour le focus */
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus, /* Ajouté */
+textarea:focus {
     border-color: var(--c-primary);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 20%, transparent);
-    background: var(--c-surface); outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--c-primary-rgb), 0.2); /* Utilise la variable RGB */
+    background: var(--c-surface);
+    outline: none;
 }
 
+/* Boutons principaux (type gélule) */
 button, .actions a {
-    display: inline-block; background-color: var(--c-primary); color: var(--c-white);
-    padding: 10px 24px; border: none; border-radius: 99px; cursor: pointer;
-    font-size: 0.9rem; font-weight: 500; text-align: center;
-    transition: all 0.3s ease; transform: translateY(0);
+    display: inline-block;
+    background-color: var(--c-primary);
+    color: var(--c-white);
+    padding: 10px 24px;
+    border: none;
+    border-radius: 99px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease;
+    transform: translateY(0);
 }
 
 button:hover, .actions a:hover {
-    color: var(--c-white); text-decoration: none; transform: translateY(-2px); opacity: 0.85;
+    color: var(--c-white);
+    text-decoration: none;
+    transform: translateY(-2px);
+    opacity: 0.85;
 }
-.actions a { background-color: var(--c-gray); color: var(--c-surface); }
-.actions form button[type="submit"] { background-color: var(--c-danger); color: var(--c-white); }
+
+/* Boutons d'action spécifiques (Modifier/Supprimer) */
+.actions a {
+    background-color: var(--c-gray);
+    color: var(--c-surface);
+}
+.actions form button[type="submit"] {
+    background-color: var(--c-danger);
+    color: var(--c-white);
+}
 
 /*
 =========================================
