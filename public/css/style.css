@@ -957,3 +957,22 @@ dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-pr
     padding-top: 1.5rem;
     border-top: 1px solid var(--c-border);
 }
+
+/* 
+=========================================
+--- 18. Protection Anti-Spam (Honeypot) ---
+=========================================
+*/
+.honeypot {
+    /* Cache le champ visuellement */
+    opacity: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    z-index: -1; /* Le met derrière tout le reste */
+    /* Empêche les lecteurs d'écran de le lire */
+    pointer-events: none;
+    visibility: hidden;
+}

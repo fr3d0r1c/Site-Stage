@@ -889,6 +889,17 @@ app.post('/upload-image', isAuthenticated, apiLimiter, upload.single('image'), a
 
 // --- FORMULAIRE CONTACT ---
 app.post('/contact', contactLimiter, (req, res) => { 
+    // 1. Vérification du Honeypot
+    if (req.body.website_field && req.body.website_field !== '') {
+        console.warn("Honeypot déclenché (formulaire de contact) ! Rejet silencieux.");
+        // Fait semblant que tout s'est bien passé pour le bot
+        return res.render('contact', {
+            pageTitle: req.t('page_titles.contact'),
+            activePage: 'contact',
+            messageSent: true // Faux succès
+        });
+    }
+
     if (!transporter) {
         console.error("Tentative d'envoi via /contact alors que Nodemailer n'est pas configuré.");
         return res.status(503).render('contact', {
@@ -1314,13 +1325,20 @@ app.post('/article/:id/comment', commentLimiter, (req, res) => {
     const articleId = req.params.id;
     const { author_name, content } = req.body;
 
-    // 1. Validation simple des données
+    // 1. Vérification du Honeypot
+    if (req.body.website_field && req.body.website_field !== '') {
+        console.warn("Honeypot déclenché (formulaire de commentaire) ! Rejet silencieux.");
+        // Fait semblant que tout s'est bien passé pour le bot
+        return res.redirect(`/entree/${articleId}?comment=success`);
+    }
+
+    // 2. Validation simple des données
     if (!author_name || !content || author_name.trim() === '' || content.trim() === '') {
         console.warn("Validation du commentaire échouée : champs vides.");
         return res.redirect(`/entree/${articleId}?comment=error`);
     }
 
-    // 2. Insertion dans la base de données
+    // 3. Insertion dans la base de données
     const sql = `
         INSERT INTO comments (article_id, author_name, content, is_approved)
         VALUES (?, ?, ?, 0)
