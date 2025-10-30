@@ -771,26 +771,73 @@ app.post('/reset-password/:token', authLimiter, (req, res) => {
 
 // --- CHANGER MOT DE PASSE (LOGGED IN) ---
 app.get('/change-password', isAuthenticated, (req, res) => { 
-    res.render('change-password', { pageTitle: 'Changer Mot de Passe', activePage: 'admin', error: null, success: null }); 
+    res.render('change-password', { 
+        pageTitle: req.t('admin_page.action_change_password'), // Utilise la clé de traduction
+        activePage: 'admin', 
+        error: null, 
+        success: null 
+    }); 
 });
 
 app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
     const { currentPassword, newPassword, confirmPassword } = req.body;
     const userId = req.session.userId;
-    if (newPassword !== confirmPassword) { return res.render('change-password', { /* ... error: 'Correspondent pas.' ... */}); }
-    if (newPassword.length < 8) { return res.render('change-password', { /* ... error: 'Trop court.' ... */}); }
+    const pageTitle = req.t('admin_page.action_change_password'); // Définit le titre une fois
+    const activePage = 'admin';
+
+    if (newPassword !== confirmPassword) {
+        return res.render('change-password', {
+            pageTitle, activePage, // Ajouté
+            error: 'Les nouveaux mots de passe ne correspondent pas.', success: null
+        });
+    }
+    if (newPassword.length < 8) {
+        return res.render('change-password', {
+            pageTitle, activePage, // Ajouté
+            error: 'Le nouveau mot de passe doit faire au moins 8 caractères.', success: null
+        });
+    }
+
     const sqlGetUser = 'SELECT * FROM users WHERE id = ?';
     db.get(sqlGetUser, [userId], (err, user) => {
-        if (err || !user) { return res.render('change-password', { /* ... error: 'Utilisateur non trouvé.' ... */ }); }
+        if (err || !user) {
+            return res.render('change-password', {
+                pageTitle, activePage, // Ajouté
+                error: 'Utilisateur non trouvé ou erreur serveur.', success: null
+            });
+        }
+
         bcrypt.compare(currentPassword, user.password, (errCompare, result) => {
-            if (errCompare || !result) { return res.render('change-password', { /* ... error: 'Actuel incorrect.' ... */ }); }
+            if (errCompare || !result) {
+                return res.render('change-password', {
+                    pageTitle, activePage, // Ajouté
+                    error: 'Le mot de passe actuel est incorrect.', success: null
+                });
+            }
+
             const saltRounds = 10;
             bcrypt.hash(newPassword, saltRounds, (errHash, newHash) => {
-                if (errHash) { return res.render('change-password', { /* ... error: 'Erreur hachage.' ... */ }); }
+                if (errHash) {
+                    return res.render('change-password', {
+                        pageTitle, activePage, // Ajouté
+                        error: 'Erreur lors du hachage du nouveau mot de passe.', success: null
+                    });
+                }
+
                 const sqlUpdatePass = 'UPDATE users SET password = ? WHERE id = ?';
                 db.run(sqlUpdatePass, [newHash, userId], (errUpdate) => {
-                    if (errUpdate) { return res.render('change-password', { /* ... error: 'Erreur mise à jour BDD.' ... */ }); }
-                    res.render('change-password', { /* ... success: 'Succès !' ... */ });
+                    if (errUpdate) {
+                        return res.render('change-password', {
+                            pageTitle, activePage, // Ajouté
+                            error: 'Erreur lors de la mise à jour du mot de passe.', success: null
+                        });
+                    }
+
+                    // Succès !
+                    res.render('change-password', {
+                        pageTitle, activePage, // CORRECTION PRINCIPALE ICI
+                        error: null, success: 'Mot de passe mis à jour avec succès !'
+                    });
                 });
             });
         });
