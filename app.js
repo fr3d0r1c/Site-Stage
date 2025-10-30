@@ -385,6 +385,60 @@ async function processTags(articleId, tagIds) {
     }
 }
 
+// =================================================================
+// NOUVEAU : FONCTION HELPER POUR NOTIFICATION ADMIN
+// =================================================================
+async function sendAdminNotification(req, articleId, commentId, authorName, commentContent) {
+    // Vérifie si l'envoi d'email est configuré
+    if (!transporter) {
+        console.warn("[sendAdminNotification] Nodemailer non configuré. Notification admin non envoyée.");
+        return; // Ne fait rien si le transporter n'est pas prêt
+    }
+
+    try {
+        // 1. Récupérer le titre de l'article pour le contexte
+        const sqlGetArticle = `SELECT title_fr FROM articles WHERE id = ?`;
+        const article = await new Promise((resolve, reject) => {
+            db.get(sqlGetArticle, [articleId], (err, row) => err ? reject(err) : resolve(row));
+        });
+        const articleTitle = article ? article.title_fr : "un article"; // Fallback
+
+        // 2. Construire un lien direct vers la page de modération
+        const protocol = req.protocol; // http ou https (si sur Render avec HTTPS)
+        const host = req.get('host'); // localhost:3000 ou mon-site.onrender.com
+        const moderationLink = `${protocol}://${host}/admin/comments`;
+
+        // 3. Préparer l'email
+        const mailOptions = {
+            from: process.env.EMAIL_USER, // Expéditeur (ton email)
+            to: process.env.EMAIL_TO,     // Destinataire (toi, l'admin)
+            subject: `Nouveau Commentaire sur "${articleTitle}"`,
+            text: `Un nouveau commentaire (ID: ${commentId}) a été posté par "${authorName}" sur l'article "${articleTitle}".\n\n` +
+                  `Contenu:\n${commentContent}\n\n` +
+                  `Approuvez-le ici : ${moderationLink}\n`,
+            html: `
+                <p>Un nouveau commentaire (ID: <strong>${commentId}</strong>) a été posté par <strong>${authorName}</strong> sur l'article "${articleTitle}".</p>
+                <hr>
+                <p><strong>Contenu :</strong></p>
+                <blockquote style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px; font-style: italic;">
+                    ${commentContent.replace(/\n/g, '<br>')}
+                </blockquote>
+                <hr>
+                <p>Veuillez le modérer dans votre <a href="${moderationLink}">panneau d'administration</a>.</p>
+            `
+        };
+
+        // 4. Envoyer l'email
+        await transporter.sendMail(mailOptions);
+        console.log(`Notification admin envoyée pour le commentaire ${commentId}`);
+    
+    } catch (emailError) {
+        // Si l'envoi de l'email échoue, on l'affiche seulement dans la console
+        // L'utilisateur, lui, ne doit pas être bloqué pour ça.
+        console.error(`Erreur lors de l'envoi de l'email de notification admin (Commentaire ${commentId}):`, emailError);
+    }
+}
+
 
 // =================================================================
 // 6. ROUTES
@@ -1183,8 +1237,6 @@ app.post('/article/:id/comment', commentLimiter, (req, res) => {
 
     // 1. Validation simple des données
     if (!author_name || !content || author_name.trim() === '' || content.trim() === '') {
-        // Si la validation échoue, redirige avec une erreur
-        // (Tu pourrais aussi re-rendre la vue 'entry_detail' avec un message d'erreur si tu récupérais toutes les données)
         console.warn("Validation du commentaire échouée : champs vides.");
         return res.redirect(`/entree/${articleId}?comment=error`);
     }
@@ -1201,6 +1253,13 @@ app.post('/article/:id/comment', commentLimiter, (req, res) => {
             console.error("Erreur BDD (POST /article/:id/comment):", err);
             return res.redirect(`/entree/${articleId}?comment=error`);
         }
+
+        // --- APPEL DE LA NOTIFICATION ---
+        // On récupère l'ID du commentaire qui vient d'être créé
+        const newCommentId = this.lastID;
+        // On appelle la fonction de notification (sans 'await' pour ne pas bloquer l'utilisateur)
+        sendAdminNotification(req, articleId, newCommentId, author_name, content);
+        // --- FIN DE L'APPEL ---
 
         // 3. Succès ! Redirige avec un message de succès
         console.log(`Nouveau commentaire créé (ID: ${this.lastID}) pour l'article ${articleId}, en attente de modération.`);
