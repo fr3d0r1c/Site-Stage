@@ -529,6 +529,32 @@ app.get('/entree/:id', (req, res) => {
             
             article.tags = tagRows.map(tag => tag.name);
 
+            const ogDescription = article.content
+                .replace(/!\[.*?\]\(.*?\)/g, '') // Enlève les images Markdown
+                .replace(/[#*`~_]/g, '') // Enlève les symboles Markdown
+                .replace(/\s+/g, ' ') // Remplace les espaces multiples par un seul
+                .substring(0, 155)
+                .trim() + '...';
+
+            // 2. Détermine l'image de couverture
+            let ogImage = article.cover_image_url;
+            if (!ogImage) {
+                const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                ogImage = match ? match[1] : null;
+            }
+
+            // 3. Construit l'URL ABSOLUE de l'image
+            // IMPORTANT: Remplace 'https://mon-stage-au-nom-de-pays.onrender.com' par ton URL
+            const siteBaseUrl = 'https://mon-stage-au-nom-de-pays.onrender.com';
+            let absoluteOgImage = `${siteBaseUrl}/default-banner.png`; // Image par défaut
+            if (ogImage) {
+                if (ogImage.startsWith('http')) {
+                    absoluteOgImage = ogImage; // C'est déjà une URL absolue
+                } else {
+                    absoluteOgImage = `${siteBaseUrl}${ogImage}`; // C'est une URL locale (ex: /uploads/...)
+                }
+            }
+
             // Nettoyage du contenu (enlève le H1 si présent)
             let finalContent = article.content;
             const markdownTitle = '# ' + article.title;
@@ -551,7 +577,13 @@ app.get('/entree/:id', (req, res) => {
                 prevEntry: prevEntry || null,
                 nextEntry: nextEntry || null,
                 comments: comments || [], // 4. Passe les commentaires à la vue
-                messageSent: req.query.comment === 'success' ? true : (req.query.comment === 'error' ? false : null) // Pour le feedback du formulaire
+                messageSent: req.query.comment === 'success' ? true : (req.query.comment === 'error' ? false : null), // Pour le feedback du formulaire
+
+                // --- AJOUT DES VARIABLES OG ---
+                ogTitle: article.title,
+                ogDescription: ogDescription,
+                ogImage: absoluteOgImage,
+                ogType: 'article' // Type spécifique pour les entrées de journal
             });
 
         }).catch(promiseErr => {

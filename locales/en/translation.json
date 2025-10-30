@@ -35,6 +35,7 @@
   },
   "general": {
     "logo": "Internship Log",
+    "default_og_description": "An internship log documenting my engineering internship abroad. Follow my journal entries, cultural discoveries, and technical challenges.",
     "upload_image": "Upload Image",
     "add_image_url": "Add by URL",
     "preview": "Preview",

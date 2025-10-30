@@ -35,6 +35,7 @@
   },
   "general": {
     "logo": "Carnet de Stage",
+    "default_og_description": "Un carnet de bord documentant mon stage en ingénierie à l'étranger. Suivez mes entrées de journal, mes découvertes culturelles et mes défis techniques.",
     "upload_image": "Téléverser une image",
     "add_image_url": "Ajouter par URL",
     "preview": "Aperçu",

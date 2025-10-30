@@ -3,6 +3,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= pageTitle %> | <%= t('general.logo') %></title>
+
+    <meta name="description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+    
+    <meta property="og:title" content="<%= locals.ogTitle || pageTitle %>">
+    <meta property="og:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+    <meta property="og:type" content="<%= locals.ogType || 'website' %>">
+
+    <meta property="og:image" content="<%= locals.ogImage || 'https://ton-site.onrender.com/default-banner.png' %>">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<%= locals.ogTitle || pageTitle %>">
+    <meta name="twitter:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+    <meta name="twitter:image" content="<%= locals.ogImage || 'https://ton-site.onrender.com/default-banner.png' %>">
+
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.1/css/flag-icons.min.css">
