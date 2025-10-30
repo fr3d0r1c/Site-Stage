@@ -1,7 +1,7 @@
 # Indique que les règles s'appliquent à tous les robots
 User-agent: *
 
-# Interdit l'accès aux pages d'administration et de gestion de compte
+# Interdit l'accès aux pages d'administration
 Disallow: /admin
 Disallow: /admin/
 Disallow: /connexion
@@ -10,8 +10,8 @@ Disallow: /change-password
 Disallow: /forgot-password
 Disallow: /reset-password/
 
-# Autorise tout le reste (techniquement implicite, mais bon à mettre)
+# Autorise tout le reste
 Allow: /
 
-# Tu peux aussi indiquer l'emplacement de ton sitemap ici (quand on l'aura créé)
-# Sitemap: https://[ton-url-render.com]/sitemap.xml
+# Indique l'emplacement du sitemap
+Sitemap: https://my-internship.onrender.com/sitemap.xml

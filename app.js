@@ -19,6 +19,8 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const sharp = require('sharp');
 const fs = require('fs'); // Module Node.js pour interagir avec les fichiers
+const { SitemapStream, streamToPromise } = require('sitemap');
+const { Readable } = require('stream');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -1362,6 +1364,63 @@ app.post('/article/:id/comment', commentLimiter, (req, res) => {
         console.log(`Nouveau commentaire créé (ID: ${this.lastID}) pour l'article ${articleId}, en attente de modération.`);
         res.redirect(`/entree/${articleId}?comment=success`);
     })
+});
+
+// --- SITEMAP.XML ---
+app.get('/sitemap.xml', async (req, res) => {
+    // L'URL de base de ton site (essentielle pour le sitemap)
+    // Remplace-la par ton URL Render finale !
+    const baseUrl = 'https://my-internship.onrender.com';
+
+    try {
+        // 1. Liste de tes pages statiques
+        const staticLinks = [
+            { url: '/', changefreq: 'daily', priority: 1.0 },
+            { url: '/profil', changefreq: 'monthly', priority: 0.8 },
+            { url: '/stage', changefreq: 'monthly', priority: 0.8 },
+            { url: '/contact', changefreq: 'yearly', priority: 0.5 },
+            { url: '/journal', changefreq: 'daily', priority: 0.9 },
+        ];
+
+        // 2. Récupérer toutes les entrées de journal depuis la BDD
+        const sql = 'SELECT id, publication_date FROM articles ORDER BY publication_date DESC';
+        const entries = await new Promise((resolve, reject) => {
+            db.all(sql, [], (err, rows) => {
+                if (err) {
+                    console.error("Erreur BDD (GET /sitemap.xml):", err);
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            });
+        });
+
+        // 3. Transformer les entrées en liens pour le sitemap
+         const dynamicLinks = entries.map(entry => {
+            return {
+                url: `/entree/${entry.id}`,
+                changefreq: 'weekly', // Fréquence de changement (hebdomadaire)
+                priority: 0.7,      // Priorité
+                lastmod: entry.publication_date // Date de dernière modification
+            };
+         });
+
+         // 4. Combiner toutes les listes
+         const allLinks = staticLinks.concat(dynamicLinks);
+
+         // 5. Créer le stream du sitemap
+         const stream = new SitemapStream({ hostname: baseUrl });
+
+         // 6. Convertir le stream en XML
+         const xml = await streamToPromise(Readable.from(allLinks).pipe(stream));
+
+         // 7. Envoyer la réponse
+         res.header('Content-Type', 'application/xml');
+         res.send(xml.toString());
+    } catch (error) {
+        console.error("Erreur lors de la génération du sitemap:", error);
+        res.status(500).send("Erreur lors de la génération du sitemap.");
+    }
 });
 
 // =================================================================
