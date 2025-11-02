@@ -11,11 +11,9 @@ jobs:
   # Job 1 : Construire et Tester
   build_and_test:
     name: Build & Test
-    # Utilise un serveur Linux standard de GitHub
     runs-on: ubuntu-latest 
 
     steps:
-    # Étape 1 : Récupérer ton code depuis GitHub
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -28,6 +26,10 @@ jobs:
     # Étape 3 : Installer les dépendances (npm install)
     - name: Install dependencies
       run: npm install
+
+    - name: Security Audit
+      run: npm audit --audit-level=high
+        
 
     # Étape 4 : Lancer les tests
     - name: Run tests

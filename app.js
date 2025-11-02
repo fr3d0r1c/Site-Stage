@@ -161,12 +161,13 @@ app.use(express.json());
 
 // Configuration du middleware de session (pour la connexion admin)
 app.use(session({
-  secret: 'votre-secret-personnel-tres-difficile-a-deviner', // À CHANGER
+  secret: 'Z6*31121Mt', // À CHANGER
   resave: false,
   saveUninitialized: true,
   cookie: { 
-      secure: false, // Mettre à true en production (si HTTPS)
-      httpOnly: true // Le cookie n'est pas accessible en JS côté client
+      secure: process.env.NODE_ENV === 'production', // Mettre à true en production (si HTTPS)
+      httpOnly: true, // Le cookie n'est pas accessible en JS côté client
+      sameSite: 'strict'
     }
 }));
 
