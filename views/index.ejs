@@ -1,13 +1,13 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<h1><%= t('homepage.title') %></h1>
-
-<% if (message) { %>
+<%# Affiche les messages flash (ex: "Bonjour, Admin!") via SweetAlert2 %>
+<% if (locals.message) { %>
     <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
         <%= message.text %>
     </p>
 <% } %>
 
+<h1><%= t('homepage.title') %></h1>
 <p><%= t('homepage.welcome') %></p>
 
 <nav>
@@ -23,14 +23,18 @@
 <div class="entries-grid">
     <% articles.forEach(entry => { %>
         <article class="entry-card">
+            <%# Affiche l'image de couverture %>
             <% if (entry.coverImage) { %>
                 <a href="/entree/<%= entry.id %>" class="card-image-link">
                     <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
                 </a>
             <% } %>
+            
             <div class="card-body">
                 <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
                 <small><%= t('journal.published_on') %>: <%= new Date(entry.publication_date).toLocaleString(i18n.language) %></small>
+                
+                <%# Affiche les tags %>
                 <% if (entry.tags && entry.tags.length > 0) { %>
                     <div class="tags-list">
                         <% entry.tags.forEach(tag => { %>
@@ -38,11 +42,17 @@
                         <% }); %>
                     </div>
                 <% } %>
+                
+                <%# Affiche l'extrait de texte %>
                 <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
+                
+                <%# Affiche les actions admin si connecté %>
                 <% if (locals.username) { %>
                     <div class="actions">
                         <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
-                        <form action="/entree/<%= entry.id %>/delete" method="POST">
+                        <form action="/entree/<%= entry.id %>/delete" method="POST" 
+                              onsubmit="return confirm('<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>');"
+                              style="display: inline;">
                             <button type="submit"><%= t('journal.delete') %></button>
                         </form>
                     </div>

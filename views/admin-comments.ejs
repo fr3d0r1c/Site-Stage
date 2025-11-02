@@ -3,8 +3,9 @@
 <div class="static-page">
     <h1><%= t('admin_page.manage_comments_title') %></h1>
 
+    <%# Affichage des messages Flash (succès/erreur) %>
     <% if (message) { %>
-        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>">
+        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
             <%= message.text %>
         </p>
     <% } %>
@@ -30,7 +31,9 @@
                             <form action="/admin/comments/approve/<%= comment.id %>" method="POST" style="display: inline;">
                                 <button type="submit" class="button-small"><%= t('admin_page.approve_button') %></button>
                             </form>
-                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" style="display: inline;">
+                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" 
+                                  onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" 
+                                  style="display: inline;">
                                 <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
                             </form>
                         </td>
@@ -62,7 +65,9 @@
                         <td style="word-wrap: break-word;"><%= comment.content %></td>
                         <td><a href="/entree/<%= comment.article_id %>"><%= comment.article_title %></a></td>
                         <td>
-                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" style="display: inline;">
+                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" 
+                                  onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" 
+                                  style="display: inline;">
                                 <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
                             </form>
                         </td>

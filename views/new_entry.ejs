@@ -2,26 +2,23 @@
 
 <h1><%= t('journal.add_entry') %></h1>
 
-<form action="/journal" method="post" id="entry-form">
-    
-    <div class="title-layout">
-        <div class="title-field"> 
+<form action="/journal" method="POST" id="entry-form"> <div class="title-layout">
+        <div class="title-field">
             <label for="title_fr"><%= t('forms.title_fr') %> :</label><br>
-            <input type="text" id="title_fr" name="title_fr" required <%= (typeof article !== 'undefined' && article.title_fr) ? 'value="' + article.title_fr + '"' : '' %>>
+            <input type="text" id="title_fr" name="title_fr" required>
         </div>
-        <div class="title-field"> 
+        <div class="title-field">
             <label for="title_en"><%= t('forms.title_en') %> :</label><br>
-            <input type="text" id="title_en" name="title_en" required readonly <%= (typeof article !== 'undefined' && article.title_en) ? 'value="' + article.title_en + '"' : '' %>>
-        </div>
-    </div> <hr>
+            <input type="text" id="title_en" name="title_en" required readonly> </div>
+    </div>
+    <hr>
 
     <div class="editor-container-main">
 
         <div class="editor-and-preview-fr">
             <div class="editor-pane">
                 <label for="content-editor-fr"><%= t('forms.content_fr') %> :</label><br>
-                <textarea id="content-editor-fr" name="content_fr" rows="20"></textarea>
-            </div>
+                <textarea id="content-editor-fr" name="content_fr" rows="20"></textarea> </div>
             <div class="preview-pane">
                 <label><%= t('general.preview') %> (FR) :</label><br>
                 <div id="preview_fr" class="article-content"></div>
@@ -49,41 +46,57 @@
     <div>
         <div class="tags-label-container">
             <label>Tags :</label>
-            <button type="button" id="open-tag-modal-btn" class="add-tag-btn" title="<%= t('admin_page.add_new_tag_title') %>">
-                +
-            </button>
+            <button type="button" id="open-tag-modal-btn" class="add-tag-btn" title="<%= t('admin_page.add_new_tag_title') %>">+</button>
         </div>
         <div class="tags-checkbox-list">
             <% if (allTags && allTags.length > 0) { %>
                 <% allTags.forEach(tag => { %>
                     <div class="tag-checkbox-item">
                         <input
-                        type="checkbox"
-                        name="tags" <%# Le name doit être identique pour toutes %>
-                        value="<%= tag.id %>" <%# La value est l'ID du tag %>
-                        id="tag-<%= tag.id %>"
-                        <%# Pour edit_entry.ejs, coche la case si l'ID est dans le Set %>
-                        <% if (typeof articleTagIds !== 'undefined' && articleTagIds.has(tag.id)) { %> checked <% } %>
+                            type="checkbox"
+                            name="tags"
+                            value="<%= tag.id %>"
+                            id="tag-<%= tag.id %>"
+                            <%# Pas de 'checked' pour une nouvelle entrée %>
                         >
-                        <label for="tag-<%= tag.id %>"><%= tag.name %></label> <%# Affiche le nom du tag (déjà traduit) %>
+                        <label for="tag-<%= tag.id %>"><%= tag.name %></label>
                     </div>
                 <% }); %>
             <% } else { %>
-                <p><i>Aucun tag disponible. <a href="/admin/tags">Créez-en d'abord</a>.</i></p>
+                <p><i><%= t('admin_page.no_tags') %> <a href="/admin/tags">Créez-en d'abord</a>.</i></p>
             <% } %>
         </div>
     </div>
-    
+
     <div>
         <button type="submit" id="submit-button"><%= t('forms.create_entry') %></button>
-
-        <a href="/journal" 
-            class="button button-secondary"
-            onclick="return confirm('Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues.');"
-        ><%= t('general.cancel') %></a>
+        <a href="/journal" class="button button-secondary" 
+           onclick="return confirm('Êtes-vous sûr de vouloir annuler ? Le contenu non sauvegardé sera perdu.');"><%= t('general.cancel') %></a>
     </div>
 </form>
 
+<div id="tag-modal-overlay" class="modal-overlay">
+    <div id="tag-modal-content" class="modal-content static-page">
+        <button id="close-tag-modal-btn" class="modal-close-btn">&times;</button>
+        <h2><%= t('admin_page.add_new_tag_title') %></h2>
+        
+        <form id="new-tag-form">
+            <div class="form-group">
+                <label for="new_tag_name_fr"><%= t('admin_page.tag_name_fr') %> :</label>
+                <input type="text" id="new_tag_name_fr" name="name_fr" required>
+            </div>
+            <div class="form-group">
+                <label for="new_tag_name_en"><%= t('admin_page.tag_name_en') %> :</label>
+                <input type="text" id="new_tag_name_en" name="name_en">
+                <small>Laissez vide pour auto-traduction (si DeepL est configuré).</small>
+            </div>
+            <div>
+                <button type="submit" id="create-tag-submit-btn"><%= t('admin_page.add_tag_button') %></button>
+            </div>
+            <div id="tag-modal-error" class="error-message" style="display: none; margin-top: 1rem;"></div>
+        </form>
+    </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
 <script src="/js/init-easymde.js"></script>
@@ -145,29 +158,5 @@
         });
     }
 </script>
-
-<div id="tag-modal-overlay" class="modal-overlay">
-    <div id="tag-modal-content" class="modal-content static-page">
-        <button id="close-tag-modal-btn" class="modal-close-btn">&times;</button>
-        <h2><%= t('admin_page.add_new_tag_title') %></h2>
-
-        <form id="new-tag-form">
-            <div class="form-group">
-                <label for="new_tag_name_fr"><%= t('admin_page.tag_name_fr') %> :</label>
-                <input type="text" id="new_tag_name_fr" name="name_fr" required>
-            </div>
-            <div class="form-group">
-                <label for="new_tag_name_en"><%= t('admin_page.tag_name_en') %> :</label>
-                <input type="text" id="new_tag_name_en" name="name_en">
-                <small>Laissez vide pour auto-traduction (si DeepL est configuré).</small>
-            </div>
-            <div>
-                <button type="submit" id="create-tag-submit-btn"><%= t('admin_page.add_tag_button') %></button>
-            </div>
-            <div id="tag-modal-error" class="error-message" style="display: none; margin-top: 1rem;"></div>
-        </form>
-    </div>
-</div>
-<%- include('partials/footer') %>
 
 <%- include('partials/footer') %>

@@ -5,12 +5,13 @@
     <p><%= t('contact.intro') %></p>
     <hr>
 
+    <%# Affiche les messages flash (succès ou erreur) via SweetAlert2 %>
     <% if (messageSent === true) { %>
-        <div class="feedback-message success">
+        <div class="feedback-message success" style="display: none;">
             <%= t('contact.success_message') %>
         </div>
     <% } else if (messageSent === false) { %>
-        <div class="feedback-message error">
+        <div class="feedback-message error" style="display: none;">
             <%= t('contact.error_message') %>
         </div>
     <% } %>
@@ -28,10 +29,10 @@
             <label for="message"><%= t('contact.form_message') %> :</label>
             <textarea id="message" name="message" rows="8" required></textarea>
         </div>
-
+        
         <div class="form-group honeypot">
             <label for="website-field">Ne pas remplir ce champ</label>
-            <input type="text" id="website-field" name="website_field" autocomplete="off" tabindex="-1">
+            <input type="text" id="website-field-contact" name="website_field" autocomplete="off" tabindex="-1">
         </div>
 
         <div>

@@ -5,17 +5,18 @@
 
     <%# Affichage des messages Flash (succès/erreur) %>
     <% if (message) { %>
-        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>">
+        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
             <%= message.text %>
         </p>
     <% } %>
 
-    <%# Formulaire de création de tag (simplifié) %>
+    <%# Formulaire de création de tag (simplifié pour auto-traduction) %>
     <h2><%= t('admin_page.add_new_tag_title') %></h2>
     <form action="/admin/tags/create" method="POST" class="tag-create-form">
         <div class="form-group">
             <label for="name_fr"><%= t('admin_page.tag_name_fr') %> :</label>
             <input type="text" id="name_fr" name="name_fr" required>
+            <small>Le nom anglais sera traduit automatiquement via DeepL (si configuré).</small>
         </div>
         <div>
             <button type="submit"><%= t('admin_page.add_tag_button') %></button>
@@ -48,7 +49,9 @@
                             </form>
                         </td>
                         <td>
-                            <form action="/admin/tags/delete/<%= tag.id %>" method="POST" onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" style="display: inline;">
+                            <form action="/admin/tags/delete/<%= tag.id %>" method="POST" 
+                                  onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" 
+                                  style="display: inline;">
                                  <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
                             </form>
                         </td>
@@ -57,7 +60,7 @@
             </tbody>
         </table>
     <% } else { %>
-        <p><%= t('admin_page.no_tags') %></p>
+        <p><i><%= t('admin_page.no_tags') %></i></p>
     <% } %>
 
     <hr>

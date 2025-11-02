@@ -1,13 +1,6 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <h1><%= t('nav.journal') %></h1>
-
-<% if (message) { %>
-    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
-        <%= message.text %>
-    </p>
-<% } %>
-
 <nav>
     <% if (locals.username) { %>
         <a href="/journal/nouvelle"><%= t('journal.add_entry') %></a> |
@@ -16,22 +9,33 @@
 </nav>
 <hr>
 
+<%# Affiche le tag courant si on est sur une page de filtre par tag %>
 <% if (typeof currentTag !== 'undefined' && currentTag) { %>
     <h2 style="border-bottom: none; margin-bottom: 1.5rem;">Entrées pour le tag : "<%= currentTag %>"</h2>
 <% } %>
 
+<%# Affiche les messages flash (ex: "Entrée supprimée") via SweetAlert2 %>
+<% if (message) { %>
+    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+        <%= message.text %>
+    </p>
+<% } %>
 
 <div class="entries-grid">
     <% articles.forEach(entry => { %>
         <article class="entry-card">
+            <%# Affiche l'image de couverture %>
             <% if (entry.coverImage) { %>
                 <a href="/entree/<%= entry.id %>" class="card-image-link">
                     <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
                 </a>
             <% } %>
+            
             <div class="card-body">
                 <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
                 <small><%= t('journal.published_on') %>: <%= new Date(entry.publication_date).toLocaleString(i18n.language) %></small>
+                
+                <%# Affiche les tags %>
                 <% if (entry.tags && entry.tags.length > 0) { %>
                     <div class="tags-list">
                         <% entry.tags.forEach(tag => { %>
@@ -39,11 +43,17 @@
                         <% }); %>
                     </div>
                 <% } %>
+                
+                <%# Affiche l'extrait de texte %>
                 <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
+                
+                <%# Affiche les actions admin si connecté %>
                 <% if (locals.username) { %>
                     <div class="actions">
                         <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
-                        <form action="/entree/<%= entry.id %>/delete" method="POST">
+                        <form action="/entree/<%= entry.id %>/delete" method="POST" 
+                              onsubmit="return confirm('<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>');"
+                              style="display: inline;">
                             <button type="submit"><%= t('journal.delete') %></button>
                         </form>
                     </div>
@@ -56,13 +66,17 @@
 <% if (totalPages > 1) { %>
     <nav class="pagination" aria-label="Pagination">
         <ul>
+            <%# Construit l'URL de base pour la pagination (garde le filtre de tag si présent) %>
             <% const baseUrl = typeof currentTag !== 'undefined' ? `/tags/${currentTag}?page=` : '/journal?page='; %>
+            
             <% if (currentPage > 1) { %> <li><a href="<%= baseUrl %><%= currentPage - 1 %>">Précédent</a></li>
             <% } else { %> <li class="disabled"><span>Précédent</span></li> <% } %>
+            
             <% for (let i = 1; i <= totalPages; i++) { %>
                 <% if (i === currentPage) { %> <li class="active"><span><%= i %></span></li>
                 <% } else { %> <li><a href="<%= baseUrl %><%= i %>"><%= i %></a></li> <% } %>
             <% } %>
+            
             <% if (currentPage < totalPages) { %> <li><a href="<%= baseUrl %><%= currentPage + 1 %>">Suivant</a></li>
             <% } else { %> <li class="disabled"><span>Suivant</span></li> <% } %>
         </ul>

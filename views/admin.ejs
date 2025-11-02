@@ -8,13 +8,15 @@
     <h2><%= t('admin_page.actions_title') %></h2>
     <ul>
         <li><a href="/journal/nouvelle"><%= t('journal.add_entry') %></a></li>
-        <li><a href="/admin/tags">Gérer les traductions des tags</a></li>
+        <li><a href="/admin/tags"><%= t('admin_page.manage_tags_title') %></a></li>
         <li><a href="/admin/comments"><%= t('admin_page.action_manage_comments') %></a></li>
         <li><a href="/change-password"><%= t('admin_page.action_change_password') %></a></li>
-        <li><a href="/deconnexion"
-                onclick="return confirm('Êtes-vous sûr de vouloir vous déconnecter ?');"
-                ><%= t('admin_page.action_logout') %></a></li>
-        </ul>
+        <li>
+            <a href="/deconnexion" 
+               onclick="return confirm('<%= t('nav.logout') %> ?');"
+            ><%= t('admin_page.action_logout') %></a>
+        </li>
+    </ul>
 </div>
 
 <%- include('partials/footer') %>
