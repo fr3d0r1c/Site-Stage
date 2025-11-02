@@ -337,7 +337,7 @@ form div.form-group { /* Cible plus spécifiquement les divs de formulaire */
 }
 form label {
     display: block; /* S'assure que le label est sur sa propre ligne */
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
     font-weight: 500;
     color: var(--c-text);
 }
@@ -423,6 +423,11 @@ button:hover, .actions a:hover {
 .feedback-message.success { background-color: color-mix(in srgb, var(--c-primary) 15%, transparent); color: var(--c-primary); border: 1px solid var(--c-primary); }
 .feedback-message.error { background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); color: var(--c-danger); border: 1px solid var(--c-danger); }
 
+/* Cache les messages de feedback statiques, ils seront gérés par SweetAlert2 */
+.feedback-message,
+.error-message {
+    display: none;
+}
 
 /*
 =========================================
@@ -1025,4 +1030,131 @@ dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-pr
     opacity: 0;
     visibility: hidden; /* Cache-le complètement */
     pointer-events: none; /* N'intercepte plus les clics */
+}
+
+/*
+=========================================
+--- 19. Styles pour la Modale (Pop-up) ---
+=========================================
+*/
+
+/* Le fond sombre (overlay) */
+.modal-overlay {
+    position: fixed; /* Reste en place */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Fond noir semi-transparent */
+    z-index: 2000; /* Au-dessus de tout (sauf peut-être le menu mobile) */
+
+    /* Centrage */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    /* Caché par défaut */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s 0.3s linear;
+}
+
+/* Classe pour afficher la modale */
+.modal-overlay.modal-visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease;
+}
+
+/* Le contenu de la modale (la boîte blanche) */
+.modal-content {
+    background-color: var(--c-surface);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+
+    /* Animation d'apparition */
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+/* Animation d'apparition (contenu) */
+.modal-overlay.modal-visible .modal-content {
+    transform: translateY(0);
+}
+
+/* Bouton pour fermer (le 'X') */
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 2rem;
+    color: var(--c-gray);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    line-height: 1;
+}
+.modal-close-btn:hover {
+    color: var(--c-text);
+}
+
+/* S'assure que le h2 dans la modale a le bon style */
+.modal-content h2 {
+    margin-top: 0;
+}
+
+/*
+=========================================
+--- Styles pour le bouton "+" des Tags ---
+=========================================
+*/
+.tags-label-container {
+    display: flex;
+    align-items: center; /* Aligne verticalement le label et le bouton */
+    gap: 0.5rem; /* Espace entre le label et le bouton */
+    margin-bottom: 0.5rem; /* Espace avant la liste des cases */
+}
+
+/* Annule la marge par défaut du label quand il est ici */
+.tags-label-container label {
+    margin-bottom: 0;
+    font-weight: 500;
+    color: var(--c-text);
+}
+
+/* Style du bouton "+" */
+.add-tag-btn {
+    /* Style de base */
+    background-color: var(--c-primary);
+    color: var(--c-white);
+    border: none;
+    border-radius: 50%; /* Le rend parfaitement rond */
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    
+    /* Dimensions */
+    width: 24px;
+    height: 24px;
+    
+    /* Centrage du "+" */
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    line-height: 1;
+    
+    /* Annule les styles de bouton "gélule" */
+    padding: 0;
+    transform: none;
+    transition: all 0.2s ease;
+}
+
+.add-tag-btn:hover {
+    transform: scale(1.1); /* Léger zoom au survol */
+    opacity: 0.9;
 }

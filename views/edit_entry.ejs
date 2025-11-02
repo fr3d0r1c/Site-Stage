@@ -47,7 +47,12 @@
     </div>
 
     <div>
-        <label>Tags :</label>
+        <div class="tags-label-container">
+            <label>Tags :</label>
+            <button type="button" id="open-tag-modal-btn" class="add-tag-btn" title="<%= t('admin_page.add_new_tag_title') %>">
+                +
+            </button>
+        </div>
         <div class="tags-checkbox-list">
             <% if (allTags && allTags.length > 0) { %>
                 <% allTags.forEach(tag => { %>
@@ -80,6 +85,7 @@
 <script src="/js/init-easymde.js"></script>
 <script src="/js/auto-translate-preview.js"></script>
 <script src="/js/uploader.js"></script>
+<script src="/js/modal-tag-handler.js"></script>
 <script>
     const submitBtn = document.getElementById('submit-button');
     const form = document.getElementById('entry-form');
@@ -145,5 +151,29 @@
           }
     }
 </script>
+
+<div id="tag-modal-overlay" class="modal-overlay">
+    <div id="tag-modal-content" class="modal-content static-page">
+        <button id="close-tag-modal-btn" class="modal-close-btn">&times;</button>
+        <h2><%= t('admin_page.add_new_tag_title') %></h2>
+
+        <form id="new-tag-form">
+            <div class="form-group">
+                <label for="new_tag_name_fr"><%= t('admin_page.tag_name_fr') %> :</label>
+                <input type="text" id="new_tag_name_fr" name="name_fr" required>
+            </div>
+            <div class="form-group">
+                <label for="new_tag_name_en"><%= t('admin_page.tag_name_en') %> :</label>
+                <input type="text" id="new_tag_name_en" name="name_en">
+                <small>Laissez vide pour auto-traduction (si DeepL est configuré).</small>
+            </div>
+            <div>
+                <button type="submit" id="create-tag-submit-btn"><%= t('admin_page.add_tag_button') %></button>
+            </div>
+            <div id="tag-modal-error" class="error-message" style="display: none; margin-top: 1rem;"></div>
+        </form>
+    </div>
+</div>
+<%- include('partials/footer') %>
 
 <%- include('partials/footer') %>

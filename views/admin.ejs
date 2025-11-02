@@ -11,7 +11,9 @@
         <li><a href="/admin/tags">Gérer les traductions des tags</a></li>
         <li><a href="/admin/comments"><%= t('admin_page.action_manage_comments') %></a></li>
         <li><a href="/change-password"><%= t('admin_page.action_change_password') %></a></li>
-        <li><a href="/deconnexion"><%= t('admin_page.action_logout') %></a></li>
+        <li><a href="/deconnexion"
+                onclick="return confirm('Êtes-vous sûr de vouloir vous déconnecter ?');"
+                ><%= t('admin_page.action_logout') %></a></li>
         </ul>
 </div>
 

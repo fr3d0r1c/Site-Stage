@@ -1,6 +1,13 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <h1><%= t('nav.journal') %></h1>
+
+<% if (message) { %>
+    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+        <%= message.text %>
+    </p>
+<% } %>
+
 <nav>
     <% if (locals.username) { %>
         <a href="/journal/nouvelle"><%= t('journal.add_entry') %></a> |

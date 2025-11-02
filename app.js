@@ -215,6 +215,7 @@ app.use(
                     "'self'",
                     "https://cdn.jsdelivr.net/npm/marked/marked.min.js",
                     "https://unpkg.com/easymde/dist/easymde.min.js",
+                    "https://cdn.jsdelivr.net/" // <-- AJOUTE CETTE LIGNE
                 ],
                 styleSrc: [
                     "'self'",
@@ -222,33 +223,27 @@ app.use(
                     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/",
                     "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
                     "https://fonts.googleapis.com/", // <-- AJOUTÉ pour Google Fonts CSS
+                    "https://cdn.jsdelivr.net/", // <-- AJOUTE CETTE LIGNE
                     "'unsafe-inline'"
                 ],
                 imgSrc: [
-                    "'self'", // Ton domaine (pour les uploads)
-                    "data:", // Pour les images encodées
-                    "https://via.placeholder.com", // Pour les images d'exemple
-                    "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // <-- AJOUTÉ pour les SVG des drapeaux
-                    // Ajoute d'autres domaines d'images si nécessaire
+                    "'self'",
+                    "data:",
+                    "https://via.placeholder.com",
+                    "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
                 ],
                 fontSrc: [
                     "'self'",
-                    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/", // Pour Font Awesome
-                    "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // Pour Flag Icon Fonts
-                    "https://fonts.gstatic.com" // Pour Google Fonts (si utilisé)
+                    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/",
+                    "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
+                    "https://fonts.gstatic.com"
                 ],
                 connectSrc: [
-                    "'self'", // Autorise les connexions au même domaine (pour l'API upload)
-                    // Si tu utilises DeepL, ajoute son domaine API ici si nécessaire
-                    // Ex: "https://api-free.deepl.com"
+                    "'self'",
+                    "https://cdn.jsdelivr.net/"
                 ],
-                frameSrc: [
-                    // Si tu utilises Google Translate (Solution A), décommente :
-                    // "https://translate.google.com",
-                    // "https://*.google.com"
-                ], // Pour les iframes (Google Translate)
-                objectSrc: ["'none'"], // N'autorise pas <object>, <embed>, <applet>
-                upgradeInsecureRequests: [], // Redirige HTTP vers HTTPS si possible
+                objectSrc: ["'none'"],
+                upgradeInsecureRequests: [],
             },
         },
         // Autres options de Helmet (gardent les valeurs par défaut sécurisées)
@@ -451,17 +446,41 @@ async function sendAdminNotification(req, articleId, commentId, authorName, comm
 // Page d'accueil
 app.get('/', (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
-    const sql = `SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name_${lang}) as tags FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id GROUP BY a.id ORDER BY a.publication_date DESC LIMIT 3`;
+    const sql = `
+        SELECT
+            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.cover_image_url, a.publication_date,
+            GROUP_CONCAT(t.name_${lang}) as tags
+        FROM articles a
+        LEFT JOIN article_tags at ON a.id = at.article_id
+        LEFT JOIN tags t ON at.tag_id = t.id
+        GROUP BY a.id
+        ORDER BY a.publication_date DESC
+        LIMIT 3
+    `;
     db.all(sql, [], (err, rows) => {
         if (err) { console.error("Erreur BDD (GET /):", err); return res.status(500).send("Erreur serveur."); }
+
+        // Traitement des données (tags, image, extrait)
         const articlesWithData = rows.map(article => {
             const tagList = article.tags ? article.tags.split(',') : [];
             let finalCoverImage = null;
-            if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
+            if (article.cover_image_url) { finalCoverImage = article.cover_image_url; }
+            else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
             const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
             return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
         });
-        res.render('index', { articles: articlesWithData, pageTitle: req.t('page_titles.home'), activePage: 'accueil' });
+
+        // Récupère et efface le message flash de la session
+        const message = req.session.flashMessage;
+        req.session.flashMessage = null;
+
+        res.render('index', {
+            articles: articlesWithData,
+            pageTitle: req.t('page_titles.home'),
+            activePage: 'accueil',
+            message: message // Passe le message à la vue (pour le toast)
+        });
     });
 });
 
@@ -471,30 +490,61 @@ app.get('/stage', (req, res) => { res.render('stage', { pageTitle: req.t('page_t
 app.get('/contact', (req, res) => { res.render('contact', { pageTitle: req.t('page_titles.contact'), activePage: 'contact', messageSent: null }); });
 app.get('/admin', isAuthenticated, (req, res) => { res.render('admin', { pageTitle: req.t('admin_page.title'), activePage: 'admin' }); });
 
-// Page de tout le journal (avec pagination)
+// Page de tout le journal (avec pagination et tags)
 app.get('/journal', (req, res) => {
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
     const lang = req.language === 'en' ? 'en' : 'fr';
-    const sqlEntries = `SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name_${lang}) as tags FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id GROUP BY a.id ORDER BY a.publication_date DESC LIMIT ? OFFSET ?`;
+
+    const sqlEntries = `
+        SELECT
+            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.cover_image_url, a.publication_date,
+            GROUP_CONCAT(t.name_${lang}) as tags
+        FROM articles a
+        LEFT JOIN article_tags at ON a.id = at.article_id
+        LEFT JOIN tags t ON at.tag_id = t.id
+        GROUP BY a.id
+        ORDER BY a.publication_date DESC
+        LIMIT ? OFFSET ?
+    `;
     const sqlCount = `SELECT COUNT(*) as totalCount FROM articles`;
+
     db.all(sqlEntries, [ITEMS_PER_PAGE, offset], (err, rows) => {
         if (err) { console.error("Erreur BDD (GET /journal entries):", err); return res.status(500).send("Erreur serveur."); }
+
         db.get(sqlCount, [], (errCount, countResult) => {
             if (errCount) { console.error("Erreur BDD (GET /journal count):", errCount); return res.status(500).send("Erreur serveur."); }
+
             const totalEntries = countResult.totalCount;
             const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+
             const articlesWithData = rows.map(article => {
                 const tagList = article.tags ? article.tags.split(',') : [];
                 let finalCoverImage = null;
-                if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
+                if (article.cover_image_url) { finalCoverImage = article.cover_image_url; }
+                else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
                 const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
                 return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
             });
-            res.render('journal', { articles: articlesWithData, pageTitle: req.t('page_titles.journal'), activePage: 'journal', currentPage: currentPage, totalPages: totalPages, currentTag: null });
+
+            // Récupère et efface le message flash
+            const message = req.session.flashMessage;
+            req.session.flashMessage = null;
+
+            res.render('journal', {
+                articles: articlesWithData,
+                pageTitle: req.t('page_titles.journal'),
+                activePage: 'journal',
+                currentPage: currentPage,
+                totalPages: totalPages,
+                currentTag: null,
+                message: message // Passe le message à la vue
+            });
         });
     });
 });
+
 
 // Page de détail d'une entrée (avec tags, parsing, nav, et commentaires)
 app.get('/entree/:id', (req, res) => {
@@ -599,21 +649,58 @@ app.get('/entree/:id', (req, res) => {
 app.get('/search', (req, res) => {
     const query = req.query.query;
     const lang = req.language === 'en' ? 'en' : 'fr';
-    if (!query) { return res.render('search_results', { articles: [], query: '', pageTitle: req.t('page_titles.search'), activePage: 'search' }); }
+
+    // Récupère et efface le message flash
+    const message = req.session.flashMessage;
+    req.session.flashMessage = null;
+
+    if (!query) {
+        return res.render('search_results', {
+            articles: [], query: '',
+            pageTitle: req.t('page_titles.search'),
+            activePage: 'search',
+            message: message 
+        });
+    }
+
     const searchTerm = `%${query}%`;
-    const sql = `SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name_${lang}) as tags FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id WHERE a.title_fr LIKE ? OR a.title_en LIKE ? OR a.content_fr LIKE ? OR a.content_en LIKE ? GROUP BY a.id ORDER BY a.publication_date DESC`;
+    const sql = `
+        SELECT
+            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.cover_image_url, a.publication_date,
+            GROUP_CONCAT(t.name_${lang}) as tags
+        FROM articles a
+        LEFT JOIN article_tags at ON a.id = at.article_id
+        LEFT JOIN tags t ON at.tag_id = t.id
+        WHERE
+            a.title_fr LIKE ? OR
+            a.title_en LIKE ? OR
+            a.content_fr LIKE ? OR
+            a.content_en LIKE ?
+        GROUP BY a.id
+        ORDER BY a.publication_date DESC
+    `;
     db.all(sql, [searchTerm, searchTerm, searchTerm, searchTerm], (err, rows) => {
         if (err) { console.error("Erreur BDD (GET /search):", err); return res.status(500).send("Erreur serveur."); }
+
         const articlesWithData = rows.map(article => {
            const tagList = article.tags ? article.tags.split(',') : [];
            let finalCoverImage = null;
-           if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
+           if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } 
+           else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
            const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
            return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
         });
-        res.render('search_results', { articles: articlesWithData, query: query, pageTitle: `${req.t('search.results_for')} "${query}"`, activePage: 'search' });
-    });
-});
+
+        res.render('search_results', {
+            articles: articlesWithData,
+            query: query,
+            pageTitle: `${req.t('search.results_for')} "${query}"`,
+            activePage: 'search',
+            message: message
+        });
+    })
+})
 
 // --- FILTRAGE PAR TAG ---
 app.get('/tags/:tagName', (req, res) => {
@@ -621,27 +708,71 @@ app.get('/tags/:tagName', (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+    // Récupère et efface le message flash
+    const message = req.session.flashMessage;
+    req.session.flashMessage = null;
+
     const sqlFindTag = `SELECT id FROM tags WHERE name_${lang} = ?`;
+    
     db.get(sqlFindTag, [tagName], (errTag, tag) => {
         if (errTag) { console.error(`Erreur BDD (GET /tags/${tagName} findTag):`, errTag); return res.status(500).send("Erreur serveur."); }
-        if (!tag) { return res.render('journal', { articles: [], pageTitle: `Tag introuvable : "${tagName}"`, activePage: 'journal', currentPage: 1, totalPages: 0, currentTag: tagName }); }
+        if (!tag) {
+             return res.render('journal', { 
+                 articles: [], 
+                 pageTitle: `Tag introuvable : "${tagName}"`, 
+                 activePage: 'journal', 
+                 currentPage: 1, 
+                 totalPages: 0, 
+                 currentTag: tagName,
+                 message: message 
+             });
+        }
+        
         const tagId = tag.id;
-        const sqlEntries = `SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name_${lang}) as tags FROM articles a JOIN article_tags at ON a.id = at.article_id LEFT JOIN article_tags at_all ON a.id = at_all.article_id LEFT JOIN tags t ON at_all.tag_id = t.id WHERE at.tag_id = ? GROUP BY a.id ORDER BY a.publication_date DESC LIMIT ? OFFSET ?`;
+        const sqlEntries = `
+            SELECT
+                a.id, a.title_${lang} as title, a.content_${lang} as content,
+                a.cover_image_url, a.publication_date,
+                GROUP_CONCAT(t.name_${lang}) as tags
+            FROM articles a
+            JOIN article_tags at ON a.id = at.article_id
+            LEFT JOIN article_tags at_all ON a.id = at_all.article_id
+            LEFT JOIN tags t ON at_all.tag_id = t.id
+            WHERE at.tag_id = ?
+            GROUP BY a.id
+            ORDER BY a.publication_date DESC
+            LIMIT ? OFFSET ?
+        `;
         const sqlCount = `SELECT COUNT(*) as totalCount FROM article_tags WHERE tag_id = ?`;
+        
         db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
             if (err) { console.error(`Erreur BDD (GET /tags/${tagName} entries):`, err); return res.status(500).send("Erreur serveur."); }
+            
             db.get(sqlCount, [tagId], (errCount, countResult) => {
                  if (errCount) { console.error(`Erreur BDD (GET /tags/${tagName} count):`, errCount); return res.status(500).send("Erreur serveur."); }
+                 
                  const totalEntries = countResult.totalCount;
                  const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+                 
                  const articlesWithData = rows.map(article => {
                      const tagList = article.tags ? article.tags.split(',') : [];
                      let finalCoverImage = null;
-                     if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
+                     if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } 
+                     else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
                      const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
                      return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
                  });
-                 res.render('journal', { articles: articlesWithData, pageTitle: `Tag : "${tagName}"`, activePage: 'journal', currentPage: currentPage, totalPages: totalPages, currentTag: tagName });
+                 
+                 res.render('journal', {
+                     articles: articlesWithData,
+                     pageTitle: `Tag : "${tagName}"`,
+                     activePage: 'journal',
+                     currentPage: currentPage,
+                     totalPages: totalPages,
+                     currentTag: tagName,
+                     message: message
+                 });
             });
         });
     });
@@ -652,10 +783,14 @@ app.get('/tags/:tagName', (req, res) => {
 // Affiche le formulaire de connexion
 app.get('/connexion', (req, res) => {
     const resetSuccess = req.query.reset === 'success';
+
+    const message = req.session.flashMessage;
+    req.session.flashMessage = null; // Efface-le après l'avoir lu
+
     const sql = "SELECT COUNT(*) as count FROM users";
     db.get(sql, [], (err, row) => {
         if (err) { console.error("Erreur BDD (GET /connexion count):", err); return res.status(500).send("Erreur serveur."); }
-        res.render('login', { pageTitle: req.t('page_titles.login'), error: null, adminExists: row.count > 0, activePage: 'admin', resetSuccess: resetSuccess });
+        res.render('login', { pageTitle: req.t('page_titles.login'), error: null, adminExists: row.count > 0, activePage: 'admin', resetSuccess: resetSuccess, message: message });
     });
 });
 
@@ -663,15 +798,55 @@ app.get('/connexion', (req, res) => {
 app.post('/connexion', authLimiter, (req, res) => {
     const { username, password } = req.body;
     const sql = 'SELECT * FROM users WHERE username = ?';
+
     db.get(sql, [username], (err, user) => {
-        if (err) { console.error("Erreur BDD (POST /connexion findUser):", err); return res.status(500).send("Erreur serveur."); }
-        if (!user) { return res.render('login', { pageTitle: req.t('page_titles.login'), error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true, activePage: 'admin', resetSuccess: false }); }
+        if (err) { 
+            console.error("Erreur BDD (POST /connexion findUser):", err); 
+            return res.status(500).send("Erreur serveur."); 
+        }
+
+        // Si l'utilisateur n'est pas trouvé
+        if (!user) { 
+            return res.render('login', { 
+                pageTitle: req.t('page_titles.login'), 
+                error: "Nom d'utilisateur ou mot de passe incorrect.", 
+                adminExists: true, 
+                activePage: 'admin',
+                resetSuccess: false 
+            }); 
+        }
+
+        // Compare le mot de passe
         bcrypt.compare(password, user.password, (errCompare, result) => {
-            if (errCompare) { console.error("Erreur bcrypt compare:", errCompare); return res.render('login', { /* ... error: "Erreur serveur." ... */}); }
+            if (errCompare) {
+                console.error("Erreur bcrypt compare:", errCompare);
+                return res.render('login', { 
+                    pageTitle: req.t('page_titles.login'), 
+                    error: "Erreur serveur lors de la vérification.", 
+                    adminExists: true, 
+                    activePage: 'admin',
+                    resetSuccess: false 
+                });
+            }
+
+            // Si le mot de passe est correct
             if (result) {
-                req.session.userId = user.id; req.session.username = user.username;
+                req.session.userId = user.id;
+                req.session.username = user.username;
+
+                req.session.flashMessage = { type: 'success', text: `Bonjour, ${user.username} !` };
+
                 res.redirect('/');
-            } else { res.render('login', { pageTitle: req.t('page_titles.login'), error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true, activePage: 'admin', resetSuccess: false }); }
+            } else {
+                // Si le mot de passe est incorrect
+                res.render('login', { 
+                    pageTitle: req.t('page_titles.login'), 
+                    error: "Nom d'utilisateur ou mot de passe incorrect.", 
+                    adminExists: true, 
+                    activePage: 'admin',
+                    resetSuccess: false 
+                });
+            }
         });
     });
 });
@@ -691,20 +866,50 @@ app.get('/inscription', checkAdminExists, (req, res) => {
 
 app.post('/inscription', checkAdminExists, authLimiter, (req, res) => {
     const { username, password, email } = req.body;
-    if (!email || !email.includes('@')) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Adresse email invalide.' }); }
-    if (!password || password.length < 8) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Le mot de passe doit faire au moins 8 caractères.' }); }
+
+    // Validation de l'email
+    if (!email || !email.includes('@')) {
+         return res.render('register', { 
+             pageTitle: req.t('general.page_title_register'), 
+             activePage: 'admin', 
+             error: 'Adresse email invalide.' 
+         });
+    }
+    // Validation du mot de passe
+    if (!password || password.length < 8) {
+         return res.render('register', { 
+             pageTitle: req.t('general.page_title_register'), 
+             activePage: 'admin', 
+             error: 'Le mot de passe doit faire au moins 8 caractères.' 
+         });
+    }
+
     const saltRounds = 10;
-    bcrypt.hash(password, saltRounds, (errHash, hash) => {
-        if (errHash) { console.error("Erreur bcrypt hash (inscription):", errHash); return res.status(500).send("Erreur serveur."); }
+    bcrypt.hash(password, saltRounds, (err, hash) => {
+        if (err) {
+            console.error("Erreur hachage (inscription):", err);
+            return res.status(500).send("Erreur serveur.");
+        }
+
         const sql = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
-        db.run(sql, [username, hash, email], function(errInsert) {
-            if (errInsert) {
-                 let errorMessage = "Erreur création compte.";
-                 if (errInsert.message.includes('UNIQUE constraint failed: users.username')) { errorMessage = "Ce nom d'utilisateur est déjà pris."; }
-                 else if (errInsert.message.includes('UNIQUE constraint failed: users.email')) { errorMessage = "Cette adresse email est déjà utilisée."; }
-                 console.error("Erreur BDD (POST /inscription insert):", errInsert);
-                 return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: errorMessage });
+
+        db.run(sql, [username, hash, email], function(err) {
+            if (err) {
+                let errorMessage = "Erreur création compte.";
+                if (err.message.includes('UNIQUE constraint failed: users.username')) {
+                    errorMessage = "Ce nom d'utilisateur est déjà pris.";
+                } else if (err.message.includes('UNIQUE constraint failed: users.email')) {
+                    errorMessage = "Cette adresse email est déjà utilisée.";
+                }
+                return res.render('register', {
+                    pageTitle: req.t('general.page_title_register'),
+                    activePage: 'admin',
+                    error: errorMessage
+                });
             }
+
+            req.session.flashMessage = { type: 'success', text: 'Compte administrateur créé avec succès ! Vous pouvez maintenant vous connecter.' };
+
             res.redirect('/connexion');
         });
     });
@@ -1006,8 +1211,8 @@ app.post('/journal', isAuthenticated, async (req, res) => {
         if (err) { console.error("Erreur BDD (POST /journal insert):", err); return res.status(500).send("Erreur serveur."); }
         const articleId = this.lastID;
         try  {
-            // Passe le tableau d'IDs directement
             await processTags(articleId, tagIds);
+            req.session.flashMessage = { type: 'success', text: 'Entrée créée avec succès !' }; // <-- AJOUTE ÇA
             res.redirect('/journal');
         } catch (tagError) {
             console.error("Erreur traitement tags (création):", tagError);
@@ -1066,8 +1271,8 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     db.run(sqlUpdateArticle, [title_fr, title_en, content_fr, content_en, cover_image_url, id], async function(err) {
         if (err) { console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); return res.status(500).send("Erreur serveur."); }
         try {
-            // Passe le tableau d'IDs directement
             await processTags(id, tagIds);
+            req.session.flashMessage = { type: 'success', text: 'Entrée mise à jour avec succès !' }; // <-- AJOUTE ÇA
             res.redirect('/journal');
         } catch (tagError) {
             console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
@@ -1082,6 +1287,7 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
     const sql = 'DELETE FROM articles WHERE id = ?';
     db.run(sql, id, function(err) {
         if (err) { console.error(`Erreur BDD (POST /entree/${id}/delete):`, err); return res.status(500).send("Erreur serveur."); }
+        req.session.flashMessage = { type: 'success', text: 'Entrée supprimée avec succès.' }; // <-- AJOUTE ÇA
         res.redirect('/journal');
     });
 });
@@ -1421,6 +1627,53 @@ app.get('/sitemap.xml', async (req, res) => {
         console.error("Erreur lors de la génération du sitemap:", error);
         res.status(500).send("Erreur lors de la génération du sitemap.");
     }
+});
+
+// --- API POUR LA CRÉATION RAPIDE DE TAGS (JSON) ---
+app.post('/api/tags/create', isAuthenticated, async (req, res) => {
+    const { name_fr, name_en_auto } = req.body; // 'name_en_auto' est ce qu'on va traduire
+
+    if (!name_fr) {
+        return res.status(400).json({ error: 'Le nom français est requis.' });
+    }
+
+    let name_en = name_fr; // Fallback
+
+    // --- Traduction via DeepL ---
+    if (translator && name_en_auto) {
+        try {
+            console.log(`[API Tag Create] Traduction de "${name_fr}" vers EN...`);
+            const result = await translator.translateText(name_fr, 'fr', 'en-GB');
+            if (result && typeof result.text === 'string') {
+                name_en = result.text;
+            }
+        } catch (error) {
+            console.error("[API Tag Create] Erreur DeepL:", error);
+        }
+    } else if (req.body.name_en) {
+        name_en = req.body.name_en; // Permet de passer un nom anglais manuellement
+    }
+
+    // --- Insertion BDD ---
+    const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
+    db.run(sql, [name_fr, name_en], function(err) {
+        if (err) {
+            console.error("Erreur BDD (POST /api/tags/create):", err);
+            let message = 'Erreur lors de la création du tag.';
+            if (err.message.includes('UNIQUE constraint failed')) {
+                message = 'Un tag avec ce nom (FR ou EN) existe déjà.';
+            }
+            return res.status(409).json({ error: message }); // 409 Conflict
+        } else {
+            const lang = req.language === 'en' ? 'en' : 'fr'; // Détecte la langue
+            res.status(201).json({
+                id: this.lastID,
+                name: (lang === 'en' ? name_en : name_fr),
+                name_fr: name_fr,
+                name_en: name_en
+            });
+        }        
+    });
 });
 
 // =================================================================

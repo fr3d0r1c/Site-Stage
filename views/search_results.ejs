@@ -2,6 +2,12 @@
 
 <h1><%= pageTitle %></h1> <%# Le titre est déjà traduit via server.js %>
 
+<% if (message) { %>
+    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+        <%= message.text %>
+    </p>
+<% } %>
+
 <% if (articles.length > 0) { %>
     <p><%= t('search.results_count') %> : <%= articles.length %></p>
     <hr>

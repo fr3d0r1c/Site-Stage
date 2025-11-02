@@ -18,7 +18,10 @@
     <% if (locals.username) { %>
          <div class="actions" style="margin-top: 2rem; border-top: 1px solid var(--c-border); padding-top: 1.5rem;">
              <a href="/entree/<%= article.id %>/edit"><%= t('journal.edit') %></a>
-             <form action="/entree/<%= article.id %>/delete" method="POST">
+             <form action="/entree/<%= article.id %>/delete" 
+                    method="POST"
+                    onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');"
+                    style="display: inline;">
                  <button type="submit"><%= t('journal.delete') %></button>
              </form>
          </div>
@@ -98,6 +101,11 @@
 
             <div>
                 <button type="submit"><%= t('comments.submit_button') %></button>
+
+                <a href="/journal"
+                    class="button button-secondary"
+                    onclick="return confirm('Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues.');"
+                    ><%= t('general.cancel') %></a>
             </div>
         </form>
     </div>

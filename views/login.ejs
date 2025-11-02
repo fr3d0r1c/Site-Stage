@@ -7,6 +7,12 @@
     <p class="feedback-message success">Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter.</p>
 <% } %>
 
+<% if (locals.message) { %>
+    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+        <%= message.text %>
+    </p>
+<% } %>
+
 <%# Affiche les erreurs de connexion (ex: "mot de passe incorrect") %>
 <% if (error) { %>
     <p class="error-message"><%= error %></p>

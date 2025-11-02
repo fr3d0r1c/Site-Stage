@@ -1,6 +1,13 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <h1><%= t('homepage.title') %></h1>
+
+<% if (message) { %>
+    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+        <%= message.text %>
+    </p>
+<% } %>
+
 <p><%= t('homepage.welcome') %></p>
 
 <nav>
