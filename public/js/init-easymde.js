@@ -139,6 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (easyMDE_fr) {
         window.easyMDEInstance = easyMDE_fr; // Keep using the single instance name
         console.log("EasyMDE FR instance created.");
+
+        document.dispatchEvent(new CustomEvent('easyMDEReady', { detail: { instance: easyMDE_fr } }));
     } else if (frenchEditorTextarea) {
          console.error("EasyMDE FR initialization failed but textarea exists.");
     }

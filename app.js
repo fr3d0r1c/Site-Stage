@@ -1160,6 +1160,44 @@ app.post('/api/translate', isAuthenticated, async (req, res) => {
     }
 });
 
+// --- API POUR LA CRÉATION RAPIDE DE TAGS (JSON) ---
+app.post('/api/tags/create', isAuthenticated, async (req, res) => {
+    const { name_fr, name_en_auto } = req.body;
+    if (!name_fr) {
+        return res.status(400).json({ error: 'Le nom français est requis.' });
+    }
+    let name_en = req.body.name_en; // Récupère le nom EN manuel
+
+    if (name_en_auto && translator) { // Si auto-traduction demandée ET DeepL dispo
+        try {
+            const result = await translator.translateText(name_fr, 'fr', 'en-GB');
+            if (result && typeof result.text === 'string') { name_en = result.text; }
+            else { name_en = name_fr; } // Fallback
+        } catch (error) { name_en = name_fr; /* Fallback */ }
+    } else if (!name_en) {
+        name_en = name_fr;
+    }
+
+    const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
+    db.run(sql, [name_fr, name_en], function(err) {
+        if (err) {
+            let message = 'Erreur lors de la création du tag.';
+            if (err.message.includes('UNIQUE constraint failed')) {
+                message = 'Un tag avec ce nom (FR ou EN) existe déjà.';
+            }
+            return res.status(409).json({ error: message }); // 409 Conflict 
+        }
+
+        const lang = req.language === 'en' ? 'en' : 'fr';
+        res.status(201).json({
+            id: this.lastID,
+            name: (lang === 'en' ? name_en : name_fr), // Nom dans la langue actuelle
+            name_fr: name_fr,
+            name_en: name_en
+        });
+    });
+});
+
 // =================================================================
 // 7. EXPORT DE L'APPLICATION (pour les tests)
 // =================================================================
