@@ -66,7 +66,7 @@
                     </div>
                 <% }); %>
             <% } else { %>
-                <p><i><%= t('admin_page.no_tags') %> <a href="/admin/tags">Créez-en d'abord</a>.</i></p>
+                <p><i><%= t('admin_page.no_tags') %> Cliquez sur <button type="button" id="open-tag-modal-btn" class="add-tag-btn" title="<%= t('admin_page.add_new_tag_title') %>">+</button> Pour en créer. </i></p>
             <% } %>
         </div>
     </div>
@@ -105,45 +105,7 @@
 <script src="/js/auto-translate-preview.js"></script>
 <script src="/js/uploader.js"></script>
 <script src="/js/modal-tag-handler.js"></script>
-<script>
-    const submitBtn = document.getElementById('submit-button');
-    const form = document.getElementById('entry-form');
-    const contentEnTextarea = document.getElementById('content_en'); // Textarea cachée EN
+<script src="/js/form-validation.js"></script>
 
-    if (submitBtn && form && contentEnTextarea) {
-        submitBtn.addEventListener('click', function(event) {
-            if (window.easyMDEInstance) { window.easyMDEInstance.codemirror.save(); }
-            let isValid = true;
-            const requiredInputs = form.querySelectorAll('input[required], textarea[required]');
-            requiredInputs.forEach(input => {
-                 if (input.id === 'content_en') {
-                     if (!input.value.trim() || input.value.includes('Translating...') || input.value.includes('Translation Error.')) {
-                          isValid = false; alert('La traduction anglaise du contenu est requise ou n\'est pas terminée/valide.');
-                     }
-                 }
-                 else if (!input.value.trim()) {
-                     isValid = false; const label = form.querySelector(`label[for="${input.id}"]`); const fieldName = label ? label.innerText.replace(':', '') : input.name;
-                     alert(`Le champ "${fieldName}" est requis.`); try { input.focus(); } catch(e){}
-                 }
-            });
-             const frenchContent = window.easyMDEInstance ? window.easyMDEInstance.value() : '';
-             if (!frenchContent.trim()) {
-                 isValid = false; alert('Le contenu français ne peut pas être vide.');
-                 try { window.easyMDEInstance.codemirror.focus(); } catch(e){}
-            }
-            if (!isValid) { event.preventDefault(); }
-        });
-
-        // Déclenche la traduction initiale sur la page de modification
-         const contentFrEditor = document.getElementById('content-editor-fr');
-          if (contentFrEditor && contentFrEditor.value.trim() && typeof window.translateText === 'function') {
-              setTimeout(()=> { if(contentFrEditor.value.trim()){ window.translateText(contentFrEditor.value, 'en-GB', 'content'); }}, 200);
-          }
-          const titleFrInput = document.getElementById('title_fr');
-          if (titleFrInput && titleFrInput.value.trim() && typeof window.translateText === 'function') {
-              setTimeout(()=> { if(titleFrInput.value.trim()){ window.translateText(titleFrInput.value, 'en-GB', 'title'); }}, 200);
-          }
-    }
-</script>
 
 <%- include('partials/footer') %>

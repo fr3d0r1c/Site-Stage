@@ -85,11 +85,11 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
 
 // --- DEEPL INITIALIZATION ---
 const deeplApiKey = process.env.DEEPL_API_KEY;
-let translator = null; // Il est défini avec 'let'
+let translator = null;
 if (deeplApiKey) {
     try {
-        translator = new deepl.Translator(deeplApiKey);
-        console.log("Client DeepL initialisé.");
+         translator = new deepl.Translator(deeplApiKey);
+         console.log("Client DeepL initialisé.");
     } catch (error) {
         console.error("Erreur initialisation DeepL:", error);
     }
@@ -115,13 +115,14 @@ app.use(
           "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js", // CDN SweetAlert2 JS
         ],
         styleSrc: [
-          "'self'", // Styles du même domaine (ex: /css/style.css)
-          "https://unpkg.com/easymde/dist/easymde.min.css", // CDN EasyMDE CSS
-          "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/", // CDN Font Awesome
-          "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // CDN Flag Icon CSS
-          "https://fonts.googleapis.com/", // CDN Google Fonts CSS
-          "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css", // CDN SweetAlert2 CSS
-          "'unsafe-inline'" // Autorise les styles inline (ex: style="...")
+          "'self'",
+          "https://unpkg.com/easymde/dist/easymde.min.css",
+          "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/",
+          "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
+          "https://fonts.googleapis.com/",
+          "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css",
+          "https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css", // <-- AJOUTE CETTE LIGNE
+          "'unsafe-inline'"
         ],
         imgSrc: [
           "'self'", // Images du même domaine (tes uploads)
@@ -130,10 +131,11 @@ app.use(
           "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // SVG des drapeaux
         ],
         fontSrc: [
-          "'self'", // Polices du même domaine
-          "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/", // Polices Font Awesome
-          "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // Polices Flag Icon
-          "https://fonts.gstatic.com" // Polices Google Fonts
+            "'self'",
+            "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/",
+            "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
+            "https://fonts.gstatic.com", // Pour Google Fonts
+            "https://maxcdn.bootstrapcdn.com/"
         ],
         connectSrc: [
           "'self'", // Connexions au même domaine (pour l'API upload)
@@ -1132,6 +1134,28 @@ app.get('/admin/tags', isAuthenticated, (req, res) => {
     });
 });
 
+// --- API POUR LA TRADUCTION ---
+app.post('/api/translate', isAuthenticated, async (req, res) => {
+    if (!translator) {
+        return res.status(503).json({ error: 'Service de traduction non disponible.' });
+    }
+    const textToTranslate = req.body.text;
+    const targetLanguage = req.body.targetLang || 'en-GB';
+    if (!textToTranslate) {
+        return res.status(400).json({ error: 'Le champ "text" est manquant.' });
+    }
+    try {
+        const result = await translator.translateText(textToTranslate, 'fr', targetLanguage);
+        if (result && typeof result.text === 'string') {
+             res.json({ translatedText: result.text });
+        } else {
+             res.status(500).json({ error: 'Réponse invalide du service de traduction.' });
+        }
+    } catch (error) {
+        console.error("Erreur DeepL:", error);
+        res.status(500).json({ error: `Échec traduction: ${error.message || 'Erreur inconnue'}` });
+    }
+});
 
 // =================================================================
 // 7. EXPORT DE L'APPLICATION (pour les tests)
