@@ -25,6 +25,9 @@ const app = express(); // Crée l'application Express
 const port = process.env.PORT || 3000;
 const ITEMS_PER_PAGE = 5; // Pour la pagination
 
+// Fait confiance au proxy de Render (nécessaire pour req.ip et express-rate-limit)
+app.set('trust proxy', 1)
+
 // Définir EJS comme moteur de template
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views')); // Chemin vers le dossier views
