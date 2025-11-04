@@ -122,6 +122,7 @@ app.use(
         ],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
+        manifestSrc: ["'self'"]
       },
     },
     crossOriginEmbedderPolicy: false,

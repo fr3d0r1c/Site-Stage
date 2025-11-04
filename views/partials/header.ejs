@@ -1,69 +1,77 @@
 <!DOCTYPE html>
-<html lang="<%= i18n.language %>"> <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= pageTitle %> | <%= t('general.logo') %></title>
+<html lang="<%= i18n.language %>"> 
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><%= pageTitle %> | <%= t('general.logo') %></title>
 
-    <meta name="description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
-    <meta property="og:title" content="<%= locals.ogTitle || pageTitle %>">
-    <meta property="og:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
-    <meta property="og:type" content="<%= locals.ogType || 'website' %>">
-    <meta property="og:image" content="<%= locals.ogImage || 'https://mon-stage-au-nom-de-pays.onrender.com/default-banner.png' %>">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="<%= locals.ogTitle || pageTitle %>">
-    <meta name="twitter:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
-    <meta name="twitter:image" content="<%= locals.ogImage || 'https://mon-stage-au-nom-de-pays.onrender.com/default-banner.png' %>">
-    <link rel="stylesheet" href="/css/style.css">
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.1/css/flag-icons.min.css">
-    
-    <%# Charge le CSS de EasyMDE sur les pages qui l'utilisent %>
-    <% if (activePage === 'journal' || activePage === 'admin') { %>
-        <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
-    <% } %>
-    
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+        <meta name="description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+        <meta property="og:title" content="<%= locals.ogTitle || pageTitle %>">
+        <meta property="og:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+        <meta property="og:type" content="<%= locals.ogType || 'website' %>">
+        <meta property="og:image" content="<%= locals.ogImage || 'https://mon-stage-au-nom-de-pays.onrender.com/default-banner.png' %>">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="<%= locals.ogTitle || pageTitle %>">
+        <meta name="twitter:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+        <meta name="twitter:image" content="<%= locals.ogImage || 'https://mon-stage-au-nom-de-pays.onrender.com/default-banner.png' %>">
 
-</head>
-<body>
-    <div class="preloader" id="preloader">
-        <div class="spinner"></div>
-    </div>
+        <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <link rel="shortcut icon" href="/favicon.ico">
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+        <link rel="manifest" href="/site.webmanifest">
 
-    <header class="site-header">
-        <div class="logo">
-            <a href="/">
-                <img src="/images/logo.png" alt="<%= t('general.logo') %>" class="site-logo">
-            </a>
+
+        <link rel="stylesheet" href="/css/style.css">
+        
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.1/css/flag-icons.min.css">
+        
+        <%# Charge le CSS de EasyMDE sur les pages qui l'utilisent %>
+        <% if (activePage === 'journal' || activePage === 'admin') { %>
+            <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+        <% } %>
+        
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    </head>
+    <body>
+        <div class="preloader" id="preloader">
+            <div class="spinner"></div>
         </div>
 
-        <nav class="main-nav">
-            <a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>"><%= t('nav.home') %></a>
-            <a href="/profil" class="<%= activePage === 'profil' ? 'active' : '' %>"><%= t('nav.profile') %></a>
-            <a href="/stage" class="<%= activePage === 'stage' ? 'active' : '' %>"><%= t('nav.internship') %></a>
-            <a href="/journal" class="<%= activePage === 'journal' ? 'active' : '' %>"><%= t('nav.journal') %></a>
-            <a href="/contact" class="<%= activePage === 'contact' ? 'active' : '' %>"><%= t('page_titles.contact') %></a>
-            <% if (locals.username) { %>
-                <a href="/admin" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.admin') %></a>
-            <% } %> <%# Lien admin caché pour les visiteurs %>
-        </nav>
-
-        <div class="header-controls">
-            <div id="language-switcher" class="language-switcher">
-                <a href="?lng=fr" title="Français" style="opacity: <%= i18n.language === 'fr' ? '1' : '0.6' %>;"><span class="fi fi-fr"></span></a>
-                <span style="color: var(--c-border);">|</span>
-                <a href="?lng=en" title="English" style="opacity: <%= i18n.language === 'en' ? '1' : '0.6' %>;"><span class="fi fi-gb"></span></a>
+        <header class="site-header">
+            <div class="logo">
+                <a href="/">
+                    <img src="/images/logo.png" alt="<%= t('general.logo') %>" class="site-logo">
+                </a>
             </div>
-            <button class="nav-toggle" aria-label="Ouvrir le menu de navigation" aria-expanded="false">
-                <span class="hamburger"></span>
-            </button>
-        </div>
 
-        <form action="/search" method="GET" class="search-form">
-            <input type="search" name="query" placeholder="<%= t('general.search_placeholder') %>" aria-label="Rechercher dans le journal">
-            <button type="submit"><%= t('general.search_button') %></button>
-        </form>
+            <nav class="main-nav">
+                <a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>"><%= t('nav.home') %></a>
+                <a href="/profil" class="<%= activePage === 'profil' ? 'active' : '' %>"><%= t('nav.profile') %></a>
+                <a href="/stage" class="<%= activePage === 'stage' ? 'active' : '' %>"><%= t('nav.internship') %></a>
+                <a href="/journal" class="<%= activePage === 'journal' ? 'active' : '' %>"><%= t('nav.journal') %></a>
+                <a href="/contact" class="<%= activePage === 'contact' ? 'active' : '' %>"><%= t('page_titles.contact') %></a>
+                <% if (locals.username) { %>
+                    <a href="/admin" class="<%= activePage === 'admin' ? 'active' : '' %>"><%= t('nav.admin') %></a>
+                <% } %> <%# Lien admin caché pour les visiteurs %>
+            </nav>
 
-    </header>
-    <div class="container">
+            <div class="header-controls">
+                <div id="language-switcher" class="language-switcher">
+                    <a href="?lng=fr" title="Français" style="opacity: <%= i18n.language === 'fr' ? '1' : '0.6' %>;"><span class="fi fi-fr"></span></a>
+                    <span style="color: var(--c-border);">|</span>
+                    <a href="?lng=en" title="English" style="opacity: <%= i18n.language === 'en' ? '1' : '0.6' %>;"><span class="fi fi-gb"></span></a>
+                </div>
+                <button class="nav-toggle" aria-label="Ouvrir le menu de navigation" aria-expanded="false">
+                    <span class="hamburger"></span>
+                </button>
+            </div>
+
+            <form action="/search" method="GET" class="search-form">
+                <input type="search" name="query" placeholder="<%= t('general.search_placeholder') %>" aria-label="Rechercher dans le journal">
+                <button type="submit"><%= t('general.search_button') %></button>
+            </form>
+
+        </header>
+        <div class="container">
