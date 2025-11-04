@@ -30,6 +30,11 @@ body.theme-dark {
     --c-border: #4a4a4a;
     --c-danger: #e74c3c;
     --c-gray: #aaaaaa; /* Éclairci */
+
+    .site-logo {
+        filter: invert(1) hue-rotate(180deg);
+        /* filter: invert(0.8) hue-rotate(180deg); */ /* Une autre option, pour inverser et changer la teinte */
+    }
 }
 
 /* --- THÈME SEPIA --- */
@@ -620,7 +625,7 @@ button:hover, .actions a:hover {
 @media (max-width: 768px) {
     .container { padding: 0 1rem; margin: 1rem auto; }
     .site-header { padding: 0.8rem 1rem; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
-    .logo { flex-grow: 1; flex-basis: auto; text-align: left; margin-bottom: 0;}
+    .logo { display: flex; align-items: center; }
     .logo a { font-size: 1.4rem; }
 
     .header-controls { display: flex; align-items: center; gap: 1rem; order: 2; margin-left: auto; }
@@ -643,6 +648,13 @@ button:hover, .actions a:hover {
     .entries-grid { grid-template-columns: 1fr; } /* Stack cards on smallest screens */
     .pagination ul { gap: 0.3rem;}
     .pagination li a, .pagination li span { padding: 6px 10px; font-size: 0.9rem;}
+}
+
+.site-logo {
+    max-height: 100px; /* Ajuste cette valeur selon la taille désirée */
+    width: auto;
+    vertical-align: middle;
+    margin-right: 10px; /* Espace entre le logo et un éventuel texte */
 }
 
 /*

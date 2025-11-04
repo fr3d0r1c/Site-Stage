@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title><%= pageTitle %> | <%= t('general.logo') %></title>
+
+        <meta name="description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+        <meta property="og:title" content="<%= locals.ogTitle || pageTitle %>">
+        <meta property="og:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+        <meta property="og:type" content="<%= locals.ogType || 'website' %>">
+        <meta property="og:image" content="<%= locals.ogImage || 'https://mon-stage-au-nom-de-pays.onrender.com/default-banner.png' %>">    <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="<%= locals.ogTitle || pageTitle %>">
+        <meta name="twitter:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+        <meta name="twitter:image" content="<%= locals.ogImage || 'https://mon-stage-au-nom-de-pays.onrender.com/default-banner.png' %>">
+        <link rel="stylesheet" href="/css/style.css">
+
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.1/css/flag-icons.min.css">
+        
+        <% if (activePage === 'journal' || activePage === 'admin') { %>
+            <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+        <% } %>
+    
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    </head>
+    <body>
+        <div class="preloader" id="preloader">
+            <div class="spinner"></div>
+
+            <header>
+                <header class="site-header">
+                    <div class="logo">
+                        <a href="/">
+                            <img src="/images/logo.png" alt="<%= t('general.logo') %>" class="site-logo">
+                        </a>
+                    </div>
+
+                    <nav class="main-nav"></nav>
+                </header>
+            </header>
+        </div>
+    </body>

@@ -7,12 +7,12 @@ const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session'); // Pour la connexion admin
 const bcrypt = require('bcrypt'); // Pour hacher les mots de passe
 const multer = require('multer'); // Pour l'upload d'images
-const { marked } = require('marked'); // Pour convertir le Markdown
+const { marked } = require('marked'); // Version 4 de Marked
 const i18next = require('i18next'); // Pour la traduction
 const i18nextMiddleware = require('i18next-http-middleware');
 const FsBackend = require('i18next-fs-backend');
 const nodemailer = require('nodemailer'); // Pour envoyer les emails
-const crypto = require('crypto'); // Pour générer des tokens (reset mot de passe)
+const crypto = require('crypto'); // Pour le token de reset password
 const path = require('path'); // Pour gérer les chemins de fichiers (ex: dossier views)
 const helmet = require('helmet'); // Pour la sécurité (CSP, etc.)
 const rateLimit = require('express-rate-limit'); // Pour la sécurité (anti-force brute)
@@ -25,73 +25,49 @@ const app = express(); // Crée l'application Express
 const port = process.env.PORT || 3000;
 const ITEMS_PER_PAGE = 5; // Pour la pagination
 
-// Fait confiance au proxy de Render (nécessaire pour req.ip et express-rate-limit)
-app.set('trust proxy', 1)
-
 // Définir EJS comme moteur de template
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views')); // Chemin vers le dossier views
 
 // Configuration du stockage pour Multer (upload d'images)
-const storage = multer.diskStorage({
-    destination: './public/uploads/',
-    filename: function(req, file, cb) {
-        // 1. Nettoie le nom original (remplace espaces, supprime caractères spéciaux)
-        const safeOriginalName = file.originalname
-            .replace(/\s+/g, '-') // Remplace les espaces par des tirets
-            .replace(/[^a-zA-Z0-9\-._]/g, ''); // Supprime les caractères non autorisés
-
-        // 2. Crée le nom de fichier unique avec le nom nettoyé
-        const uniqueSuffix = Date.now();
-        const extension = path.extname(safeOriginalName); // Récupère l'extension
-        const baseName = path.basename(safeOriginalName, extension); // Récupère le nom sans extension
-        
-        cb(null, `${uniqueSuffix}-${baseName}${extension}`); // Ex: 176...-Image-Benji.jpg
-    }
-});
+const storage = multer.diskStorage({ /* ... (ton code multer) ... */ });
 const upload = multer({ storage: storage });
 
 // --- CONFIGURATION i18n (TRADUCTION INTERFACE + DÉTECTION) ---
 i18next
-  .use(FsBackend)
-  .use(i18nextMiddleware.LanguageDetector)
-  .init({
-    backend: {
-      loadPath: __dirname + '/locales/{{lng}}/translation.json',
-    },
-    fallbackLng: 'fr',
-    preload: ['fr', 'en'],
-    detection: {
-      order: ['querystring', 'cookie', 'header'],
-      caches: ['cookie'],
-      cookieOptions: {
-          path: '/',
-          maxAge: 30 * 24 * 60 * 60 * 1000 // 30 jours
-      }
-    }
-  });
+    .use(FsBackend)
+    .use(i18nextMiddleware.LanguageDetector)
+    .init({
+        backend: {
+            loadPath: __dirname + '/locales/{{lng}}/translation.json',
+        },
+        fallbackLng: 'fr',
+        preload: ['fr', 'en'],
+        detection: {
+            order: ['querystring', 'cookie', 'header'],
+            caches: ['cookie'],
+            cookieOptions: {
+                path: '/',
+                maxAge: 30 * 24 * 60 * 60 * 1000
+            }
+        }
+    });
 
 // --- NODEMAILER CONFIGURATION ---
 let transporter = null;
 if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    transporter = nodemailer.createTransport({
-        service: 'gmail', // Ou autre service si configuré
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS, // Mot de passe d'application pour Gmail
-        },
-    });
+    transporter = nodemailer.createTransport({ /* ... (ta config nodemailer) ... */ });
     console.log("Nodemailer configuré.");
 } else {
-    console.warn("AVERTISSEMENT : Identifiants email manquants dans .env. Le formulaire de contact et le reset password seront désactivés.");
+    console.warn("AVERTISSEMENT : Identifiants email manquants...");
 }
 
-// --- DEEPL INITIALIZATION ---
+// --- DEEPL INITIALIZATION --- (Vérifie bien ceci)
 const deeplApiKey = process.env.DEEPL_API_KEY;
-let translator = null;
+let translator = null; // Défini avec 'let' dans le scope global du module
 if (deeplApiKey) {
     try {
-         translator = new deepl.Translator(deeplApiKey);
+         translator = new deepl.Translator(deeplApiKey); // 'deepl' (en minuscule) vient de l'import
          console.log("Client DeepL initialisé.");
     } catch (error) {
         console.error("Erreur initialisation DeepL:", error);
@@ -137,22 +113,21 @@ app.use(
             "'self'",
             "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/",
             "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
-            "https://fonts.gstatic.com", // Pour Google Fonts
+            "https://fonts.gstatic.com",
             "https://maxcdn.bootstrapcdn.com/"
         ],
         connectSrc: [
-          "'self'", // Connexions au même domaine (pour l'API upload)
-          "https://cdn.jsdelivr.net/" // Pour les 'source maps' de SweetAlert2/Toastify
+          "'self'",
+          "https://cdn.jsdelivr.net/"
         ],
-        objectSrc: ["'none'"], // Bloque les plugins (Flash, etc.)
-        upgradeInsecureRequests: [], // Tente de passer HTTP en HTTPS
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
       },
     },
-    crossOriginEmbedderPolicy: false, // Nécessaire pour la compatibilité de certains CDN
+    crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "same-site" },
   })
 );
-// --- FIN Configuration Helmet & CSP ---
 
 
 // Servir les fichiers statiques (CSS, JS, images) depuis le dossier 'public'
@@ -356,37 +331,39 @@ db.run(createCommentsTable, (err) => {
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
 // =================================================================
-async function processTags(articleId, tagIds) { // Prend maintenant un tableau d'IDs
+/**
+ * Traite et associe les tags à un article (version simplifiée).
+ * Prend un tableau d'IDs de tags et les lie à l'article.
+ * @param {number} articleId - L'ID de l'article à associer.
+ * @param {number[]} tagIds - Un tableau d'IDs de tags (ex: [1, 2, 3]).
+ */
+async function processTags(articleId, tagIds) {
+    // S'assure que tagIds est un tableau de nombres
+    const validIds = Array.isArray(tagIds) 
+        ? tagIds.map(id => parseInt(id)).filter(id => !isNaN(id)) 
+        : [];
+
     // Utilisation de Promesses pour une meilleure gestion des appels BDD asynchrones
     const deleteLinks = (artId) => new Promise((resolve, reject) => {
         db.run('DELETE FROM article_tags WHERE article_id = ?', [artId], (err) => err ? reject(err) : resolve());
     });
 
     const insertLinks = (artId, ids) => new Promise((resolve, reject) => {
-        // Ne fait rien si aucun tag n'est sélectionné
-        if (!ids || ids.length === 0) return resolve();
-
-        // S'assure que les IDs sont bien des nombres valides (sécurité)
-        const validIds = ids.filter(id => typeof id === 'number' && !isNaN(id));
-        if (validIds.length === 0) return resolve();
-
-        // Crée les placeholders et les valeurs pour l'insertion multiple
-        const placeholders = validIds.map(() => '(?, ?)').join(',');
-        const values = validIds.reduce((acc, tagId) => acc.concat([artId, tagId]), []);
+        if (ids.length === 0) return resolve(); // Ne fait rien si aucun tag n'est sélectionné
+        const placeholders = ids.map(() => '(?, ?)').join(',');
+        const values = ids.reduce((acc, tagId) => acc.concat([artId, tagId]), []);
         const sql = `INSERT INTO article_tags (article_id, tag_id) VALUES ${placeholders}`;
         db.run(sql, values, (err) => err ? reject(err) : resolve());
     });
 
     try {
-        // 1. Supprime les anciens liens pour cet article
-        await deleteLinks(articleId);
-        // 2. Ajoute les nouveaux liens basés sur les IDs reçus
-        await insertLinks(articleId, tagIds);
+        await deleteLinks(articleId); // Supprime les anciens liens
+        await insertLinks(articleId, validIds); // Ajoute les nouveaux liens
     } catch (error) {
          console.error(`Erreur dans processTags pour l'article ${articleId}:`, error);
-         throw error; // Relance l'erreur pour qu'elle soit attrapée par la route
+         throw error; // Relance l'erreur
     }
-}
+ }
 
 
 /**
@@ -1195,6 +1172,79 @@ app.post('/api/tags/create', isAuthenticated, async (req, res) => {
             name_fr: name_fr,
             name_en: name_en
         });
+    });
+});
+
+app.post('/admin/tags/create', isAuthenticated, async (req, res) => {
+    const name_fr = req.body.name_fr; // On récupère seulement le nom FR
+
+    // On ne vérifie que name_fr
+    if (!name_fr || name_fr.trim() === '') {
+        req.session.flashMessage = { type: 'error', text: 'Le nom français est requis.' };
+        return res.redirect('/admin/tags');
+    }
+
+    let name_en = name_fr.trim(); // Valeur par défaut si la traduction échoue
+    const name_fr_trimmed = name_fr.trim();
+
+    // --- Traduction via DeepL ---
+    // Vérifie si le client DeepL (translator) est initialisé ET que la clé API existe
+    if (translator) {
+        try {
+            console.log(`[Tag Create] Traduction de "${name_fr_trimmed}" vers EN...`);
+            const result = await translator.translateText(name_fr_trimmed, 'fr', 'en-GB');
+            if (result && typeof result.text === 'string') {
+                name_en = result.text; // Utilise la traduction
+                console.log(`[Tag Create] Traduction réussie: "${name_en}"`);
+            } else {
+                console.warn("[Tag Create] Réponse DeepL invalide pour la traduction du tag.");
+            }
+        } catch (error) {
+            console.error("[Tag Create] Erreur lors de la traduction DeepL:", error);
+            // Si erreur, name_en garde la valeur de name_fr (fallback)
+        }
+    } else {
+        console.warn("[Tag Create] Client DeepL non initialisé, utilise le nom FR pour EN.");
+    }
+
+    // Insertion dans la base de données avec les deux noms
+    const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
+    db.run(sql, [name_fr_trimmed, name_en], function(err) {
+        let message;
+        if (err) {
+            console.error("Erreur BDD (POST /admin/tags/create):", err);
+            // Gère l'erreur si un nom existe déjà (contrainte UNIQUE)
+            if (err.message.includes('UNIQUE constraint failed')) {
+                message = { type: 'error', text: 'Un tag avec ce nom (FR ou EN) existe déjà.' };
+            } else {
+                message = { type: 'error', text: 'Erreur lors de la création du tag.' };
+            }
+        } else {
+            message = { type: 'success', text: `Tag "${name_fr_trimmed}" / "${name_en}" créé avec succès.` };
+        }
+        req.session.flashMessage = message;
+        res.redirect('/admin/tags');
+    })
+})
+
+app.post('/admin/tags/delete/:id', isAuthenticated, (req, res) => {
+    const tagId = req.params.id;
+
+    const sql = 'DELETE FROM tags WHERE id = ?';
+
+    db.run(sql, [tagId], function(err) {
+        let message;
+        if (err) {
+            console.error(`Erreur BDD (POST /admin/tags/delete/${tagId}):`, err);
+            message = { type: 'error', text: 'Erreur lors de la suppression du tag.' };
+        } else if (this.changes === 0) {
+            message = { type: 'error', text: 'Tag non trouvé pour la suppression.' };
+        } else {
+            message = { type: 'success', text: `Tag #${tagId} supprimé avec succès.` };
+        }
+
+        req.session.flashMessage = message;
+        res.redirect('/admin/tags');
     });
 });
 

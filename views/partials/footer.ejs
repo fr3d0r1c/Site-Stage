@@ -1,32 +1,31 @@
-</div>
-<footer class="site-footer">
-    <div class="theme-switcher">
-        <span><%= t('themes.label') %> :</span>
-        <button data-theme="system"><%= t('themes.system') %></button>
-        <button data-theme="light"><%= t('themes.light') %></button>
-        <button data-theme="dark"><%= t('themes.dark') %></button>
-        <button data-theme="sepia"><%= t('themes.sepia') %></button>
-    </div>
+</div> <footer class="site-footer">
+        <div class="theme-switcher">
+            <span><%= t('themes.label') %> :</span>
+            <button data-theme="system"><%= t('themes.system') %></button>
+            <button data-theme="light"><%= t('themes.light') %></button>
+            <button data-theme="dark"><%= t('themes.dark') %></button>
+            <button data-theme="sepia"><%= t('themes.sepia') %></button>
+        </div>
 
-    <p>&copy; <%= new Date().getFullYear() %> Frederic Alleron. <%= t('footer.rights') %></p>
-    <p>
-        <a href="/"><%= t('nav.home') %></a> |
-        <a href="/profil"><%= t('nav.profile') %></a> |
-        <a href="/stage"><%= t('nav.internship') %></a> |
-        <a href="/journal"><%= t('nav.journal') %></a> |
-        <a href="/contact"><%= t('page_titles.contact') %></a>
-    </p>
-</footer>
+        <p>&copy; <%= new Date().getFullYear() %> Frederic Alleron. <%= t('footer.rights') %></p>
+        <p>
+            <a href="/"><%= t('nav.home') %></a> |
+            <a href="/profil"><%= t('nav.profile') %></a> |
+            <a href="/stage"><%= t('nav.internship') %></a> |
+            <a href="/journal"><%= t('nav.journal') %></a> |
+            <a href="/contact"><%= t('page_titles.contact') %></a>
+        </p>
+    </footer>
 
-<script src="/js/main.js"></script> 
-<script src="/js/theme-switcher.js"></script> 
+    <script src="/js/main.js"></script>
+    <script src="/js/theme-switcher.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script src="/js/swal-handler.js"></script>
+    
+    <script src="/js/preloader.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-<script src="/js/swal-handler.js"></script> 
-
-<script src="/js/preloader.js"></script>
-
-<script src="/js/konami.js"></script>
+    <script src="/js/konami.js"></script>
 
 </body>
 </html>
