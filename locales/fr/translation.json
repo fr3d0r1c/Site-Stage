@@ -1,6 +1,7 @@
 {
   "nav": {
     "home": "Accueil",
+    "about": "À Propos", 
     "profile": "Mon Profil",
     "internship": "Mon Stage",
     "journal": "Journal de Bord",

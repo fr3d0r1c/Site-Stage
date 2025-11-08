@@ -7,14 +7,15 @@
 
 :root {
     /* --- THÈME PAR DÉFAUT : "CLASSIQUE" --- */
-    --c-primary: #0056b3; /* Bleu assombri (était #007aff) */
-    --c-text: #222222;
-    --c-text-light: #555555; /* Reste pareil, contraste OK */
+    --c-primary: #0056b3; /* Bleu assombri (pour contraste accessibilité) */
+    --c-primary-rgb: 0, 86, 179; /* RGB de #0056b3 */
+    --c-text: #222222; /* Texte presque noir */
+    --c-text-light: #555555;
     --c-border: #eeeeee;
     --c-background: #f9f9f9;
     --c-surface: #ffffff;
     --c-danger: #ff3b30;
-    --c-gray: #767676; /* Assombri */
+    --c-gray: #767676; /* Assombri (pour contraste accessibilité) */
 
     --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --border-radius: 12px;
@@ -22,31 +23,28 @@
 
 /* --- THÈME DARK --- */
 body.theme-dark {
-    --c-primary: #00e0eb; /* Cyan éclairci (était #00adb5) */
+    --c-primary: #00e0eb; /* Cyan éclairci (pour contraste accessibilité) */
+    --c-primary-rgb: 0, 224, 235; /* RGB de #00e0eb */
     --c-text: #eeeeee;
-    --c-text-light: #bbbbbb; /* Éclairci */
+    --c-text-light: #bbbbbb; /* Éclairci (pour contraste accessibilité) */
     --c-background: #222831;
     --c-surface: #393e46;
     --c-border: #4a4a4a;
     --c-danger: #e74c3c;
-    --c-gray: #aaaaaa; /* Éclairci */
-
-    .site-logo {
-        filter: invert(1) hue-rotate(180deg);
-        /* filter: invert(0.8) hue-rotate(180deg); */ /* Une autre option, pour inverser et changer la teinte */
-    }
+    --c-gray: #aaaaaa; /* Éclairci (pour contraste accessibilité) */
 }
 
 /* --- THÈME SEPIA --- */
 body.theme-sepia {
-    --c-primary: #8B4513; /* Marron plus foncé (était #a0522d) */
+    --c-primary: #8B4513; /* Marron plus foncé (pour contraste accessibilité) */
+    --c-primary-rgb: 139, 69, 19; /* RGB de #8B4513 */
     --c-text: #5c4a3a;
-    --c-text-light: #706255; /* Assombri */
+    --c-text-light: #706255; /* Assombri (pour contraste accessibilité) */
     --c-border: #dcd3b8;
     --c-background: #f5f2e9;
     --c-surface: #fffef7;
     --c-danger: #c0392b;
-    --c-gray: #827365; /* Assombri */
+    --c-gray: #827365; /* Assombri (pour contraste accessibilité) */
 }
 
 /*
@@ -88,7 +86,17 @@ a {
 
 a:hover {
     color: var(--c-text);
-    text-decoration: underline; /* LIGNE AJOUTÉE/MODIFIÉE */
+    text-decoration: underline; /* Ajouté pour accessibilité */
+}
+
+/* Soulignement pour les liens dans le texte (accessibilité) */
+.static-page p a,
+.full-article .article-content p a,
+.container > p a,
+.entry-card .card-body p a {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
 }
 
 hr {
@@ -98,19 +106,10 @@ hr {
     margin: 3rem 0;
 }
 
-/* Souligne les liens qui sont DANS un paragraphe de texte */
-.static-page p a,
-.full-article .article-content p a,
-.container > p a, /* Pour le texte de bienvenue de index.ejs */
-.entry-card .card-body p a { /* CIBLE LE LIEN "Lire la suite" */
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
-}
 
 /*
 =========================================
---- 3. Header & Navigation ---
+--- 3. Header & Navigation (Refonte <ul>) ---
 =========================================
 */
 .site-header {
@@ -136,40 +135,37 @@ hr {
     color: var(--c-text);
     font-size: 1.6rem;
     font-weight: 700;
+    display: flex; /* Utilise flex pour aligner image + texte */
+    align-items: center;
+    text-decoration: none;
+}
+.logo a:hover {
+    text-decoration: none;
+}
+/* Style pour l'image du logo */
+.site-logo {
+    max-height: 40px; /* Hauteur du logo */
+    width: auto;
     display: block;
 }
 
-.main-nav {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
+/* Thème Sombre : Ajustement du logo */
+body.theme-dark .site-logo {
+    filter: brightness(1.2) contrast(1.1); /* Léger éclaircissement */
+}
+/* Thème Sépia : Pas de filtre */
+body.theme-sepia .site-logo {
+    filter: none;
 }
 
-.main-nav a {
-    color: var(--c-text-light);
-    margin-left: 1.5rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-    padding: 5px 0;
-    border-bottom: 2px solid transparent;
-    white-space: nowrap;
-}
-.main-nav a:hover {
-    color: var(--c-text);
-}
 
-.main-nav a.active {
-    color: var(--c-primary);
-    border-bottom-color: var(--c-primary);
-}
-
-.header-controls { /* Container for lang + hamburger on mobile */
+.header-controls { /* Conteneur pour drapeaux + hamburger */
     display: flex;
     align-items: center;
     gap: 1rem;
 }
 
-/* Search Form */
+/* Formulaire de Recherche */
 .search-form {
     display: flex;
     align-items: center;
@@ -208,7 +204,7 @@ hr {
     opacity: 0.8;
 }
 
-/* Language Switcher */
+/* Sélecteur de langue */
 .language-switcher {
     display: flex;
     align-items: center;
@@ -225,8 +221,11 @@ hr {
 .language-switcher span {
      color: var(--c-border);
 }
+.language-switcher a:hover {
+    text-decoration: none;
+}
 
-/* Hamburger Menu Base */
+/* Menu Hamburger (Base) */
 .nav-toggle {
     display: none;
     cursor: pointer;
@@ -246,6 +245,128 @@ hr {
 .nav-toggle.is-active .hamburger { background: transparent; }
 .nav-toggle.is-active .hamburger::before { transform: rotate(45deg); }
 .nav-toggle.is-active .hamburger::after { transform: rotate(-45deg) translateY(-3px) translateX(3px); }
+
+
+/* --- NOUVEAUX STYLES DE NAVIGATION (Refonte <ul>) --- */
+.main-nav {
+    margin-left: auto; /* Pousse le menu vers la droite */
+}
+
+.main-nav ul {
+    list-style: none; /* Enlève les puces */
+    margin: 0;
+    padding: 0;
+    display: flex; /* Met les <li> au premier niveau à l'horizontale */
+    align-items: center;
+}
+
+.main-nav li {
+    position: relative; /* Indispensable pour les sous-menus */
+    margin-left: 1.5rem;
+}
+
+.main-nav li a {
+    color: var(--c-text-light);
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 18px 0; /* Ajuste le padding pour centrer verticalement */
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    text-decoration: none;
+    display: block; /* Important pour le padding */
+}
+.main-nav li a:hover {
+    color: var(--c-text);
+    text-decoration: none;
+}
+
+/* Style du lien actif (normal ou parent) */
+.main-nav li a.active,
+.main-nav li.active-parent > a {
+    color: var(--c-primary);
+    border-bottom-color: var(--c-primary);
+}
+
+/* Icône flèche vers le bas */
+.main-nav .fa-xs {
+    font-size: 0.7em;
+    margin-left: 4px;
+}
+
+
+/* --- Styles du Menu Déroulant (Desktop) --- */
+
+/* Le conteneur du sous-menu (Niveau 1) */
+.main-nav ul .sous-menu {
+    display: none;
+    position: absolute;
+    top: 100%; /* S'affiche juste en dessous du parent */
+    left: 0; /* CORRIGÉ : Alignement simple avec le bord gauche du <li> */
+    min-width: 200px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    z-index: 1001;
+    /* Styles pour le sous-menu (il n'est plus flex) */
+    flex-direction: column;
+    margin-left: 0;
+    padding: 0.5rem 0; /* Espace intérieur */
+}
+
+/* Les <li> dans le sous-menu (Niveau 1) */
+.main-nav .sous-menu li {
+    position: relative; /* INDISPENSABLE pour l'imbrication */
+    margin: 0;
+    width: 100%;
+}
+
+/* Les liens <a> dans le sous-menu (Niveau 1) */
+.main-nav .sous-menu > li > a {
+    padding-left: 3rem; /* Indentation pour montrer la hiérarchie */
+    font-size: 1rem;
+    color: var(--c-text-light);
+}
+.main-nav .sous-menu > li > a:hover {
+    background-color: var(--c-background);
+}
+.main-nav .sous-menu > li > a.active {
+    color: var(--c-primary);
+    background: var(--c-surface);
+}
+
+/* Affiche le sous-menu de Niveau 1 au survol */
+.main-nav li.dropdown:hover > .sous-menu {
+    display: block;
+}
+
+
+/* --- Styles pour le sous-menu de Niveau 2 --- */
+
+/* Le conteneur du sous-menu (Niveau 2 - ex: "Éditeur") */
+.main-nav .sous-menu .sous-menu {
+    position: static;
+    width: 100%;
+    box-shadow: none;
+    padding: 0;
+    background: color-mix(in srgb, var(--c-background) 80%, black 5%);
+}
+
+/* Gère l'affichage de la flèche droite (fa-caret-right) */
+.main-nav .sous-menu li a.dropdown-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.main-nav .sous-menu li a .fa-caret-right {
+    margin-left: auto;
+    padding-left: 1rem;
+}
+
+/* Affiche le sous-menu de Niveau 2 au survol */
+.main-nav .sous-menu li.dropdown:hover > .sous-menu {
+    display: block;
+}
 
 
 /*
@@ -279,7 +400,7 @@ article small {
     border-bottom: none;
     padding-bottom: 0;
     margin-top: 2em;
-    color: var(--c-text); /* Ensure headings inside content use text color */
+    color: var(--c-text);
 }
 
 .actions {
@@ -323,13 +444,13 @@ article small {
     margin-bottom: 0;
     border-radius: 0;
     border-bottom: 1px solid var(--c-border);
-    background-color: var(--c-surface); /* Background for dark theme */
+    background-color: var(--c-surface);
 }
-.entry-card .card-image-link { display: block; height: 200px; overflow: hidden; }
+.entry-card .card-image-link { display: block; height: 200px; overflow: hidden; text-decoration: none; }
 .entry-card .card-body { padding: 1.25rem; display: flex; flex-direction: column; flex-grow: 1; }
 .entry-card h2 { font-size: 1.3rem; border-bottom: none; padding-bottom: 0; margin-top: 0; }
-.entry-card h2 a { color: var(--c-text); }
-.entry-card h2 a:hover { color: var(--c-primary); }
+.entry-card h2 a { color: var(--c-text); text-decoration: none; }
+.entry-card h2 a:hover { color: var(--c-primary); text-decoration: none; }
 .entry-card .actions { margin-top: auto; padding-top: 1rem; }
 
 /*
@@ -337,81 +458,58 @@ article small {
 --- 6. Formulaires & Boutons ---
 =========================================
 */
-form div.form-group { /* Cible plus spécifiquement les divs de formulaire */
-    margin-bottom: 1.5rem; 
+form div.form-group {
+    margin-bottom: 1.5rem;
 }
 form label {
-    display: block; /* S'assure que le label est sur sa propre ligne */
-    margin-bottom: 0.25rem;
+    display: block;
+    margin-bottom: 0.25rem; /* Espace réduit */
     font-weight: 500;
     color: var(--c-text);
 }
-form small { 
-    color: var(--c-gray); 
-    font-size: 0.9rem; 
-    margin-top: 0.25rem; /* Ajout d'un petit espace */
+form small {
+    color: var(--c-gray);
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
     display: inline-block;
 }
 
-/* Règle harmonisée pour tous les champs de saisie */
-input[type="text"],
-input[type="password"],
-input[type="email"], /* Ajouté */
-textarea {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--c-border);
-    border-radius: 8px;
-    font-size: 1rem;
-    font-family: var(--font-main);
-    box-sizing: border-box; /* Crucial pour que width: 100% fonctionne */
-    background: var(--c-background);
-    color: var(--c-text);
-    transition: all 0.3s ease;
+input[type="text"], input[type="password"], input[type="email"], textarea {
+    width: 100%; padding: 12px 15px; border: 1px solid var(--c-border);
+    border-radius: 8px; font-size: 1rem; font-family: var(--font-main);
+    box-sizing: border-box; background: var(--c-background);
+    color: var(--c-text); transition: all 0.3s ease;
 }
 
-/* Règle harmonisée pour le focus */
-input[type="text"]:focus,
-input[type="password"]:focus,
-input[type="email"]:focus, /* Ajouté */
-textarea:focus {
+input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus, textarea:focus {
     border-color: var(--c-primary);
     box-shadow: 0 0 0 3px rgba(var(--c-primary-rgb), 0.2); /* Utilise la variable RGB */
-    background: var(--c-surface);
-    outline: none;
+    background: var(--c-surface); outline: none;
 }
 
-/* Boutons principaux (type gélule) */
 button, .actions a {
-    display: inline-block;
-    background-color: var(--c-primary);
-    color: var(--c-white);
-    padding: 10px 24px;
-    border: none;
-    border-radius: 99px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-align: center;
-    transition: all 0.3s ease;
-    transform: translateY(0);
+    display: inline-block; background-color: var(--c-primary); color: var(--c-white);
+    padding: 10px 24px; border: none; border-radius: 99px; cursor: pointer;
+    font-size: 0.9rem; font-weight: 500; text-align: center;
+    transition: all 0.3s ease; transform: translateY(0);
+    text-decoration: none;
 }
 
 button:hover, .actions a:hover {
-    color: var(--c-white);
-    text-decoration: none;
-    transform: translateY(-2px);
-    opacity: 0.85;
+    color: var(--c-white); text-decoration: none; transform: translateY(-2px); opacity: 0.85;
 }
-
-/* Boutons d'action spécifiques (Modifier/Supprimer) */
-.actions a {
+.actions a { background-color: var(--c-gray); color: var(--c-surface); }
+.actions form button[type="submit"] { background-color: var(--c-danger); color: var(--c-white); }
+.button-secondary {
     background-color: var(--c-gray);
     color: var(--c-surface);
+    margin-left: 1rem;
+    display: inline-block;
 }
-.actions form button[type="submit"] {
-    background-color: var(--c-danger);
+.button-secondary:hover {
+    background-color: var(--c-text-light);
     color: var(--c-white);
+    opacity: 1;
 }
 
 /*
@@ -419,20 +517,15 @@ button:hover, .actions a:hover {
 --- 7. Messages d'erreur & Feedback ---
 =========================================
 */
-.error-message {
-    background-color: color-mix(in srgb, var(--c-danger) 10%, var(--c-surface));
-    color: var(--c-danger); padding: 1rem; border: 1px solid var(--c-danger);
-    border-radius: 8px; margin-bottom: 1rem; text-align: center;
+/* Caché par défaut, géré par swal-handler.js */
+.error-message, .feedback-message {
+    display: none;
 }
+/* Style pour les pop-ups (juste au cas où) */
 .feedback-message { padding: 1rem; border-radius: 8px; margin-bottom: 2rem; text-align: center; font-weight: 500; }
 .feedback-message.success { background-color: color-mix(in srgb, var(--c-primary) 15%, transparent); color: var(--c-primary); border: 1px solid var(--c-primary); }
 .feedback-message.error { background-color: color-mix(in srgb, var(--c-danger) 15%, transparent); color: var(--c-danger); border: 1px solid var(--c-danger); }
 
-/* Cache les messages de feedback statiques, ils seront gérés par SweetAlert2 */
-.feedback-message,
-.error-message {
-    display: none;
-}
 
 /*
 =========================================
@@ -446,100 +539,62 @@ button:hover, .actions a:hover {
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 .site-footer p { margin: 0.5rem 0; font-size: 0.9rem; }
-.site-footer a { color: var(--c-text-light); }
-.site-footer a:hover { color: var(--c-primary); }
+.site-footer a { color: var(--c-text-light); text-decoration: none; }
+.site-footer a:hover { color: var(--c-primary); text-decoration: none; }
 
 /*
 =========================================
 --- 9. Styles pour l'éditeur Markdown ---
 =========================================
 */
-
-.editor-container {
-    display: flex;
-    gap: 2rem;
-    /* margin: 2rem 0; Retiré car géré par dual-editor-layout ou editor-container-main */
-}
-.editor-pane, .preview-pane { /* S'applique à l'aperçu FR et EN */
-    flex: 1;
-    min-width: 0;
-}
+.editor-container { display: flex; gap: 2rem; }
+.editor-pane, .preview-pane { flex: 1; min-width: 0; }
 .preview-pane {
     border: 1px solid var(--c-border); border-radius: 8px; padding: 1.5rem;
     background: var(--c-background); min-height: 400px;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Styles spécifiques pour EasyMDE (l'éditeur FR) */
-
-/* Container around CodeMirror and toolbar */
+/* EasyMDE Specific Styles (Clean Toolbar Layout) */
 .easymde-container {
      border: 1px solid var(--c-border) !important;
      border-radius: 8px !important;
      transition: border-color 0.3s ease;
 }
-
 .editor-toolbar {
-    /* --- Styles pour la barre d'outils --- */
-    display: flex !important; /* Force flexbox layout */
-    flex-wrap: wrap !important; /* Allow wrapping only if needed */
-    align-items: center !important; /* Vertically center buttons */
-    padding: 4px 8px !important; /* Adjust padding if needed */
+    display: flex !important; flex-wrap: wrap !important; align-items: center !important;
+    padding: 4px 8px !important;
     border-bottom: 1px solid var(--c-border) !important;
-    background: var(--c-surface) !important; /* Use surface color of the theme */
+    background: var(--c-surface) !important;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
-
-/* Default state for buttons and separators */
-.editor-toolbar a,
-.editor-toolbar span {
-    color: var(--c-text-light) !important; /* Use light text color of the theme */
-    margin: 2px !important;
-    height: auto !important;
-    line-height: 1.5 !important;
-    background: none !important; /* Ensure no background by default */
-    border: 1px solid transparent !important; /* Transparent border for spacing */
-    border-radius: 4px !important;
-    padding: 2px 4px !important; /* Add padding for click area */
-    box-shadow: none !important; /* Remove any shadows */
+.editor-toolbar a, .editor-toolbar span {
+    color: var(--c-text-light) !important; margin: 2px !important; height: auto !important;
+    line-height: 1.5 !important; background: none !important; border: 1px solid transparent !important;
+    border-radius: 4px !important; padding: 2px 4px !important; box-shadow: none !important;
+    text-decoration: none;
 }
-
-/* Separators "|" */
+.editor-toolbar a:hover { text-decoration: none; }
 .editor-toolbar span.separator {
-    color: var(--c-border) !important; /* Use border color for separator */
-    margin: 0 5px !important;
-    border: none !important; /* No border for separators */
-    padding: 0 !important;
+    color: var(--c-border) !important; margin: 0 5px !important; border: none !important; padding: 0 !important;
 }
-
-/* Hover/Active state for buttons */
-.editor-toolbar a.active,
-.editor-toolbar a:hover {
-    background: var(--c-background) !important; /* Use background color for hover */
-    border-color: var(--c-border) !important;
-    color: var(--c-text) !important; /* Use main text color for hover */
-}
-
-/* CodeMirror Editor Area */
-.CodeMirror {
-    background: var(--c-surface) !important;
+.editor-toolbar a.active, .editor-toolbar a:hover {
+    background: var(--c-background) !important; border-color: var(--c-border) !important;
     color: var(--c-text) !important;
-    border: none !important; /* Remove border from CodeMirror itself */
-    border-radius: 0 0 8px 8px !important; /* Round bottom corners if container has border */
+}
+.CodeMirror {
+    background: var(--c-surface) !important; color: var(--c-text) !important;
+    border: none !important; border-radius: 0 0 8px 8px !important;
     min-height: 400px;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
-
 .CodeMirror-cursor { border-left-color: var(--c-text) !important; }
-
-/* Status Bar */
 .editor-statusbar {
-    color: var(--c-text-light) !important;
-    background: var(--c-surface) !important;
-    border-top: 1px solid var(--c-border) !important; /* Add border top */
-    border-radius: 0 0 8px 8px !important; /* Round bottom corners */
+    color: var(--c-text-light) !important; background: var(--c-surface) !important;
+    border-top: 1px solid var(--c-border) !important; border-radius: 0 0 8px 8px !important;
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
+
 
 /*
 =========================================
@@ -562,7 +617,7 @@ button:hover, .actions a:hover {
 .pagination li a, .pagination li span {
     display: block; padding: 8px 15px; border: 1px solid var(--c-border);
     border-radius: 5px; color: var(--c-text-light); background-color: var(--c-surface);
-    transition: all 0.2s ease;
+    transition: all 0.2s ease; text-decoration: none;
 }
 .pagination li a:hover { background-color: var(--c-background); color: var(--c-primary); border-color: var(--c-primary); text-decoration: none; }
 .pagination li.active span { background-color: var(--c-primary); color: var(--c-white); border-color: var(--c-primary); font-weight: bold; }
@@ -593,7 +648,7 @@ button:hover, .actions a:hover {
 .contact-page h1 { text-align: center; border-bottom: none; }
 .contact-page p:first-of-type { text-align: center; margin-bottom: 2rem; color: var(--c-text-light); }
 .contact-form .form-group { margin-bottom: 1.5rem; }
-.contact-form label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--c-text); }
+.contact-form label { display: block; margin-bottom: 0.25rem; font-weight: 500; color: var(--c-text); }
 
 
 /*
@@ -612,185 +667,39 @@ button:hover, .actions a:hover {
     display: inline-block; background-color: var(--c-background); color: var(--c-text-light);
     padding: 3px 10px; border-radius: 99px; font-size: 0.8rem;
     border: 1px solid var(--c-border); transition: all 0.2s ease;
+    text-decoration: none;
 }
 .tag-item:hover { background-color: var(--c-primary); color: var(--c-white); border-color: var(--c-primary); text-decoration: none; }
 .entry-tags { margin-bottom: 1.5rem; }
-
-
-/*
-=========================================
---- 15. Styles pour les mobiles (Responsive) ---
-=========================================
-*/
-@media (max-width: 768px) {
-    .container { padding: 0 1rem; margin: 1rem auto; }
-    .site-header { padding: 0.8rem 1rem; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
-    .logo { display: flex; align-items: center; }
-    .logo a { font-size: 1.4rem; }
-
-    .header-controls { display: flex; align-items: center; gap: 1rem; order: 2; margin-left: auto; }
-    .language-switcher { margin-left: 0; }
-    .language-switcher .fi { font-size: 1.3em; }
-
-    .nav-toggle { display: block; position: static; /* Let it flow in header-controls */ }
-
-    .search-form { order: 3; width: 100%; margin: 0.5rem 0 0 0; flex-basis: 100%; }
-    .search-form input[type="search"] { flex-grow: 1; min-width: 0; }
-
-    /* Styles du menu coulissant */
-    .main-nav { display: none; /* Hide desktop nav */ position: fixed; top: 0; right: 0; bottom: 0; background: var(--c-surface); width: 70%; transform: translateX(100%); transition: transform 0.3s ease-in-out; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; padding: 2rem 0;}
-    .main-nav.nav-visible { display: flex; transform: translateX(0); box-shadow: -5px 0 15px rgba(0,0,0,0.2); }
-    .main-nav a { margin: 1.5rem 0; font-size: 1.2rem; }
-
-    h1 { font-size: 1.8rem; }
-    h2 { font-size: 1.5rem; }
-    .editor-container { flex-direction: column; }
-    .entries-grid { grid-template-columns: 1fr; } /* Stack cards on smallest screens */
-    .pagination ul { gap: 0.3rem;}
-    .pagination li a, .pagination li span { padding: 6px 10px; font-size: 0.9rem;}
-}
-
-.site-logo {
-    max-height: 100px; /* Ajuste cette valeur selon la taille désirée */
-    width: auto;
-    vertical-align: middle;
-    margin-right: 10px; /* Espace entre le logo et un éventuel texte */
-}
-
-/*
-=========================================
---- 16. Styles pour les éditeurs (FR/EN empilés) ---
-=========================================
-*/
-
-/* Conteneur principal qui empile FR et EN */
-.editor-container-main {
+.tags-label-container {
     display: flex;
-    flex-direction: column; /* Empile les enfants (FR et EN) verticalement */
-    gap: 2rem; /* Espace entre les blocs FR et EN */
-    margin: 2rem 0; /* Marge autour de l'ensemble */
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
 }
-
-/* Le conteneur de l'éditeur FR et de son aperçu FR (qui restent côte à côte) */
-.editor-and-preview-fr {
-    display: flex;
-    flex-direction: row; /* FR editor et FR preview côte à côte */
-    gap: 2rem;
-    flex: 1; /* Prend toute la largeur disponible dans le parent */
-    min-width: 0;
+.tags-label-container label { margin-bottom: 0; }
+.add-tag-btn {
+    background-color: var(--c-primary); color: var(--c-white); border: none;
+    border-radius: 50%; cursor: pointer; font-weight: bold; font-size: 1rem;
+    width: 24px; height: 24px; display: inline-flex; justify-content: center;
+    align-items: center; line-height: 1; padding: 0; transform: none;
+    transition: all 0.2s ease;
 }
-
-/* L'aperçu EN (standalone) */
-.preview-pane-en-standalone {
-    flex: 1; /* Prend toute la largeur disponible dans le parent */
-    min-width: 0;
-    border: 1px solid var(--c-border);
-    border-radius: 8px;
-    padding: 1.5rem;
-    background: var(--c-background);
-    min-height: 400px; /* Hauteur minimale */
-    transition: background-color 0.3s ease, border-color 0.3s ease;
+.add-tag-btn:hover { transform: scale(1.1); opacity: 0.9; }
+.tags-checkbox-list {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem; padding: 1rem; border: 1px solid var(--c-border);
+    border-radius: 8px; background-color: var(--c-background);
+    max-height: 200px; overflow-y: auto;
 }
+.tag-checkbox-item { display: flex; align-items: center; gap: 0.5rem; }
+.tag-checkbox-item input[type="checkbox"] { width: auto; margin: 0; }
+.tag-checkbox-item label { margin-bottom: 0; font-weight: normal; cursor: pointer; }
 
-/* Ajustements responsives pour l'éditeur double */
-@media (max-width: 1024px) {
-    /* Sur écrans plus petits, l'éditeur FR et l'aperçu FR passent aussi en colonne */
-    .editor-and-preview-fr {
-        flex-direction: column;
-        gap: 2rem;
-    }
-    /* Le layout principal .editor-container-main est déjà en colonne, pas besoin de changer */
-}
-
-/*
-Ces règles viennent compléter les règles existantes pour .editor-pane et .preview-pane
-dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-preview-fr.
-*/
 
 /*
 =========================================
---- Styles pour les titres côte à côte ---
-=========================================
-*/
-
-.title-layout {
-    display: flex;
-    flex-direction: row; /* Met les enfants côte à côte */
-    gap: 2rem; /* Espace entre les deux champs */
-    align-items: flex-start; /* Aligne le haut des labels */
-}
-
-.title-field {
-    flex: 1; /* Chaque champ prend 50% de la largeur */
-    min-width: 0; /* Important pour flexbox */
-}
-
-/* Optionnel : Empiler sur petits écrans si besoin */
- @media (max-width: 600px) {
-    .title-layout {
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-}
-
-/* 
-=========================================
---- 17. Icône "Afficher Mot de Passe" ---
-=========================================
-*/
-
-/* 1. Crée un contexte de positionnement pour l'icône */
-.password-container div {
-    position: relative;
-}
-
-/* 2. Style et positionne l'icône elle-même */
-.toggle-password-icon {
-    position: absolute; /* Se positionne par-dessus l'input */
-    top: 50%; /* Centre verticalement (moitié haute) */
-    right: 15px; /* Se place à 15px du bord droit */
-    transform: translateY(-50%); /* Ajuste le centrage vertical parfait */
-    cursor: pointer; /* Montre une main au survol */
-    color: var(--c-gray); /* Couleur grise par défaut (adaptée au thème) */
-    font-size: 1rem; /* Taille de l'icône */
-    transition: color 0.2s ease; /* Effet de transition de couleur */
-}
-
-/* 3. Change la couleur au survol */
-.toggle-password-icon:hover {
-    color: var(--c-primary); /* Utilise la couleur primaire au survol */
-}
-
-/* 
-=========================================
---- Style Bouton Secondaire (Annuler) ---
-=========================================
-*/
-.button-secondary {
-    background-color: var(--c-gray);
-    color: var(--c-surface);
-    margin-left: 1rem;
-    display: inline-block;
-    padding: 10px 24px;
-    border-radius: 99px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-align: center;
-    transition: all 0.3s ease;
-    transform: translateY(0);
-}
-
-.button-secondary:hover {
-    background-color: var(--c-text-light);
-    color: var(--c-white);
-    transform: translateY(-2px);
-    opacity: 1;
-    text-decoration: none;
-}
-
-/*
-=========================================
---- Styles pour la page Admin Tags ---
+--- 15. Styles pour Admin Tags ---
 =========================================
 */
 .tags-table {
@@ -798,375 +707,264 @@ dans la section 9, qui gèrent la flexibilité à l'intérieur de .editor-and-pr
     border-collapse: collapse;
     margin-top: 1.5rem;
 }
-
-.tags-table th,
-.tags-table td {
+.tags-table th, .tags-table td {
     border: 1px solid var(--c-border);
     padding: 0.75rem;
     text-align: left;
     vertical-align: middle;
 }
-
-.tags-table th {
-    background-color: var(--c-background);
-    font-weight: 500;
-}
-
-.tags-table input[type="text"] {
-    width: auto; /* Ajuste la largeur */
-    min-width: 150px;
-    display: inline-block; /* Pour aligner avec le bouton */
-}
-
-/* Styles pour les petits boutons */
+.tags-table th { background-color: var(--c-background); font-weight: 500; }
+.tags-table input[type="text"] { width: auto; min-width: 150px; display: inline-block; }
 .button-small {
-    padding: 5px 10px;
-    font-size: 0.8rem;
-    border-radius: 5px; /* Moins arrondi que gélule */
+    padding: 5px 10px; font-size: 0.8rem; border-radius: 5px;
 }
-.button-danger {
-     background-color: var(--c-danger);
-}
-.button-danger:hover {
-     opacity: 0.8;
-     background-color: var(--c-danger); /* Garde la couleur */
-}
+.button-danger { background-color: var(--c-danger); }
+.button-danger:hover { opacity: 0.8; background-color: var(--c-danger); }
+.tag-create-form { max-width: 500px; margin-bottom: 2rem; }
 
-.tag-create-form {
-    max-width: 500px; /* Limite la largeur du formulaire */
-    margin-bottom: 2rem;
+
+/*
+=========================================
+--- 16. Styles pour les mobiles (Responsive) ---
+=========================================
+*/
+@media (max-width: 992px) {
+    .container { padding: 0 1rem; margin: 1rem auto; }
+    .site-header { padding: 0.8rem 1rem; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
+    .logo { flex-grow: 1; flex-basis: auto; text-align: left; margin-bottom: 0;}
+    .logo a { font-size: 1.4rem; }
+
+    .header-controls { display: flex; align-items: center; gap: 1rem; order: 2; margin-left: auto; }
+    .language-switcher { margin-left: 0; }
+    .language-switcher .fi { font-size: 1.3em; }
+
+    .nav-toggle { display: block; position: static; }
+
+    .search-form { order: 3; width: 100%; margin: 0.5rem 0 0 0; flex-basis: 100%; }
+    .search-form input[type="search"] { flex-grow: 1; min-width: 0; }
+
+    /* Styles du menu coulissant (Refonte <ul>) */
+    .main-nav {
+        display: none; 
+        position: fixed; top: 0; right: 0; bottom: 0;
+        background: var(--c-surface);
+        width: 70%;
+        transform: translateX(100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 1000;
+        padding: 4rem 0 2rem 0;
+        margin-left: 0;
+    }
+    .main-nav.nav-visible {
+        display: flex;
+        transform: translateX(0);
+        box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+    }
+    .main-nav ul {
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        overflow-y: auto;
+        align-items: flex-start;
+    }
+    .main-nav li { margin-left: 0; width: 100%; }
+    .main-nav li a {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        width: 100%;
+        box-sizing: border-box;
+        border-bottom: 1px solid var(--c-border);
+    }
+    .main-nav li:last-child a { border-bottom: none; }
+    .main-nav li a.active, .main-nav li.active-parent > a {
+        color: var(--c-primary);
+        border-bottom-color: var(--c-border);
+    }
+    .main-nav ul .sous-menu {
+        display: block; position: static; box-shadow: none;
+        border: none; border-radius: 0; min-width: 100%;
+        margin-left: 0; padding: 0;
+        background: var(--c-background);
+        /* Correction : Ajout max-height 0 pour accordéon */
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+    }
+    /* Classe pour ouvrir l'accordéon */
+    .main-nav ul .sous-menu.sous-menu-ouvert {
+        max-height: 500px; /* Ou assez grand */
+    }
+    .main-nav .sous-menu li a {
+        padding-left: 3rem;
+        font-size: 1rem;
+        color: var(--c-text-light);
+    }
+    .main-nav .sous-menu li a.active {
+        color: var(--c-primary);
+        background: var(--c-surface);
+    }
+    .main-nav .sous-menu .sous-menu {
+        position: static; 
+        width: 100%; 
+        box-shadow: none;
+        padding: 0;
+        background: color-mix(in srgb, var(--c-background) 80%, black 5%); 
+    }
+    .main-nav .sous-menu .sous-menu > li > a {
+        padding-left: 4rem;
+        font-size: 0.95rem;
+        background: color-mix(in srgb, var(--c-background) 80%, black 5%);
+    }
+    .main-nav .fa-caret-right { 
+        display: none; 
+    }
+
+    .main-nav .fa-caret-down {
+        display: inline-block;
+        transition: transform 0.3s ease;
+        margin-left: auto; /* Pousse la flèche à droite */
+        padding-left: 1rem;
+    }
+    .main-nav li a.lien-ouvert .fa-caret-down {
+         transform: rotate(180deg);
+    }
+    /* --- Fin Styles Menu Mobile --- */
+
+    
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.5rem; }
+    .editor-container { flex-direction: column; }
+    .entries-grid { grid-template-columns: 1fr; }
+    .pagination ul { gap: 0.3rem;}
+    .pagination li a, .pagination li span { padding: 6px 10px; font-size: 0.9rem;}
 }
 
 /*
 =========================================
---- Styles pour la sélection des Tags ---
+--- 17. Styles pour l'éditeur double (FR/EN empilés) ---
 =========================================
 */
-.tags-checkbox-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Crée des colonnes */
-    gap: 0.75rem;
-    padding: 1rem;
-    border: 1px solid var(--c-border);
-    border-radius: 8px;
-    background-color: var(--c-background);
-    max-height: 200px; /* Limite la hauteur et ajoute une scrollbar si besoin */
-    overflow-y: auto;
-}
-
-.tag-checkbox-item {
+.editor-container-main {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.tag-checkbox-item input[type="checkbox"] {
-    width: auto; /* Taille par défaut */
-    margin: 0;
-}
-
-.tag-checkbox-item label {
-    margin-bottom: 0; /* Annule la marge par défaut des labels de formulaire */
-    font-weight: normal; /* Texte normal */
-    cursor: pointer;
-}
-
-/*
-=========================================
---- Navigation Précédent/Suivant ---
-=========================================
-*/
-.prev-next-nav {
-    display: flex;
-    justify-content: space-between; /* Pousse les liens aux extrémités */
-    align-items: flex-start; /* Aligne le haut des liens */
+    flex-direction: column;
+    gap: 2rem;
     margin: 2rem 0;
-    padding: 1.5rem 0;
-    border-top: 1px solid var(--c-border);
-    border-bottom: 1px solid var(--c-border);
-    gap: 1rem; /* Espace si les liens deviennent trop longs */
 }
-
-.prev-link,
-.next-link {
-    flex-basis: 48%; /* Donne environ la moitié de la largeur à chaque lien */
+.editor-and-preview-fr {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    flex: 1;
     min-width: 0;
 }
-
-.prev-next-nav a {
-    color: var(--c-text); /* Couleur normale du texte */
-    font-weight: 500;
-    display: block; /* Pour que le span soit en dessous */
+.preview-pane-en-standalone {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    background: var(--c-background);
+    min-height: 400px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
-.prev-next-nav a:hover {
-    color: var(--c-primary); /* Couleur primaire au survol */
-}
-
-.prev-next-nav .prev-next-title {
-    display: block; /* Met le titre sur la ligne suivante */
-    font-size: 0.9em;
-    color: var(--c-text-light); /* Couleur plus claire pour le titre */
-    margin-top: 0.3rem;
-    /* Empêche le texte de déborder */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.next-link {
-    text-align: right; /* Aligne le texte du lien "Suivant" à droite */
-}
-
-/* Responsive pour les liens Précédent/Suivant */
-@media (max-width: 600px) {
-    .prev-next-nav {
-        flex-direction: column; /* Empile les liens sur mobile */
-        align-items: stretch; /* Prend toute la largeur */
-    }
-    .next-link {
-        text-align: left; /* Aligne à gauche sur mobile */
-        margin-top: 1rem; /* Ajoute de l'espace */
+@media (max-width: 1024px) {
+    .editor-and-preview-fr {
+        flex-direction: column;
+        gap: 2rem;
     }
 }
 
 /*
 =========================================
---- 18. Section Commentaires ---
+--- 18. Icône "Afficher Mot de Passe" ---
 =========================================
 */
-.comments-section {
-    margin-top: 3rem;
+.password-container div {
+    position: relative;
 }
-
-.comments-list .comment-item {
-    background-color: var(--c-background); /* Fond légèrement différent */
-    border: 1px solid var(--c-border);
-    border-radius: 8px;
-    padding: 1rem 1.5rem;
-    margin-bottom: 1rem;
+.toggle-password-icon {
+    position: absolute; top: 50%; right: 15px; transform: translateY(-50%);
+    cursor: pointer; color: var(--c-gray); font-size: 1rem; transition: color 0.2s ease;
 }
+.toggle-password-icon:hover { color: var(--c-primary); }
 
-.comments-list .comment-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px dashed var(--c-border);
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.comments-list .comment-header strong {
-    color: var(--c-text);
-}
-
-.comments-list .comment-header small {
-    color: var(--c-gray);
-    font-size: 0.85em;
-}
-
-.comments-list .comment-body p {
-    margin: 0.5rem 0 0 0;
-    white-space: pre-wrap; /* Respecte les sauts de ligne */
-}
-
-.comment-form {
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--c-border);
-}
-
-/* 
+/*
 =========================================
---- 18. Protection Anti-Spam (Honeypot) ---
+--- 19. Protection Anti-Spam (Honeypot) ---
 =========================================
 */
 .honeypot {
-    /* Cache le champ visuellement */
-    opacity: 0;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 0;
-    height: 0;
-    z-index: -1; /* Le met derrière tout le reste */
-    /* Empêche les lecteurs d'écran de le lire */
-    pointer-events: none;
-    visibility: hidden;
-}
-
-/* 
-=========================================
---- 19. Preloader ---
-=========================================
-*/
-.preloader {
-    position: fixed; /* Reste en place même si on scrolle */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 9999; /* Au-dessus de tout le reste (même le header sticky) */
-
-    /* Utilise la couleur de fond de la surface du thème actuel */
-    background-color: var(--c-surface);
-
-    /* Centre le spinner */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    /* Prépare la transition de disparition */
-    transition: opacity 0.75s ease, visibility 0.75s ease;
-    opacity: 1;
-    visibility: visible;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid var(--c-border); /* Couleur de base du cercle */
-    border-top-color: var(--c-primary); /* Couleur de l'animation (couleur primaire du thème) */
-    border-radius: 50%;
-    animation: spin 1s linear infinite; /* Fait tourner le cercle */
-}
-
-/* L'animation de rotation */
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* Classe pour cacher le preloader (ajoutée par JS) */
-.preloader.hidden {
-    opacity: 0;
-    visibility: hidden; /* Cache-le complètement */
-    pointer-events: none; /* N'intercepte plus les clics */
+    opacity: 0; position: absolute; top: 0; left: 0;
+    width: 0; height: 0; z-index: -1;
+    pointer-events: none; visibility: hidden;
 }
 
 /*
 =========================================
---- 19. Styles pour la Modale (Pop-up) ---
+--- 20. Preloader ---
 =========================================
 */
+.preloader {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; z-index: 9999;
+    background-color: var(--c-surface);
+    display: flex; justify-content: center; align-items: center;
+    transition: opacity 0.75s ease, visibility 0.75s ease;
+    opacity: 1; visibility: visible;
+}
+.spinner {
+    width: 50px; height: 50px;
+    border: 5px solid var(--c-border);
+    border-top-color: var(--c-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+.preloader.hidden {
+    opacity: 0; visibility: hidden; pointer-events: none;
+}
 
-/* Le fond sombre (overlay) */
+/*
+=========================================
+--- 21. Styles pour la Modale (Pop-up) ---
+=========================================
+*/
 .modal-overlay {
-    position: fixed; /* Reste en place */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); /* Fond noir semi-transparent */
-    z-index: 2000; /* Au-dessus de tout (sauf peut-être le menu mobile) */
-
-    /* Centrage */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    /* Caché par défaut */
-    opacity: 0;
-    visibility: hidden;
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    display: flex; justify-content: center; align-items: center;
+    opacity: 0; visibility: hidden;
     transition: opacity 0.3s ease, visibility 0s 0.3s linear;
 }
-
-/* Classe pour afficher la modale */
 .modal-overlay.modal-visible {
-    opacity: 1;
-    visibility: visible;
+    opacity: 1; visibility: visible;
     transition: opacity 0.3s ease;
 }
-
-/* Le contenu de la modale (la boîte blanche) */
 .modal-content {
     background-color: var(--c-surface);
     padding: 2rem;
     border-radius: var(--border-radius);
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    width: 90%;
-    max-width: 500px;
+    width: 90%; max-width: 500px;
     position: relative;
-
-    /* Animation d'apparition */
     transform: translateY(-20px);
     transition: transform 0.3s ease;
 }
-
-/* Animation d'apparition (contenu) */
 .modal-overlay.modal-visible .modal-content {
     transform: translateY(0);
 }
-
-/* Bouton pour fermer (le 'X') */
 .modal-close-btn {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 2rem;
-    color: var(--c-gray);
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    line-height: 1;
+    position: absolute; top: 10px; right: 15px;
+    font-size: 2rem; color: var(--c-gray);
+    background: none; border: none; padding: 0;
+    cursor: pointer; line-height: 1;
+    border-radius: 0; transform: none; opacity: 1;
 }
 .modal-close-btn:hover {
-    color: var(--c-text);
+    color: var(--c-text); background: none; transform: none; opacity: 1;
 }
-
-/* S'assure que le h2 dans la modale a le bon style */
-.modal-content h2 {
-    margin-top: 0;
-}
-
-/*
-=========================================
---- Styles pour le bouton "+" des Tags ---
-=========================================
-*/
-.tags-label-container {
-    display: flex;
-    align-items: center; /* Aligne verticalement le label et le bouton */
-    gap: 0.5rem; /* Espace entre le label et le bouton */
-    margin-bottom: 0.5rem; /* Espace avant la liste des cases */
-}
-
-/* Annule la marge par défaut du label quand il est ici */
-.tags-label-container label {
-    margin-bottom: 0;
-    font-weight: 500;
-    color: var(--c-text);
-}
-
-/* Style du bouton "+" */
-.add-tag-btn {
-    /* Style de base */
-    background-color: var(--c-primary);
-    color: var(--c-white);
-    border: none;
-    border-radius: 50%; /* Le rend parfaitement rond */
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 1rem;
-    
-    /* Dimensions */
-    width: 24px;
-    height: 24px;
-    
-    /* Centrage du "+" */
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    line-height: 1;
-    
-    /* Annule les styles de bouton "gélule" */
-    padding: 0;
-    transform: none;
-    transition: all 0.2s ease;
-}
-
-.add-tag-btn:hover {
-    transform: scale(1.1); /* Léger zoom au survol */
-    opacity: 0.9;
-}
+.modal-content h2 { margin-top: 0; }
