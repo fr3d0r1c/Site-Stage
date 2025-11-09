@@ -113,207 +113,116 @@ hr {
 =========================================
 */
 .site-header {
-    background: var(--c-surface);
-    color: var(--c-text);
-    border-bottom: 1px solid var(--c-border);
-    padding: 0.8rem 2rem;
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 0;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    transition: background-color 0.3s ease, border-color 0.3s ease;
+    background: var(--c-surface); color: var(--c-text); border-bottom: 1px solid var(--c-border);
+    padding: 0.8rem 2rem; display: flex; align-items: center; gap: 1.5rem;
+    margin-bottom: 0; position: sticky; top: 0; z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-.logo {
-    flex-shrink: 0;
-}
-.logo a {
-    color: var(--c-text);
-    font-size: 1.6rem;
-    font-weight: 700;
-    display: flex; /* Utilise flex pour aligner image + texte */
-    align-items: center;
-    text-decoration: none;
-}
-.logo a:hover {
-    text-decoration: none;
-}
-/* Style pour l'image du logo */
-.site-logo {
-    max-height: 40px; /* Hauteur du logo */
-    width: auto;
-    display: block;
-}
+.logo { flex-shrink: 0; }
+.logo a { color: var(--c-text); font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; text-decoration: none; }
+.logo a:hover { text-decoration: none; }
+.site-logo { max-height: 40px; width: auto; display: block; }
 
-/* Thème Sombre : Ajustement du logo */
-body.theme-dark .site-logo {
-    filter: brightness(1.2) contrast(1.1); /* Léger éclaircissement */
-}
-/* Thème Sépia : Pas de filtre */
-body.theme-sepia .site-logo {
-    filter: none;
-}
-
-
-.header-controls { /* Conteneur pour drapeaux + hamburger */
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-/* Sélecteur de langue */
-.language-switcher {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-left: 0;
-    padding: 0;
-    flex-shrink: 0;
-}
-.language-switcher .fi {
-    font-size: 1.4em;
-    line-height: 1;
-    display: block;
-}
-.language-switcher span {
-     color: var(--c-border);
-}
-.language-switcher a:hover {
-    text-decoration: none;
-}
-
-/* Menu Hamburger (Base) */
-.nav-toggle {
-    display: none;
-    cursor: pointer;
-    background: transparent;
-    border: 0;
-    padding: 0;
-    width: 2em;
-    height: 2em;
-    z-index: 1001;
-}
-.hamburger, .hamburger::before, .hamburger::after {
-    content: ''; display: block; background: var(--c-text); height: 3px;
-    width: 100%; border-radius: 3px; transition: all .3s ease-in-out;
-}
+body.theme-dark .site-logo { filter: brightness(1.2) contrast(1.1); }
+body.theme-sepia .site-logo { filter: none; }
+.header-controls { display: flex; align-items: center; gap: 1rem; }
+.language-switcher { display: flex; align-items: center; gap: 0.5rem; margin-left: 0; padding: 0; flex-shrink: 0; }
+.language-switcher .fi { font-size: 1.4em; line-height: 1; display: block; }
+.language-switcher span { color: var(--c-border); }
+.language-switcher a:hover { text-decoration: none; }
+.nav-toggle { display: none; cursor: pointer; background: transparent; border: 0; padding: 0; width: 2em; height: 2em; z-index: 1001; }
+.hamburger, .hamburger::before, .hamburger::after { content: ''; display: block; background: var(--c-text); height: 3px; width: 100%; border-radius: 3px; transition: all .3s ease-in-out; }
 .hamburger::before { transform: translateY(-8px); }
 .hamburger::after { transform: translateY(5px); }
 .nav-toggle.is-active .hamburger { background: transparent; }
 .nav-toggle.is-active .hamburger::before { transform: rotate(45deg); }
 .nav-toggle.is-active .hamburger::after { transform: rotate(-45deg) translateY(-3px) translateX(3px); }
 
-
-/* --- NOUVEAUX STYLES DE NAVIGATION (Refonte <ul>) --- */
+/* --- STYLES DE NAVIGATION (Refonte <ul>) --- */
 .main-nav {
     margin-left: auto; /* Pousse le menu vers la droite */
 }
-
 .main-nav ul {
-    list-style: none; /* Enlève les puces */
+    list-style: none;
     margin: 0;
     padding: 0;
-    display: flex; /* Met les <li> au premier niveau à l'horizontale */
+    display: flex; /* <li> de Niveau 1 à l'horizontale */
     align-items: center;
 }
-
 .main-nav li {
-    position: relative; /* Indispensable pour les sous-menus */
+    position: relative; /* Contexte pour les sous-menus */
     margin-left: 1.5rem;
 }
-
 .main-nav li a {
     color: var(--c-text-light);
     font-size: 0.9rem;
     font-weight: 500;
-    padding: 18px 0; /* Ajuste le padding pour centrer verticalement */
+    padding: 18px 0; /* Centrage vertical */
     border-bottom: 2px solid transparent;
     white-space: nowrap;
     text-decoration: none;
-    display: block; /* Important pour le padding */
+    display: block;
 }
 .main-nav li a:hover {
     color: var(--c-text);
     text-decoration: none;
 }
-
-/* Style du lien actif (normal ou parent) */
 .main-nav li a.active,
 .main-nav li.active-parent > a {
     color: var(--c-primary);
     border-bottom-color: var(--c-primary);
 }
-
-/* Icône flèche vers le bas */
 .main-nav .fa-xs {
     font-size: 0.7em;
     margin-left: 4px;
 }
 
-
-/* --- Styles du Menu Déroulant (Desktop) --- */
-
-/* Le conteneur du sous-menu (Niveau 1) */
+/* --- Styles Menu Déroulant (Niveau 1 - Desktop) --- */
 .main-nav ul .sous-menu {
     display: none;
     position: absolute;
-    top: 100%; /* S'affiche juste en dessous du parent */
-    left: 0; /* CORRIGÉ : Alignement simple avec le bord gauche du <li> */
+    top: 100%; /* S'affiche EN DESSOUS */
+    left: 0;   /* Alignement à gauche */
     min-width: 200px;
     background: var(--c-surface);
     border: 1px solid var(--c-border);
     border-radius: var(--border-radius);
     box-shadow: 0 8px 16px rgba(0,0,0,0.1);
     z-index: 1001;
-    /* Styles pour le sous-menu (il n'est plus flex) */
     flex-direction: column;
     margin-left: 0;
-    padding: 0.5rem 0; /* Espace intérieur */
+    padding: 0.5rem 0;
 }
-
-/* Les <li> dans le sous-menu (Niveau 1) */
 .main-nav .sous-menu li {
-    position: relative; /* INDISPENSABLE pour l'imbrication */
+    position: relative; /* Contexte pour Niveau 2 */
     margin: 0;
     width: 100%;
 }
-
-/* Les liens <a> dans le sous-menu (Niveau 1) */
-.main-nav .sous-menu > li > a {
-    padding-left: 3rem; /* Indentation pour montrer la hiérarchie */
-    font-size: 1rem;
-    color: var(--c-text-light);
+.main-nav .sous-menu li a {
+    padding: 10px 20px;
+    border: none;
+    width: 100%;
+    box-sizing: border-box;
 }
-.main-nav .sous-menu > li > a:hover {
+.main-nav .sous-menu li a:hover {
     background-color: var(--c-background);
 }
-.main-nav .sous-menu > li > a.active {
+.main-nav .sous-menu li a.active {
+    background-color: var(--c-background);
     color: var(--c-primary);
-    background: var(--c-surface);
+    border: none;
 }
-
-/* Affiche le sous-menu de Niveau 1 au survol */
 .main-nav li.dropdown:hover > .sous-menu {
     display: block;
 }
 
-
-/* --- Styles pour le sous-menu de Niveau 2 --- */
-
-/* Le conteneur du sous-menu (Niveau 2 - ex: "Éditeur") */
+/* --- Styles Menu Déroulant (Niveau 2 - Desktop) --- */
 .main-nav .sous-menu .sous-menu {
-    position: static;
-    width: 100%;
-    box-shadow: none;
-    padding: 0;
-    background: color-mix(in srgb, var(--c-background) 80%, black 5%);
+    top: -1px;  /* S'aligne en haut du <li> parent */
+    left: 100%; /* S'affiche à DROITE */
+    margin-left: 1px;
 }
-
-/* Gère l'affichage de la flèche droite (fa-caret-right) */
 .main-nav .sous-menu li a.dropdown-toggle {
     display: flex;
     justify-content: space-between;
@@ -323,12 +232,14 @@ body.theme-sepia .site-logo {
     margin-left: auto;
     padding-left: 1rem;
 }
-
-/* Affiche le sous-menu de Niveau 2 au survol */
 .main-nav .sous-menu li.dropdown:hover > .sous-menu {
     display: block;
 }
-
+/* Aligne le dernier sous-menu (Admin) à droite */
+.main-nav > ul > li:last-child > .sous-menu {
+    left: auto;
+    right: 0;
+}
 
 /*
 =========================================
@@ -689,6 +600,7 @@ button:hover, .actions a:hover {
 --- 16. Styles pour les mobiles (Responsive) ---
 =========================================
 */
+
 @media (max-width: 992px) {
     .container { padding: 0 1rem; margin: 1rem auto; }
     .site-header { padding: 0.8rem 1rem; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
@@ -701,7 +613,6 @@ button:hover, .actions a:hover {
 
     .nav-toggle { display: block; position: static; }
 
-    /* Styles du menu coulissant (Refonte <ul>) */
     .main-nav {
         display: none; 
         position: fixed; top: 0; right: 0; bottom: 0;
@@ -739,18 +650,18 @@ button:hover, .actions a:hover {
         border-bottom-color: var(--c-border);
     }
     .main-nav ul .sous-menu {
+        /* Styles pour l'accordéon */
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+        /* Styles de base (inchangés) */
         display: block; position: static; box-shadow: none;
         border: none; border-radius: 0; min-width: 100%;
         margin-left: 0; padding: 0;
         background: var(--c-background);
-        /* Correction : Ajout max-height 0 pour accordéon */
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease-out;
     }
-    /* Classe pour ouvrir l'accordéon */
     .main-nav ul .sous-menu.sous-menu-ouvert {
-        max-height: 500px; /* Ou assez grand */
+        max-height: 500px; /* Affiche le sous-menu */
     }
     .main-nav .sous-menu li a {
         padding-left: 3rem;
@@ -762,33 +673,26 @@ button:hover, .actions a:hover {
         background: var(--c-surface);
     }
     .main-nav .sous-menu .sous-menu {
-        position: static; 
-        width: 100%; 
-        box-shadow: none;
+        position: static; width: 100%; box-shadow: none;
         padding: 0;
         background: color-mix(in srgb, var(--c-background) 80%, black 5%); 
     }
-    .main-nav .sous-menu .sous-menu > li > a {
+    .main-nav .sous-menu .sous-menu > li > a { /* Cible enfant direct */
         padding-left: 4rem;
         font-size: 0.95rem;
         background: color-mix(in srgb, var(--c-background) 80%, black 5%);
     }
-    .main-nav .fa-caret-right { 
-        display: none; 
-    }
-
+    .main-nav .fa-caret-right { display: none; } /* Cache flèche droite */
     .main-nav .fa-caret-down {
-        display: inline-block;
+        display: inline-block; /* Affiche flèche bas */
         transition: transform 0.3s ease;
-        margin-left: auto; /* Pousse la flèche à droite */
+        margin-left: auto;
         padding-left: 1rem;
     }
     .main-nav li a.lien-ouvert .fa-caret-down {
          transform: rotate(180deg);
     }
-    /* --- Fin Styles Menu Mobile --- */
 
-    
     h1 { font-size: 1.8rem; }
     h2 { font-size: 1.5rem; }
     .editor-container { flex-direction: column; }

@@ -60,13 +60,12 @@
                         </ul>
                     </li>
 
-                    <li class="dropdown <%= (activePage === 'journal' || activePage === 'search') ? 'active-parent' : '' %>">
+                    <li class="dropdown <%= (activePage === 'journal') ? 'active-parent' : '' %>">
                         <a href="/journal" class="dropdown-toggle <%= activePage === 'journal' ? 'active' : '' %>">
                             <%= t('nav.journal') %> <i class="fas fa-caret-down fa-xs"></i>
                         </a>
                         <ul class="sous-menu">
                             <li><a href="/journal"><%= t('journal.view_all') %></a></li>
-
                             <li><a href="/search" class="<%= activePage === 'search' ? 'active' : '' %>"><%= t('journal.advanced_search') %></a></li>
 
                             <% if (locals.username) { %>

@@ -162,7 +162,7 @@
   "editor": {
     "title": "Editor",
     "create": "Create Enrty",
-    "modifiy": "Modify Entry",
+    "modify": "Modify Entry",
     "delete": "Delete Entry"
   }
 }

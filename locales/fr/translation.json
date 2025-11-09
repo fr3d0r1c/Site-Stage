@@ -162,7 +162,7 @@
   "editor": {
     "title": "Editeur",
     "create": "Créer une entrée",
-    "modifiy": "Modifier une entrée",
+    "modify": "Modifier une entrée",
     "delete": "Supprimer une entrée"
   }
 }
