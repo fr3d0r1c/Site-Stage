@@ -465,24 +465,21 @@ app.get('/', (req, res) => {
 });
 
 // Pages statiques
-app.get('/profil', (req, res) => {
-    res.render('profil', {
-        pageTitle: req.t('page_titles.profile'),
-        activePage: 'profil',
-        ogTitle: req.t('page_titles.profile'),
-        ogDescription: req.t('static_pages.profile_intro'),
-        ogImage: null // Utilise l'image par défaut du header.ejs
-    });
+app.get('/profil/qui-suis-je', (req, res) => {
+    res.render('whoami', { pageTitle: 'Qui suis-je ?', activePage: 'profil' });
+});
+app.get('/profil/parcours-scolaire', (req, res) => {
+    res.render('school', { pageTitle: 'Parcours Scolaire', activePage: 'profil' });
+});
+app.get('/profil/parcours-pro', (req, res) => {
+    res.render('work', { pageTitle: 'Parcours Professionnel', activePage: 'profil' });
 });
 
-app.get('/stage', (req, res) => {
-    res.render('stage', {
-        pageTitle: req.t('page_titles.internship'),
-        activePage: 'stage',
-        ogTitle: req.t('page_titles.internship'),
-        ogDescription: req.t('static_pages.internship_intro'),
-        ogImage: null
-    });
+app.get('/stage/l-entreprise', (req, res) => {
+    res.render('company', { pageTitle: "L'entreprise", activePage: 'stage' });
+});
+app.get('/stage/mes-missions', (req, res) => {
+    res.render('missions', { pageTitle: 'Mes Missions', activePage: 'stage' });
 });
 
 app.get('/contact', (req, res) => {

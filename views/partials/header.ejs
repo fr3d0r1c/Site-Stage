@@ -48,19 +48,38 @@
 
             <nav class="main-nav">
                 <ul>
-                    <li><a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>"><%= t('nav.home') %></a></li>
+                    <li><a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>"><i class="fas fa-home"></i></a></li>
 
                     <li class="dropdown <%= (activePage === 'profil' || activePage === 'stage') ? 'active-parent' : '' %>">
                         <a href="#" class="dropdown-toggle">
                             <%= t('nav.about') %> <i class="fas fa-caret-down fa-xs"></i>
                         </a>
                         <ul class="sous-menu">
-                            <li><a href="/profil" class="<%= activePage === 'profil' ? 'active' : '' %>"><%= t('nav.profile') %></a></li>
-                            <li><a href="/stage" class="<%= activePage === 'stage' ? 'active' : '' %>"><%= t('nav.internship') %></a></li>
+
+                            <li class="dropdown dropdown-level-2 <%= activePage === 'profil' ? 'active-parent' : '' %>">
+                                <a href="#" class="dropdown-toggle">
+                                    <%= t('nav.profile') %> <i class="fas fa-caret-right fa-xs"></i>
+                                </a>
+                                <ul class="sous-menu">
+                                    <li><a href="/profil/qui-suis-je"><%= t('subnav.who_am_i') %></a></li>
+                                    <li><a href="/profil/parcours-scolaire"><%= t('subnav.school_path') %></a></li>
+                                    <li><a href="/profil/parcours-pro"><%= t('subnav.work_path') %></a></li>
+                                </ul>
+                            </li>
+
+                            <li class="dropdown dropdown-level-2 <%= activePage === 'stage' ? 'active-parent' : '' %>">
+                                <a href="#" class="dropdown-toggle">
+                                    <%= t('nav.internship') %> <i class="fas fa-caret-right fa-xs"></i>
+                                </a>
+                                <ul class="sous-menu">
+                                    <li><a href="/stage/l-entreprise"><%= t('subnav.company') %></a></li>
+                                    <li><a href="/stage/mes-missions"><%= t('subnav.missions') %></a></li>
+                                </ul>
+                            </li>
                         </ul>
                     </li>
 
-                    <li class="dropdown <%= (activePage === 'journal') ? 'active-parent' : '' %>">
+                    <li class="dropdown <%= (activePage === 'journal' || activePage === 'search') ? 'active-parent' : '' %>">
                         <a href="/journal" class="dropdown-toggle <%= activePage === 'journal' ? 'active' : '' %>">
                             <%= t('nav.journal') %> <i class="fas fa-caret-down fa-xs"></i>
                         </a>

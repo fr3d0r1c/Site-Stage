@@ -1,12 +1,19 @@
 {
   "nav": {
     "home": "Accueil",
-    "about": "À Propos", 
     "profile": "Mon Profil",
     "internship": "Mon Stage",
     "journal": "Journal de Bord",
     "admin": "Administration",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "about": "A Propos"
+  },
+  "subnav": {
+    "who_am_i": "Qui suis-je ?",
+    "school_path": "Parcours Scolaire",
+    "work_path": "Parcours Professionnel",
+    "company": "L'entreprise",
+    "missions": "Mes Missions"
   },
   "footer": {
     "rights": "Tous droits réservés."

@@ -241,6 +241,11 @@ body.theme-sepia .site-logo { filter: none; }
     right: 0;
 }
 
+.main-nav li a .fas {
+    margin-right: 8px;
+    font-size: 0.9rem;
+}
+
 /*
 =========================================
 --- 4. Contenu (Pages & Articles Détaillés) ---

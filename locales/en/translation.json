@@ -1,12 +1,19 @@
 {
   "nav": {
     "home": "Home",
-    "about": "About", 
     "profile": "My Profile",
     "internship": "My Internship",
     "journal": "Journal",
     "admin": "Administration",
-    "logout": "Logout"
+    "logout": "Logout",
+    "about": "About"
+  },
+  "subnav": {
+    "who_am_i": "Who am I?",
+    "school_path": "School Career",
+    "work_path": "Professional Career",
+    "company": "The Company",
+    "missions": "My Missions"
   },
   "footer": {
     "rights": "All rights reserved."
