@@ -25,8 +25,8 @@ describe('Tests des routes publiques (GET)', () => {
     expect(response.statusCode).toBe(200);
   });
 
-  test('GET /profil - Doit répondre avec un statut 200 (OK)', async () => {
-    const response = await request(app).get('/profil');
+  test('GET /profil/qui-suis-je - Doit répondre avec un statut 200 (OK)', async () => {
+    const response = await request(app).get('/profil/qui-suis-je'); // <-- ON TESTE LA NOUVELLE ROUTE
     expect(response.statusCode).toBe(200);
   });
 
