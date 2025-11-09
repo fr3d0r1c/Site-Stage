@@ -157,5 +157,11 @@
     "pending_moderation": "Votre commentaire est en attente de modération.",
     "no_comments": "Il n'y a pas encore de commentaires. Soyez le premier à réagir !",
     "anonymous": "Anonyme"
+  },
+  "editor": {
+    "title": "Editeur",
+    "create": "Créer une entrée",
+    "modifiy": "Modifier une entrée",
+    "delete": "Supprimer une entrée"
   }
 }

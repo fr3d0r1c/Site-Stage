@@ -157,5 +157,11 @@
     "pending_moderation": "Your comment is awaiting moderation.",
     "no_comments": "No comments yet. Be the first to react!",
     "anonymous": "Anonymous"
+  },
+  "editor": {
+    "title": "Editor",
+    "create": "Create Enrty",
+    "modifiy": "Modify Entry",
+    "delete": "Delete Entry"
   }
 }
