@@ -7,6 +7,23 @@
     <% } %>
     <a href="/"><%= t('nav.home') %></a>
 </nav>
+
+<div class="sort-container">
+    <form action="/journal" method="GET" id="sort-form">
+        <label for="sort-select">Trier par :</label>
+        <select name="sort" id="sort-select" onchange="document.getElementById('sort-form').submit();">
+            <option value="date_desc" <%= currentSort === 'date_desc' ? 'selected' : '' %>>Date (Plus récent)</option>
+            <option value="date_asc" <%= currentSort === 'date_asc' ? 'selected' : '' %>>Date (Plus ancien)</option>
+            <option value="alpha_asc" <%= currentSort === 'alpha_asc' ? 'selected' : '' %>>Titre (A-Z)</option>
+            <option value="alpha_desc" <%= currentSort === 'alpha_desc' ? 'selected' : '' %>>Titre (Z-A)</option>
+            <option value="tag_asc" <%= currentSort === 'tag_asc' ? 'selected' : '' %>>Tag (A-Z)</option>
+            <option value="tag_desc" <%= currentSort === 'tag_desc' ? 'selected' : '' %>>Tag (Z-A)</option>
+        </select>
+        <% if (typeof currentTag !== 'undefined' && currentTag) { %>
+            <input type="hidden" name="tag" value="<%= currentTag %>">
+        <% } %>
+    </form>
+</div>
 <hr>
 
 <%# Affiche le tag courant si on est sur une page de filtre par tag %>
@@ -52,7 +69,7 @@
                     <div class="actions">
                         <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
                         <form action="/entree/<%= entry.id %>/delete" method="POST" 
-                              onsubmit="return confirm('<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>');"
+                              onsubmit="return confirm('<%= t('admin_page.delete_confirm','Voulez-vous vraiment supprimer cette entrée ?') %>');"
                               style="display: inline;">
                             <button type="submit"><%= t('journal.delete') %></button>
                         </form>

@@ -165,45 +165,6 @@ body.theme-sepia .site-logo {
     gap: 1rem;
 }
 
-/* Formulaire de Recherche */
-.search-form {
-    display: flex;
-    align-items: center;
-    margin-left: 0;
-    flex-shrink: 0;
-}
-.search-form input[type="search"] {
-    padding: 6px 12px;
-    font-size: 0.9rem;
-    border: 1px solid var(--c-border);
-    border-right: none;
-    border-radius: 99px 0 0 99px;
-    background-color: var(--c-background);
-    color: var(--c-text);
-    min-width: 150px;
-    height: 36px;
-    box-sizing: border-box;
-}
-.search-form input[type="search"]:focus {
-    border-color: var(--c-primary);
-    background-color: var(--c-surface);
-    box-shadow: none;
-}
-.search-form button {
-    padding: 6px 12px;
-    border-radius: 0 99px 99px 0;
-    margin-left: -1px;
-    font-size: 1rem;
-    line-height: 1;
-    height: 36px;
-    box-sizing: border-box;
-    border: 1px solid var(--c-primary);
-    background-color: var(--c-primary);
-}
-.search-form button:hover {
-    opacity: 0.8;
-}
-
 /* Sélecteur de langue */
 .language-switcher {
     display: flex;
@@ -740,9 +701,6 @@ button:hover, .actions a:hover {
 
     .nav-toggle { display: block; position: static; }
 
-    .search-form { order: 3; width: 100%; margin: 0.5rem 0 0 0; flex-basis: 100%; }
-    .search-form input[type="search"] { flex-grow: 1; min-width: 0; }
-
     /* Styles du menu coulissant (Refonte <ul>) */
     .main-nav {
         display: none; 
@@ -968,3 +926,95 @@ button:hover, .actions a:hover {
     color: var(--c-text); background: none; transform: none; opacity: 1;
 }
 .modal-content h2 { margin-top: 0; }
+
+/*
+=========================================
+--- 22. Conteneur de Tri ---
+=========================================
+*/
+
+.sort-container {
+    display: flex;
+    justify-content: flex-end; /* Aligne à droite */
+    margin: 1rem 0;
+}
+
+.sort-container label {
+    margin-right: 0.5rem;
+    color: var(--c-text-light);
+    font-size: 0.9em;
+}
+
+.sort-container select {
+    padding: 5px 8px;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    background-color: var(--c-surface);
+    color: var(--c-text);
+    font-size: 0.9em;
+}
+.sort-container select:focus {
+     border-color: var(--c-primary);
+     outline: none;
+}
+
+/*
+=========================================
+--- 23. Formulaire de Filtre (Recherche) ---
+=========================================
+*/
+.filter-form {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+}
+
+.filter-form .form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr; /* 3 colonnes: 50%, 25%, 25% */
+    gap: 1.5rem;
+    align-items: flex-end;
+}
+
+.filter-form .form-group {
+    margin-bottom: 0; /* Annule la marge par défaut */
+}
+
+.filter-form label {
+    margin-bottom: 0.5rem; /* Rétablit la marge pour les labels ici */
+}
+
+/* Ajuste les inputs/selects pour le formulaire */
+.filter-form input[type="search"],
+.filter-form select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: var(--font-main);
+    box-sizing: border-box;
+    background: var(--c-background);
+    color: var(--c-text);
+}
+.filter-form input[type="search"]:focus,
+.filter-form select:focus {
+    border-color: var(--c-primary);
+    outline: none;
+}
+
+.filter-submit-btn {
+    margin-top: 1.5rem;
+}
+
+/* Responsive pour le formulaire de filtre */
+@media (max-width: 768px) {
+    .filter-form .form-row {
+        grid-template-columns: 1fr; /* Empile les filtres sur mobile */
+        gap: 1rem;
+    }
+    .filter-form .form-group {
+         margin-bottom: 1rem; /* Ajoute de l'espace vertical */
+    }
+}

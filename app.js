@@ -508,10 +508,40 @@ app.get('/journal', (req, res) => {
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
     const lang = req.language === 'en' ? 'en' : 'fr';
+
+    const sortOption = req.query.sort || 'date_desc'; // 'date_desc' (plus récent) par défaut
+    let sortClause = 'ORDER BY a.publication_date DESC'; // Clause SQL par défaut
+
+    switch (sortOption) {
+        case 'date_asc':
+            sortClause = 'ORDER BY a.publication_date ASC'; // Plus ancien
+            break;
+        case 'alpha_asc':
+            sortClause = `ORDER BY title_${lang} ASC`; // Titre (A-Z)
+            break;
+        case 'alpha_desc':
+            sortClause = `ORDER BY title_${lang} DESC`; // Titre (Z-A)
+            break;
+
+        case 'tag_asc':
+            sortClause = 'ORDER BY tags ASC'; // Trie sur la chaîne de tags (ex: "Culture, Test")
+            break;
+        case 'tag_desc':
+            sortClause = 'ORDER BY tags DESC';
+            break;
+    }
+
     const sqlEntries = `
-        SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name_${lang}) as tags
-        FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id
-        GROUP BY a.id ORDER BY a.publication_date DESC LIMIT ? OFFSET ?
+        SELECT 
+            a.id, a.title_${lang} as title, a.content_${lang} as content, 
+            a.cover_image_url, a.publication_date, 
+            GROUP_CONCAT(t.name_${lang}) as tags
+        FROM articles a 
+        LEFT JOIN article_tags at ON a.id = at.article_id 
+        LEFT JOIN tags t ON at.tag_id = t.id
+        GROUP BY a.id 
+        ${sortClause}
+        LIMIT ? OFFSET ?
     `;
     const sqlCount = `SELECT COUNT(*) as totalCount FROM articles`;
 
@@ -532,8 +562,14 @@ app.get('/journal', (req, res) => {
             const message = req.session.flashMessage;
             req.session.flashMessage = null;
             res.render('journal', {
-                articles: articlesWithData, pageTitle: req.t('page_titles.journal'), activePage: 'journal',
-                currentPage: currentPage, totalPages: totalPages, currentTag: null, message: message
+                articles: articlesWithData, 
+                pageTitle: req.t('page_titles.journal'), 
+                activePage: 'journal',
+                currentPage: currentPage, 
+                totalPages: totalPages, 
+                currentTag: null, 
+                message: message,
+                currentSort: sortOption
             });
         });
     });
@@ -606,25 +642,102 @@ app.get('/entree/:id', (req, res) => {
     });
 });
 
-// --- RECHERCHE ---
+// --- RECHERCHE (Page de Filtre Avancé) ---
 app.get('/search', (req, res) => {
-    const query = req.query.query;
-    const lang = req.language === 'en' ? 'en' : 'fr';
-    const message = req.session.flashMessage;
+    const query = req.query.query || ''; // Terme de recherche textuelle
+    const tagId = parseInt(req.query.tag) || null; // ID du tag sélectionné
+    const sortOption = req.query.sort || 'date_desc'; // Option de tri
+
+    const lang = req.language === 'en' ? 'en' : 'fr'; // Langue actuelle
+    const message = req.session.flashMessage; // Message pop-up
     req.session.flashMessage = null;
-    if (!query) { return res.render('search_results', { articles: [], query: '', pageTitle: req.t('page_titles.search'), activePage: 'search', message: message }); }
-    const searchTerm = `%${query}%`;
-    const sql = `SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name_${lang}) as tags FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id WHERE a.title_fr LIKE ? OR a.title_en LIKE ? OR a.content_fr LIKE ? OR a.content_en LIKE ? GROUP BY a.id ORDER BY a.publication_date DESC`;
-    db.all(sql, [searchTerm, searchTerm, searchTerm, searchTerm], (err, rows) => {
-        if (err) { console.error("Erreur BDD (GET /search):", err); return res.status(500).send("Erreur serveur."); }
-        const articlesWithData = rows.map(article => {
-           const tagList = article.tags ? article.tags.split(',') : [];
-           let finalCoverImage = null;
-           if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
-           const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
-           return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
+
+    // 1. Récupérer TOUS les tags pour le menu déroulant du filtre
+    const sqlAllTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
+
+    db.all(sqlAllTags, [], (errTags, allTags) => {
+        if (errTags) {
+            console.error("Erreur BDD (GET /search tags):", errTags);
+            return res.status(500).send("Erreur serveur lors de la récupération des tags.");
+        }
+
+        // 2. Si aucun filtre n'est appliqué, afficher la page vide (sans recherche)
+        if (!query && !tagId) {
+            return res.render('search_results', {
+                articles: [], // Pas de résultats à afficher
+                query: '',
+                currentTagId: null,
+                currentSort: sortOption,
+                allTags: allTags, // On passe la liste des tags pour le formulaire
+                pageTitle: req.t('page_titles.search'),
+                activePage: 'search',
+                message: message
+            });
+        }
+
+        // --- 3. Construction dynamique de la requête SQL de recherche ---
+        let sqlParams = [];
+        let whereClauses = [];
+
+        // Ajoute le filtre de recherche textuelle
+        if (query) {
+            whereClauses.push('(a.title_fr LIKE ? OR a.title_en LIKE ? OR a.content_fr LIKE ? OR a.content_en LIKE ?)');
+            const searchTerm = `%${query}%`;
+            sqlParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
+        }
+
+        // Ajoute le filtre de tag
+        if (tagId) {
+            whereClauses.push('at_filter.tag_id = ?');
+            sqlParams.push(tagId);
+        }
+
+        // Clause de Tri
+        let sortClause = 'ORDER BY a.publication_date DESC';
+        switch (sortOption) {
+            case 'date_asc': sortClause = 'ORDER BY a.publication_date ASC'; break;
+            case 'alpha_asc': sortClause = `ORDER BY title_${lang} ASC`; break;
+            case 'alpha_desc': sortClause = `ORDER BY title_${lang} DESC`; break;
+        }
+
+        const sql = `
+            SELECT
+                a.id, a.title_${lang} as title, a.content_${lang} as content,
+                a.cover_image_url, a.publication_date,
+                GROUP_CONCAT(DISTINCT t.name_${lang}) as tags
+            FROM articles a
+            LEFT JOIN article_tags at_display ON a.id = at_display.article_id -- Jointure pour afficher les tags
+            LEFT JOIN tags t ON at_display.tag_id = t.id
+            ${tagId ? 'JOIN article_tags at_filter ON a.id = at_filter.article_id' : ''} -- Jointure pour filtrer (si tagId existe)
+            WHERE ${whereClauses.join(' AND ')}
+            GROUP BY a.id
+            ${sortClause}
+        `;
+
+        // --- 4. Exécuter la recherche ---
+        db.all(sql, sqlParams, (err, rows) => {
+            if (err) { console.error("Erreur BDD (GET /search execute):", err); return res.status(500).send("Erreur serveur."); }
+
+            const articlesWithData = rows.map(article => {
+                const tagList = article.tags ? article.tags.split(',') : [];
+                let finalCoverImage = null;
+                if (article.cover_image_url) { finalCoverImage = article.cover_image_url; }
+                else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
+                const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
+                return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
+            });
+
+            res.render('search_results', {
+                articles: articlesWithData,
+                query: query,
+                currentTagId: tagId,
+                currentSort: sortOption,
+                allTags: allTags,
+                pageTitle: `${req.t('search.results_for')}...`,
+                activePage: 'search',
+                message: message
+            });
         });
-        res.render('search_results', { articles: articlesWithData, query: query, pageTitle: `${req.t('search.results_for')} "${query}"`, activePage: 'search', message: message });
     });
 });
 

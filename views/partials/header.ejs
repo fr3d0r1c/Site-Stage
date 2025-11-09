@@ -60,12 +60,14 @@
                         </ul>
                     </li>
 
-                    <li class="dropdown <%= (activePage === 'journal') ? 'active-parent' : '' %>">
+                    <li class="dropdown <%= (activePage === 'journal' || activePage === 'search') ? 'active-parent' : '' %>">
                         <a href="/journal" class="dropdown-toggle <%= activePage === 'journal' ? 'active' : '' %>">
                             <%= t('nav.journal') %> <i class="fas fa-caret-down fa-xs"></i>
                         </a>
                         <ul class="sous-menu">
                             <li><a href="/journal"><%= t('journal.view_all') %></a></li>
+
+                            <li><a href="/search" class="<%= activePage === 'search' ? 'active' : '' %>"><%= t('journal.advanced_search') %></a></li>
 
                             <% if (locals.username) { %>
                                 <li class="dropdown dropdown-level-2">
@@ -110,11 +112,6 @@
                     <span class="hamburger"></span>
                 </button>
             </div>
-
-            <form action="/search" method="GET" class="search-form">
-                <input type="search" name="query" placeholder="<%= t('general.search_placeholder') %>" aria-label="Rechercher dans le journal">
-                <button type="submit"><%= t('general.search_button') %></button>
-            </form>
 
         </header>
         <div class="container">

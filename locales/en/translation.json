@@ -28,6 +28,7 @@
   "journal": {
     "add_entry": "Add Entry",
     "view_all": "View Full Journal",
+    "advanced_search": "Advanced Search",
     "back_to_journal": "Back to Journal",
     "edit": "Edit",
     "delete": "Delete",

@@ -1,6 +1,51 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<h1><%= pageTitle %></h1> <%# Le titre est déjà traduit via server.js %>
+<h1><%= t('page_titles.search') %></h1>
+
+<p>Utilisez les filtres ci-dessous pour affiner votre recherche.</p>
+
+<form action="/search" method="GET" class="filter-form">
+    <div class="form-row">
+        <div class="form-group">
+            <label for="query">Recherche textuelle :</label>
+            <input type="search" name="query" id="query" value="<%= query %>" placeholder="Mot-clé...">
+        </div>
+
+        <div class="form-group">
+            <label for="tag">Filtrer par tag :</label>
+            <select name="tag" id="tag">
+                <option value="">Tous les tags</option>
+                <% if (allTags) { %>
+                    <% allTags.forEach(tag => { %>
+                        <option value="<%= tag.id %>" <%= currentTagId == tag.id ? 'selected' : '' %>>
+                            <%= tag.name %>
+                        </option>
+                    <% }); %>
+                <% } %>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="sort-select">Trier par :</label>
+            <select name="sort" id="sort-select">
+                <option value="date_desc" <%= currentSort === 'date_desc' ? 'selected' : '' %>>Date (Plus récent)</option>
+                <option value="date_asc" <%= currentSort === 'date_asc' ? 'selected' : '' %>>Date (Plus ancien)</option>
+                <option value="alpha_asc" <%= currentSort === 'alpha_asc' ? 'selected' : '' %>>Titre (A-Z)</option>
+                <option value="alpha_desc" <%= currentSort === 'alpha_desc' ? 'selected' : '' %>>Titre (Z-A)</option>
+            </select>
+        </div>
+    </div>
+
+    <button type="submit" class="filter-submit-btn">Filtrer</button>
+</form>
+<hr>
+
+<h2>Résultats</h2>
+<% if (message) { %>
+    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+        <%= message.text %>
+    </p>
+<% } %>
 
 <% if (articles.length > 0) { %>
     <p><%= t('search.results_count') %> : <%= articles.length %></p>

@@ -28,6 +28,7 @@
   "journal": {
     "add_entry": "Ajouter une entrée",
     "view_all": "Voir tout le journal",
+    "advanced_search": "Recherche Avancée",
     "back_to_journal": "Retour au journal",
     "edit": "Modifier",
     "delete": "Supprimer",
