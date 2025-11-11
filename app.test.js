@@ -244,4 +244,74 @@ describe('Tests des routes admin (authentifié)', () => {
     expect(response.text).toContain("Les nouveaux mots de passe ne correspondent pas.");
   });
 
+  // Test 16: Le tri de la page /journal fonctionne
+  test('GET /journal?sort=alpha_asc - Doit trier les entrées par ordre alphabétique', async () => {
+    const entryZ = {
+      title_fr: 'Titre Z (Tri)', title_en: 'Title Z',
+      content_fr: 'Contenu', content_en: 'Content', user_id: 1
+    };
+    const entryA = {
+      title_fr: 'Titre A (Tri)', title_en: 'Title A',
+      content_fr: 'Contenu', content_en: 'Content', user_id: 1
+    };
+
+    await new Promise((resolve, reject) => {
+      db.run('INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id) VALUES (?, ?, ?, ?, ?)',
+        [entryZ.title_fr, entryZ.title_en, entryZ.content_fr, entryZ.content_en, entryZ.user_id], 
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    await new Promise((resolve, reject) => {
+      db.run('INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id) VALUES (?, ?, ?, ?, ?)',
+        [entryA.title_fr, entryA.title_en, entryA.content_fr, entryA.content_en, entryA.user_id],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+
+    const response = await agent.get('/journal?sort=alpha_asc');
+
+    expect(response.statusCode).toBe(200);
+
+    const indexA = response.text.indexOf('Titre A (Tri)');
+    const indexZ = response.text.indexOf('Titre Z (Tri)');
+
+    expect(indexA).toBeGreaterThan(-1); // S'assure que "Titre A" est bien là
+    expect(indexZ).toBeGreaterThan(-1); // S'assure que "Titre Z" est bien là
+    expect(indexA).toBeLessThan(indexZ); // Vérifie que A vient avant Z
+  });
+
+  // Test 17: La page /search filtre par texte ET par tag
+  test('GET /search - Doit filtrer par tag et par texte', async () => {
+    const entryDataA = {
+      title_fr: 'Article de Recherche A', title_en: 'Search A',
+      content_fr: 'Contenu A', content_en: 'Content A', user_id: 1
+    };
+    const entryDataB = {
+      title_fr: 'Article de Recherche B', title_en: 'Search B',
+      content_fr: 'Contenu B', content_en: 'Content B', user_id: 1
+    };
+
+    const articleA = await new Promise((resolve, reject) => {
+      db.run('INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id) VALUES (?, ?, ?, ?, ?)',
+        [entryDataA.title_fr, entryDataA.title_en, entryDataA.content_fr, entryDataA.content_en, entryDataA.user_id],
+        function(err) { if (err) reject(err); resolve({ id: this.lastID }); }
+      );
+    });
+    const articleB = await new Promise((resolve, reject) => {
+      db.run('INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id) VALUES (?, ?, ?, ?, ?)',
+        [entryDataB.title_fr, entryDataB.title_en, entryDataB.content_fr, entryDataB.content_en, entryDataB.user_id],
+        function(err) { if (err) reject(err); resolve({ id: this.lastID }); }
+      );
+    });
+
+    await new Promise((resolve, reject) => { db.run('INSERT INTO article_tags (article_id, tag_id) VALUES (?, ?)', [articleA.id, tagIds[0]], (err) => err ? reject(err) : resolve()); });
+    await new Promise((resolve, reject) => { db.run('INSERT INTO article_tags (article_id, tag_id) VALUES (?, ?)', [articleB.id, tagIds[1]], (err) => err ? reject(err) : resolve()); });
+
+    const response = await agent.get(`/search?query=Recherche&tag=${tagIds[0]}`);
+
+    expect(response.statusCode).toBe(200);
+
+    expect(response.text).toContain('Article de Recherche A');
+    expect(response.text).not.toContain('Article de Recherche B');
+  });
 });
