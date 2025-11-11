@@ -4,6 +4,7 @@
     "profile": "My Profile",
     "internship": "My Internship",
     "journal": "Journal",
+    "contact": "Contact",
     "admin": "Administration",
     "logout": "Logout",
     "about": "About"
@@ -14,6 +15,12 @@
     "work_path": "Professional Career",
     "company": "The Company",
     "missions": "My Missions"
+  },
+  "editor": {
+    "title": "Editor",
+    "create": "Create Entry",
+    "modify": "Modify Entry",
+    "delete": "Delete Entry"
   },
   "footer": {
     "rights": "All rights reserved."
@@ -34,7 +41,7 @@
   },
   "journal": {
     "add_entry": "Add Entry",
-    "view_all": "View Full Journal",
+    "view_all": "View All Entries",
     "advanced_search": "Advanced Search",
     "back_to_journal": "Back to Journal",
     "edit": "Edit",
@@ -76,7 +83,7 @@
     "new_entry": "New Entry",
     "edit_entry": "Edit Entry"
   },
-   "search": {
+  "search": {
     "results_for": "Results for",
     "no_results": "No entries found matching",
     "results_count": "Number of results found"
@@ -109,7 +116,26 @@
     "internship_company_location": "Location",
     "internship_company_sector": "Industry",
     "internship_mission_title": "My Mission",
-    "internship_mission_desc": "[Describe the main objectives of your internship here.]"
+    "internship_mission_desc": "[Describe the main objectives of your internship here.]",
+    "school_title": "My School Career",
+    "school_item_1_title": "Master's Degree in IT & Network Engineering",
+    "school_item_1_date": "2025 - 2028 (Expected)",
+    "school_item_1_desc": "Engineering Cycle at ESAIP (Angers), specializing in Cybersecurity & Networks. 3-year program following University Diploma.",
+    "school_project_title": "University Project: Full-Stack Internship Log",
+    "school_project_desc": "Development of this internship log using Node.js, Express, and EJS. Implemented authentication, SQLite DB, automated testing (Jest), CI/CD (GitHub Actions), and security (CSP, Helmet).",
+    "school_item_2_title": "University Diploma (BUT) in Networks & Telecom",
+    "school_item_2_date": "2022 - 2025",
+    "school_item_2_desc": "Operator and Multimedia Networks specialization. IUT Poitiers-Niort-Châtellerault, Châtellerault.",
+    "school_item_3_title": "Baccalauréat STI2D (Technical Diploma)",
+    "school_item_3_date": "2022",
+    "school_item_3_desc": "Information Systems and Digital (SIN) specialization. Raphël Elizé High School, Sablé-sur-Sarthe.",
+    "work_title": "My Professional Career",
+    "work_item_1_title": "Network & Telecom Administrator (Apprenticeship)",
+    "work_item_1_date": "December 2024 - June 2025 (Ongoing)",
+    "work_item_1_desc": "Apprenticeship at the Departmental Fire and Rescue Service (SDIS 79). Managing and maintaining network infrastructure and telecommunication systems.",
+    "work_item_2_title": "Systems Administrator (Internship)",
+    "work_item_2_date": "June 2024 - July 2024",
+    "work_item_2_desc": "Internship at the LIAS Laboratory (Computer Science and Automation for Systems). Server administration and user support."
   },
   "contact": {
     "title": "Contact Me",
@@ -129,6 +155,18 @@
     "action_change_password": "Change Password",
     "action_logout": "Logout",
     "manage_tags_title": "Manage Tags",
+    "action_manage_comments": "Moderate Comments",
+    "comments_pending": "Pending Comments",
+    "comments_approved": "Approved Comments",
+    "comment_author": "Author",
+    "comment_content": "Comment",
+    "comment_article": "Article",
+    "comment_date": "Date",
+    "comment_action": "Actions",
+    "approve_button": "Approve",
+    "delete_button": "Delete",
+    "no_pending_comments": "No pending comments.",
+    "no_approved_comments": "No approved comments.",
     "add_new_tag_title": "Add New Tag",
     "tag_name_fr": "French Name",
     "tag_name_en": "English Name",
@@ -139,22 +177,9 @@
     "table_header_en": "English Name",
     "table_header_action": "Action",
     "save_button": "Save",
-    "delete_button": "Delete",
     "no_tags": "No tags found.",
     "back_to_admin": "Back to Administration Panel",
-    "delete_confirm": "Are you sure you want to delete this tag? It will be removed from all associated entries.",
-    "manage_comments_title": "Manage Comments",
-    "action_manage_comments": "Moderate Comments",
-    "comments_pending": "Pending Comments",
-    "comments_approved": "Approved Comments",
-    "comment_author": "Author",
-    "comment_content": "Comment",
-    "comment_article": "Article",
-    "comment_date": "Date",
-    "comment_action": "Actions",
-    "approve_button": "Approve",
-    "no_pending_comments": "No pending comments.",
-    "no_approved_comments": "No approved comments."
+    "delete_confirm": "Are you sure you want to delete this tag? It will be removed from all associated entries."
   },
   "comments": {
     "title": "Comments",
@@ -165,11 +190,5 @@
     "pending_moderation": "Your comment is awaiting moderation.",
     "no_comments": "No comments yet. Be the first to react!",
     "anonymous": "Anonymous"
-  },
-  "editor": {
-    "title": "Editor",
-    "create": "Create Enrty",
-    "modify": "Modify Entry",
-    "delete": "Delete Entry"
   }
 }

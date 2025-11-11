@@ -1,8 +1,29 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <div class="static-page">
-    <h1><%= pageTitle %></h1>
-    <p>Contenu à venir...</p>
-</div>
+    <h1><%= t('static_pages.work_title') %></h1>
+
+    <div class="timeline">
+        
+        <div class="timeline-item">
+            <div class="timeline-icon"><i class="fas fa-broadcast-tower"></i></div>
+            <div class="timeline-content">
+                <h2><%= t('static_pages.work_item_1_title') %></h2>
+                <span class="timeline-date"><%= t('static_pages.work_item_1_date') %></span>
+                <p><%= t('static_pages.work_item_1_desc') %></p>
+            </div>
+        </div>
+
+        <div class="timeline-item">
+            <div class="timeline-icon"><i class="fas fa-server"></i></div>
+            <div class="timeline-content">
+                <h2><%= t('static_pages.work_item_2_title') %></h2>
+                <span class="timeline-date"><%= t('static_pages.work_item_2_date') %></span>
+                <p><%= t('static_pages.work_item_2_desc') %></p>
+            </div>
+        </div>
+        
+    </div>
+    </div>
 
 <%- include('partials/footer') %>

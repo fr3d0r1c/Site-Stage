@@ -4,9 +4,10 @@
     "profile": "Mon Profil",
     "internship": "Mon Stage",
     "journal": "Journal de Bord",
+    "contact": "Contact",
     "admin": "Administration",
     "logout": "Déconnexion",
-    "about": "A Propos"
+    "about": "A propos"
   },
   "subnav": {
     "who_am_i": "Qui suis-je ?",
@@ -14,6 +15,12 @@
     "work_path": "Parcours Professionnel",
     "company": "L'entreprise",
     "missions": "Mes Missions"
+  },
+  "editor": {
+    "title": "Éditeur",
+    "create": "Créer une entrée",
+    "modify": "Modifier une entrée",
+    "delete": "Supprimer une entrée"
   },
   "footer": {
     "rights": "Tous droits réservés."
@@ -34,13 +41,12 @@
   },
   "journal": {
     "add_entry": "Ajouter une entrée",
-    "view_all": "Voir tout le journal",
+    "view_all": "Voir toutes les entrées",
     "advanced_search": "Recherche Avancée",
     "back_to_journal": "Retour au journal",
     "edit": "Modifier",
     "delete": "Supprimer",
-    "read_more": "Lire la suite",
-    "published_on": "Publié le"
+    "read_more": "Lire la suite"
   },
   "general": {
     "logo": "Carnet de Stage",
@@ -109,9 +115,28 @@
     "internship_company_location": "Localisation",
     "internship_company_sector": "Secteur d'activité",
     "internship_mission_title": "Ma Mission",
-    "internship_mission_desc": "[Décrivez ici les objectifs principaux de votre stage.]"
+    "internship_mission_desc": "[Décrivez ici les objectifs principaux de votre stage.]",
+    "school_title": "Mon Parcours Scolaire",
+    "school_item_1_title": "Diplôme d'Ingénieur Informatique et Réseau",
+    "school_item_1_date": "2025 - 2028 (Prévu)",
+    "school_item_1_desc": "Cycle Ingénieur à l'ESAIP (Angers), spécialisation Cybersécurité & Réseaux. Cursus en 3 ans après BUT.",
+    "school_project_title": "Projet Universitaire : Carnet de Stage Full-Stack",
+    "school_project_desc": "Développement de ce carnet de stage en utilisant Node.js, Express, et EJS. Mise en place d'un système d'authentification, BDD SQLite, tests automatisés (Jest), CI/CD (GitHub Actions), et sécurité (CSP, Helmet).",
+    "school_item_2_title": "BUT Réseau et Télécommunications",
+    "school_item_2_date": "2022 - 2025",
+    "school_item_2_desc": "Option Réseau Opérateur et Multimédia. IUT de Châtellerault, Châtellerault.",
+    "school_item_3_title": "Baccalauréat STI2D",
+    "school_item_3_date": "2022",
+    "school_item_3_desc": "Option Systèmes d'Information et Numérique (SIN). Lycée Raphël Elizé, Sablé-sur-Sarthe.",
+    "work_title": "Mon Parcours Professionnel",
+    "work_item_1_title": "Administrateur Réseau et Télécom (Alternance)",
+    "work_item_1_date": "Décembre 2024 - Juin 2025 (en cours)",
+    "work_item_1_desc": "Alternance au sein du Service Départemental d'Incendie et de Secours des Deux-Sèvres (SDIS 79). Gestion et maintenance de l'infrastructure réseau et des systèmes de télécommunication.",
+    "work_item_2_title": "Administrateur Systèmes (Stage)",
+    "work_item_2_date": "Juin 2024 - Juillet 2024",
+    "work_item_2_desc": "Stage au Laboratoire d'Informatique et d'Automatique pour les Systèmes (LIAS). Administration des serveurs et support aux utilisateurs."
   },
-   "contact": {
+  "contact": {
     "title": "Contactez-moi",
     "intro": "N'hésitez pas à me laisser un message via le formulaire ci-dessous.",
     "form_name": "Votre Nom",
@@ -129,6 +154,18 @@
     "action_change_password": "Changer le mot de passe",
     "action_logout": "Déconnexion",
     "manage_tags_title": "Gérer les Tags",
+    "action_manage_comments": "Modérer les commentaires",
+    "comments_pending": "Commentaires en attente",
+    "comments_approved": "Commentaires approuvés",
+    "comment_author": "Auteur",
+    "comment_content": "Contenu",
+    "comment_article": "Article",
+    "comment_date": "Date",
+    "comment_action": "Actions",
+    "approve_button": "Approuver",
+    "delete_button": "Supprimer",
+    "no_pending_comments": "Aucun commentaire en attente.",
+    "no_approved_comments": "Aucun commentaire approuvé.",
     "add_new_tag_title": "Ajouter un Nouveau Tag",
     "tag_name_fr": "Nom Français",
     "tag_name_en": "Nom Anglais",
@@ -139,22 +176,9 @@
     "table_header_en": "Nom Anglais",
     "table_header_action": "Action",
     "save_button": "Sauver",
-    "delete_button": "Supprimer",
     "no_tags": "Aucun tag trouvé.",
     "back_to_admin": "Retour au panneau d'administration",
-    "delete_confirm": "Voulez-vous vraiment supprimer ce tag ? Il sera retiré de toutes les entrées associées.",
-    "manage_comments_title": "Gérer les Commentaires",
-    "action_manage_comments": "Modérer les commentaires",
-    "comments_pending": "Commentaires en attente",
-    "comments_approved": "Commentaires approuvés",
-    "comment_author": "Auteur",
-    "comment_content": "Contenu",
-    "comment_article": "Article",
-    "comment_date": "Date",
-    "comment_action": "Actions",
-    "approve_button": "Approuver",
-    "no_pending_comments": "Aucun commentaire en attente.",
-    "no_approved_comments": "Aucun commentaire approuvé."
+    "delete_confirm": "Voulez-vous vraiment supprimer ce tag ? Il sera retiré de toutes les entrées associées."
   },
   "comments": {
     "title": "Commentaires",
@@ -165,11 +189,5 @@
     "pending_moderation": "Votre commentaire est en attente de modération.",
     "no_comments": "Il n'y a pas encore de commentaires. Soyez le premier à réagir !",
     "anonymous": "Anonyme"
-  },
-  "editor": {
-    "title": "Editeur",
-    "create": "Créer une entrée",
-    "modify": "Modifier une entrée",
-    "delete": "Supprimer une entrée"
   }
 }

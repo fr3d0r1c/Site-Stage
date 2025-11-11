@@ -10,6 +10,7 @@
     --c-primary: #0056b3; /* Bleu assombri (pour contraste accessibilité) */
     --c-primary-rgb: 0, 86, 179; /* RGB de #0056b3 */
     --c-text: #222222; /* Texte presque noir */
+    --c-button-text: #ffffff;
     --c-text-light: #555555;
     --c-border: #eeeeee;
     --c-background: #f9f9f9;
@@ -26,6 +27,7 @@ body.theme-dark {
     --c-primary: #00e0eb; /* Cyan éclairci (pour contraste accessibilité) */
     --c-primary-rgb: 0, 224, 235; /* RGB de #00e0eb */
     --c-text: #eeeeee;
+    --c-button-text: #222831;
     --c-text-light: #bbbbbb; /* Éclairci (pour contraste accessibilité) */
     --c-background: #222831;
     --c-surface: #393e46;
@@ -39,6 +41,7 @@ body.theme-sepia {
     --c-primary: #8B4513; /* Marron plus foncé (pour contraste accessibilité) */
     --c-primary-rgb: 139, 69, 19; /* RGB de #8B4513 */
     --c-text: #5c4a3a;
+    --c-button-text: #fffef7;
     --c-text-light: #706255; /* Assombri (pour contraste accessibilité) */
     --c-border: #dcd3b8;
     --c-background: #f5f2e9;
@@ -364,29 +367,54 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focu
     background: var(--c-surface); outline: none;
 }
 
-button, .actions a {
-    display: inline-block; background-color: var(--c-primary); color: var(--c-white);
-    padding: 10px 24px; border: none; border-radius: 99px; cursor: pointer;
-    font-size: 0.9rem; font-weight: 500; text-align: center;
-    transition: all 0.3s ease; transform: translateY(0);
-    text-decoration: none;
+button,
+.actions a,
+.btn {
+    display: inline-block;
+    padding: 10px 24px;
+    border: none;
+    border-radius: 99px; /* Style "pilule" */
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease;
+    transform: translateY(0);
+    text-decoration: none; /* Assure qu'ils ne sont pas soulignés */
 }
 
-button:hover, .actions a:hover {
-    color: var(--c-white); text-decoration: none; transform: translateY(-2px); opacity: 0.85;
+button:hover,
+.actions a:hover,
+.btn:hover {
+    color: var(--c-white);
+    text-decoration: none;
+    transform: translateY(-2px);
+    opacity: 0.85;
 }
-.actions a { background-color: var(--c-gray); color: var(--c-surface); }
-.actions form button[type="submit"] { background-color: var(--c-danger); color: var(--c-white); }
-.button-secondary {
-    background-color: var(--c-gray);
-    color: var(--c-surface);
-    margin-left: 1rem;
-    display: inline-block;
+
+button[type="submit"] {
+     background-color: var(--c-primary);
+     color: var(--c-button-text);
 }
-.button-secondary:hover {
-    background-color: var(--c-text-light);
+
+.btn-secondary {
+    background-color: var(--c-gray); /* Fond gris */
+    color: var(--c-surface); /* Texte clair (blanc/crème) */
+    margin-left: 1rem; /* Espace par rapport au bouton principal */
+}
+.btn-secondary:hover {
+    background-color: var(--c-text-light); /* Gris un peu plus foncé */
     color: var(--c-white);
     opacity: 1;
+}
+
+.actions a { 
+    background-color: var(--c-gray); 
+    color: var(--c-surface); 
+}
+.actions form button[type="submit"] { 
+    background-color: var(--c-danger); 
+    color: var(--c-white); 
 }
 
 /*
@@ -926,4 +954,190 @@ button:hover, .actions a:hover {
     .filter-form .form-group {
          margin-bottom: 1rem; /* Ajoute de l'espace vertical */
     }
+}
+
+.visually-hidden {
+    position: absolute !important;
+    height: 1px; 
+    width: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    border: 0;
+}
+
+/*
+=========================================
+--- 24. Frise Chronologique (Alternée) ---
+=========================================
+*/
+
+.timeline {
+    position: relative;
+    padding: 2rem 0;
+    margin-top: 2rem;
+}
+
+/* --- VUE ORDINATEUR (min-width: 769px) --- */
+@media (min-width: 769px) {
+    
+    /* La ligne centrale */
+    .timeline::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%; /* Exactement au milieu */
+        transform: translateX(-50%); /* Décalage pour centrer la ligne */
+        height: 100%;
+        width: 3px;
+        background-color: var(--c-border);
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 2.5rem;
+        padding-left: 0; /* Annule le padding de la version mobile */
+        width: 50%; /* Chaque item prend 50% */
+    }
+
+    /* L'Icône (au centre) */
+    .timeline-icon {
+        position: absolute;
+        top: 5px;
+        /* Positionnement dynamique sur la ligne centrale */
+        transform: translateX(-50%); /* Centre l'icône elle-même */
+        width: 40px; /* Plus grand pour l'icône */
+        height: 40px;
+        background-color: var(--c-primary);
+        border: 3px solid var(--c-surface);
+        border-radius: 50%;
+        z-index: 1;
+        /* Centrer l'icône Font Awesome à l'intérieur */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: var(--c-white);
+        font-size: 1.2rem;
+    }
+
+    /* Le Contenu (la boîte) */
+    .timeline-content {
+        position: relative;
+        background-color: var(--c-background);
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--c-border);
+    }
+    
+    /* --- Positionnement GAUCHE/DROITE --- */
+
+    /* Items GAUCHE (impairs) */
+    .timeline-item:nth-child(odd) {
+        left: 0; /* Collé à gauche */
+        padding-right: 30px; /* Espace entre la boîte et la ligne */
+        text-align: right; /* Texte aligné à droite */
+    }
+    .timeline-item:nth-child(odd) .timeline-icon {
+        left: 100%; /* L'icône se place à droite de la boîte */
+    }
+
+    /* Items DROITE (pairs) */
+    .timeline-item:nth-child(even) {
+        left: 50%; /* Décalé de 50% vers la droite */
+        padding-left: 30px; /* Espace entre la ligne et la boîte */
+    }
+    .timeline-item:nth-child(even) .timeline-icon {
+        left: 0; /* L'icône se place à gauche de la boîte */
+    }
+
+    /* --- Les Flèches (pointeurs vers la ligne) --- */
+    .timeline-content::before {
+        content: ' ';
+        position: absolute;
+        top: 10px;
+        width: 0;
+        height: 0;
+        border-style: solid;
+    }
+    /* Flèche GAUCHE (sur les items impairs, pointe vers la droite) */
+    .timeline-item:nth-child(odd) .timeline-content::before {
+        right: -10px; /* Se colle au bord droit */
+        border-width: 10px 0 10px 10px;
+        border-color: transparent transparent transparent var(--c-border);
+    }
+    /* Flèche DROITE (sur les items pairs, pointe vers la gauche) */
+    .timeline-item:nth-child(even) .timeline-content::before {
+        left: -10px; /* Se colle au bord gauche */
+        border-width: 10px 10px 10px 0;
+        border-color: transparent var(--c-border) transparent transparent;
+    }
+}
+
+
+/* --- VUE MOBILE (max-width: 768px) --- */
+@media (max-width: 768px) {
+    /* (C'est ton ancien style, mais adapté pour les icônes) */
+    .timeline::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20px; /* Ligne à gauche */
+        height: 100%;
+        width: 3px;
+        background-color: var(--c-border);
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 2.5rem;
+        padding-left: 50px; /* Espace pour l'icône */
+    }
+    .timeline-icon {
+        position: absolute;
+        top: 5px;
+        left: 0; /* Centre l'icône sur la ligne de gauche (20px - 20px/2) */
+        width: 40px; /* Taille de l'icône */
+        height: 40px;
+        background-color: var(--c-primary);
+        border: 3px solid var(--c-surface);
+        border-radius: 50%;
+        z-index: 1;
+        /* Centrer l'icône */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: var(--c-white);
+        font-size: 1.2rem;
+    }
+    .timeline-content {
+        position: relative;
+        background-color: var(--c-background);
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--c-border);
+    }
+    /* Pas de flèches sur mobile */
+    .timeline-content::before {
+        display: none;
+    }
+}
+
+/* Styles de contenu (communs aux deux vues) */
+.timeline-content h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.4rem;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.timeline-date {
+    font-size: 0.9rem;
+    color: var(--c-text-light);
+    display: block;
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+.timeline-content p {
+    margin-bottom: 0;
+    line-height: 1.7;
 }

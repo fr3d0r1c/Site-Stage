@@ -35,7 +35,8 @@
 
     </div> <hr>
 
-    <textarea id="content_en" name="content_en" style="display: none;" required><%= article.content_en %></textarea>
+    <label for="content_en" class="visually-hidden">Contenu Anglais (Traduit)</label>
+    <textarea id="content_en" name="content_en" style="display: none;" required><%= (typeof article !== 'undefined' && article.content_en) ? article.content_en : '' %></textarea>
     <hr>
 
     <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
@@ -73,7 +74,7 @@
 
     <div>
         <button type="submit" id="submit-button"><%= t('forms.update_entry') %></button>
-        <a href="/journal" class="button button-secondary" onclick="return confirm('Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues.');"><%= t('general.cancel') %></a>
+        <a href="/journal" class="btn btn-secondary" onclick="return confirm('Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues.');"><%= t('general.cancel') %></a>
     </div>
 </form>
 

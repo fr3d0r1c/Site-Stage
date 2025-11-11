@@ -1,8 +1,46 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <div class="static-page">
-    <h1><%= pageTitle %></h1>
-    <p>Contenu à venir...</p>
-</div>
+    <h1><%= t('static_pages.school_title') %></h1>
+
+    <div class="timeline">
+        
+        <div class="timeline-item">
+            <div class="timeline-icon"><i class="fas fa-graduation-cap"></i></div>
+            <div class="timeline-content">
+                <h2><%= t('static_pages.school_item_1_title') %></h2>
+                <span class="timeline-date"><%= t('static_pages.school_item_1_date') %></span>
+                <p><%= t('static_pages.school_item_1_desc') %></p>
+            </div>
+        </div>
+
+        <div class="timeline-item">
+            <div class="timeline-icon"><i class="fas fa-code"></i></div>
+            <div class="timeline-content">
+                <h2><%= t('static_pages.school_project_title') %></h2>
+                <span class="timeline-date"><%= t('static_pages.school_item_1_date') %></span>
+                <p><%= t('static_pages.school_project_desc') %></p>
+            </div>
+        </div>
+
+        <div class="timeline-item">
+            <div class="timeline-icon"><i class="fas fa-network-wired"></i></div> <div class="timeline-content">
+                <h2><%= t('static_pages.school_item_2_title') %></h2>
+                <span class="timeline-date"><%= t('static_pages.school_item_2_date') %></span>
+                <p><%= t('static_pages.school_item_2_desc') %></p>
+            </div>
+        </div>
+        
+        <div class="timeline-item">
+            <div class="timeline-icon"><i class="fas fa-school"></i></div>
+            <div class="timeline-content">
+                <h2><%= t('static_pages.school_item_3_title') %></h2>
+                <span class="timeline-date"><%= t('static_pages.school_item_3_date') %></span>
+                <p><%= t('static_pages.school_item_3_desc') %></p>
+            </div>
+        </div>
+        
+    </div>
+    </div>
 
 <%- include('partials/footer') %>
