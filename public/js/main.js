@@ -61,4 +61,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- 3. Logique pour le Tri Automatique (Journal) ---
+    const sortSelect = document.getElementById('sort-select');
+    const sortForm = document.getElementById('sort-form');
+
+    if (sortSelect && sortForm) {
+        sortSelect.addEventListener('change', () => {
+            sortForm.submit();
+        });
+    }
 });

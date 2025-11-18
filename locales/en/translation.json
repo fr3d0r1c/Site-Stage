@@ -47,7 +47,9 @@
     "edit": "Edit",
     "delete": "Delete",
     "read_more": "Read More",
-    "published_on": "Published on"
+    "published_on": "Published on",
+    "prev_entry": "Previous Entry",
+    "next_entry": "Next Entry"
   },
   "general": {
     "logo": "Internship Log",

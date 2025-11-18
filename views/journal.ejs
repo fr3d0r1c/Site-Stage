@@ -11,7 +11,7 @@
 <div class="sort-container">
     <form action="/journal" method="GET" id="sort-form">
         <label for="sort-select">Trier par :</label>
-        <select name="sort" id="sort-select" onchange="document.getElementById('sort-form').submit();">
+        <select name="sort" id="sort-select">
             <option value="date_desc" <%= currentSort === 'date_desc' ? 'selected' : '' %>>Date (Plus récent)</option>
             <option value="date_asc" <%= currentSort === 'date_asc' ? 'selected' : '' %>>Date (Plus ancien)</option>
             <option value="alpha_asc" <%= currentSort === 'alpha_asc' ? 'selected' : '' %>>Titre (A-Z)</option>

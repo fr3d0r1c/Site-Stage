@@ -46,7 +46,10 @@
     "back_to_journal": "Retour au journal",
     "edit": "Modifier",
     "delete": "Supprimer",
-    "read_more": "Lire la suite"
+    "read_more": "Lire la suite",
+    "published_on": "Publié le",
+    "prev_entry": "Entrée Précédente",
+    "next_entry": "Entrée Suivante"
   },
   "general": {
     "logo": "Carnet de Stage",

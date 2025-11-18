@@ -36,21 +36,15 @@
     <div class="prev-link">
         <% if (prevEntry) { %>
             <a href="/entree/<%= prevEntry.id %>" title="<%= prevEntry.title %>">
-                &larr; Entrée Précédente
-                <span class="prev-next-title"><%= prevEntry.title %></span>
+                <small>&larr; <%= t('journal.prev_entry') %></small> <span class="prev-next-title"><%= prevEntry.title %></span>
             </a>
-        <% } else { %>
-            <span>&nbsp;</span> <%# Placeholder %>
         <% } %>
     </div>
     <div class="next-link">
         <% if (nextEntry) { %>
             <a href="/entree/<%= nextEntry.id %>" title="<%= nextEntry.title %>">
-                Entrée Suivante &rarr;
-                <span class="prev-next-title"><%= nextEntry.title %></span>
+                <small><%= t('journal.next_entry') %> &rarr;</small> <span class="prev-next-title"><%= nextEntry.title %></span>
             </a>
-        <% } else { %>
-             <span>&nbsp;</span> <%# Placeholder %>
         <% } %>
     </div>
 </nav>
