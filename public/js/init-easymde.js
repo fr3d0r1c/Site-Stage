@@ -47,12 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. Mettre à jour l'aperçu FR (avec nettoyage du titre H1)
             if (frenchPreviewDiv && typeof marked !== 'undefined') {
                 try {
-                    // Enlève la première ligne si c'est un titre (# ...) pour l'affichage
                     const cleanMarkdown = markdownText.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
                     frenchPreviewDiv.innerHTML = marked.parse(cleanMarkdown);
                 } catch (e) {
-                     console.error("Error parsing French Markdown:", e);
-                     frenchPreviewDiv.innerHTML = "<p style='color:red;'>Erreur rendu Markdown FR.</p>"
+                    console.error("Error parsing French Markdown:", e);
                 }
             }
 

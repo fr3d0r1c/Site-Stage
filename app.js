@@ -19,6 +19,7 @@ const rateLimit = require('express-rate-limit');
 const sharp = require('sharp'); 
 const fs = require('fs');
 const deepl = require('deepl-node');
+const Filter = require('bad-words');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -132,6 +133,14 @@ app.use(
   })
 );
 
+// --- CONFIGURATION MODÉRATEUR AUTO ---
+const filter = new Filter();
+const frenchBadWords = [
+    'merde', 'con', 'connard', 'salope', 'pute', 'enculé', 
+    'batard', 'putain', 'foutre', 'bordel', 'chiant', 'abruti', 'débile',
+    'bouffon', 'gueule', 'testbad' // 'testbad' pour tester sans être vulgaire
+];
+filter.addWords(...frenchBadWords);
 
 // Servir les fichiers statiques (CSS, JS, images) depuis le dossier 'public'
 app.use(express.static('public'));
@@ -1221,7 +1230,11 @@ app.post('/journal', isAuthenticated, async (req, res) => {
         try {
             await processTags(articleId, tagIds);
             req.session.flashMessage = { type: 'success', text: 'Entrée créée avec succès !' };
-            res.redirect('/journal');
+
+            req.session.save(function() {
+                res.redirect('/journal');
+            });
+
         } catch (tagError) {
             console.error("Erreur tags:", tagError);
             req.session.flashMessage = {
@@ -1300,7 +1313,9 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
         try  {
             await processTags(id, tagIds);
             req.session.flashMessage = { type: 'success', text: 'Entrée mise à jour avec succès !' };
-            res.redirect('/journal');
+            req.session.save(function() {
+                res.redirect('/journal')
+            })
         } catch (tagError) {
             console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
             req.session.flashMessage = {
@@ -1328,7 +1343,10 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
             return res.redirect('/journal');
         }
         req.session.flashMessage = { type: 'success', text: 'Entrée supprimée avec succès.' };
-        res.redirect('/journal');
+        
+        req.session.save(function() {
+            res.redirect('/journal');
+        });
     });
 });
 
@@ -1336,24 +1354,28 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
 
 // (Admin) Affiche la page de modération
 app.get('/admin/comments', isAuthenticated, (req, res) => {
-    const sqlPending = `SELECT c.id, c.author_name, c.content, c.created_at, a.title_fr as article_title, a.id as article_id FROM comments c JOIN articles a ON c.article_id = a.id WHERE c.is_approved = 0 ORDER BY c.created_at ASC`;
-    const sqlApproved = `SELECT c.id, c.author_name, c.content, c.created_at, a.title_fr as article_title, a.id as article_id FROM comments c JOIN articles a ON c.article_id = a.id WHERE c.is_approved = 1 ORDER BY c.created_at DESC`;
-    Promise.all([
-        new Promise((resolve, reject) => db.all(sqlPending, [], (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(sqlApproved, [], (err, rows) => err ? reject(err) : resolve(rows)))
-    ]).then(([pendingComments, approvedComments]) => {
+    const sql = `
+        SELECT c.id, c.author_name, c.content, c.created_at, a.title_fr as article_title, a.id as article_id 
+        FROM comments c 
+        JOIN articles a ON c.article_id = a.id 
+        ORDER BY c.created_at DESC
+    `;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error("Erreur BDD (GET /admin/comments):", err);
+            return res.status(500).send("Erreur serveur.");
+        }
+
         const message = req.session.flashMessage;
         req.session.flashMessage = null;
+
         res.render('admin-comments', {
             pageTitle: req.t('admin_page.manage_comments_title'),
             activePage: 'admin',
-            pendingComments: pendingComments,
-            approvedComments: approvedComments,
+            comments: rows, // Une seule liste
             message: message
         });
-    }).catch(err => {
-        console.error("Erreur BDD (GET /admin/comments):", err);
-        res.status(500).send("Erreur serveur.");
     });
 });
 
@@ -1392,22 +1414,48 @@ app.post('/admin/comments/delete/:id', isAuthenticated, (req, res) => {
 app.post('/article/:id/comment', commentLimiter, (req, res) => {
     const articleId = req.params.id;
     const { author_name, content } = req.body;
+
+
     // 1. Vérification Honeypot
     if (req.body.website_field && req.body.website_field !== '') {
-        console.warn("Honeypot (commentaire) déclenché ! Rejet silencieux.");
-        return res.redirect(`/entree/${articleId}?comment=success`); // Faux succès
+        return res.redirect(`/entree/${articleId}`);
     }
+
     // 2. Validation
     if (!author_name || !content || author_name.trim() === '' || content.trim() === '') {
-        return res.redirect(`/entree/${articleId}?comment=error`);
+        req.session.flashMessage = { type: 'error', text: 'Veuillez remplir tous les champs.' };
+        return res.redirect(`/entree/${articleId}`);
     }
-    // 3. Insertion BDD
-    const sql = `INSERT INTO comments (article_id, author_name, content, is_approved) VALUES (?, ?, ?, 0)`;
+
+    // --- 3. NOUVEAU : MODÉRATION AUTOMATIQUE ---
+    if (filter.isProfane(content) || filter.isProfane(author_name)) {
+        console.warn(`[Modération Auto] Rejeté : ${author_name}`);
+        
+        req.session.flashMessage = {
+            type: 'error',
+            text: 'Votre commentaire a été rejeté car il contient un langage inapproprié.'
+        };
+
+        return res.redirect(`/entree/${articleId}`);
+    }
+
+    // 4. Insertion BDD
+    const sql = `INSERT INTO comments (article_id, author_name, content, is_approved) VALUES (?, ?, ?, 1)`;
+
     db.run(sql, [articleId, author_name, content], function(err) {
-        if (err) { return res.redirect(`/entree/${articleId}?comment=error`); }
+        if (err) { 
+            console.error("Erreur BDD Commentaire:", err);
+            req.session.flashMessage = { type: 'error', text: 'Erreur technique lors de l\'enregistrement.' };
+            return res.redirect(`/entree/${articleId}`);
+        }
+
         // 4. Envoi notification admin (sans bloquer l'utilisateur)
         sendAdminNotification(req, articleId, this.lastID, author_name, content);
-        res.redirect(`/entree/${articleId}?comment=success`);
+        
+        req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
+        req.session.save(function() {
+            res.redirect(`/entree/${articleId}`)
+        });
     });
 });
 
