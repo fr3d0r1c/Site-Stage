@@ -1,135 +1,133 @@
 <!DOCTYPE html>
-<html lang="<%= i18n.language %>"> 
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><%= pageTitle %> | <%= t('general.logo') %></title>
+<html lang="<%= i18n.language %>">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= pageTitle %> | <%= t('general.logo') %></title>
 
-        <meta name="description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
-        <meta property="og:title" content="<%= locals.ogTitle || pageTitle %>">
-        <meta property="og:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
-        <meta property="og:type" content="<%= locals.ogType || 'website' %>">
-        <meta property="og:image" content="<%= locals.ogImage || 'https://my-internship.onrender.com/default-banner.png' %>">
-        <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="<%= locals.ogTitle || pageTitle %>">
-        <meta name="twitter:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
-        <meta name="twitter:image" content="<%= locals.ogImage || 'https://my-internship.onrender.com/default-banner.png' %>">
+    <meta name="description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+    <meta property="og:title" content="<%= locals.ogTitle || pageTitle %>">
+    <meta property="og:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+    <meta property="og:type" content="<%= locals.ogType || 'website' %>">
+    <meta property="og:image" content="<%= locals.ogImage || 'https://mon-stage-au-nom-de-pays.onrender.com/default-banner.png' %>">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<%= locals.ogTitle || pageTitle %>">
+    <meta name="twitter:description" content="<%= locals.ogDescription || t('general.default_og_description') %>">
+    <meta name="twitter:image" content="<%= locals.ogImage || 'https://mon-stage-au-nom-de-pays.onrender.com/default-banner.png' %>">
 
-        <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-        <link rel="shortcut icon" href="/favicon.ico">
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-        <link rel="manifest" href="/site.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/favicons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/favicons/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="mask-icon" href="/images/favicons/safari-pinned-tab.svg" color="#0056b3">
+    <meta name="msapplication-TileColor" content="#0056b3">
+    <meta name="theme-color" content="#ffffff">
 
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.1/css/flag-icons.min.css">
+    
+    <% if (activePage === 'journal' || activePage === 'admin') { %>
+        <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css">
+    <% } %>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+</head>
+<body>
+    <div class="preloader" id="preloader">
+        <div class="spinner"></div>
+    </div>
 
-        <link rel="stylesheet" href="/css/style.css">
-        
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.1/css/flag-icons.min.css">
-        
-        <%# Charge le CSS de EasyMDE sur les pages qui l'utilisent %>
-        <% if (activePage === 'journal' || activePage === 'admin') { %>
-            <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
-        <% } %>
-        
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    </head>
-    <body>
-        <div class="preloader" id="preloader">
-            <div class="spinner"></div>
+    <header class="site-header">
+        <div class="logo">
+            <a href="/">
+                <img src="/images/logo.png" alt="<%= t('general.logo') %>" class="site-logo">
+            </a>
         </div>
 
-        <header class="site-header">
-            <div class="logo">
-                <a href="/">
-                    <img src="/images/logo.png" alt="<%= t('general.logo') %>" class="site-logo">
-                </a>
-            </div>
+        <nav class="main-nav">
+            <ul>
+                <li><a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>"><i class="fas fa-home"></i></a></li>
 
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>"><i class="fas fa-home"></i></a></li>
-
-                    <li class="dropdown <%= (activePage === 'profil' || activePage === 'stage') ? 'active-parent' : '' %>">
-                        <a href="#" class="dropdown-toggle">
-                            <%= t('nav.about') %> <i class="fas fa-caret-down fa-xs"></i>
-                        </a>
-                        <ul class="sous-menu">
-
-                            <li class="dropdown dropdown-level-2 <%= activePage === 'profil' ? 'active-parent' : '' %>">
-                                <a href="#" class="dropdown-toggle">
-                                    <%= t('nav.profile') %> <i class="fas fa-caret-right fa-xs"></i>
-                                </a>
-                                <ul class="sous-menu">
-                                    <li><a href="/profil/qui-suis-je"><%= t('subnav.who_am_i') %></a></li>
-                                    <li><a href="/profil/parcours-scolaire"><%= t('subnav.school_path') %></a></li>
-                                    <li><a href="/profil/parcours-pro"><%= t('subnav.work_path') %></a></li>
-                                </ul>
-                            </li>
-
-                            <li class="dropdown dropdown-level-2 <%= activePage === 'stage' ? 'active-parent' : '' %>">
-                                <a href="#" class="dropdown-toggle">
-                                    <%= t('nav.internship') %> <i class="fas fa-caret-right fa-xs"></i>
-                                </a>
-                                <ul class="sous-menu">
-                                    <li><a href="/stage/l-entreprise"><%= t('subnav.company') %></a></li>
-                                    <li><a href="/stage/mes-missions"><%= t('subnav.missions') %></a></li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </li>
-
-                    <li class="dropdown <%= (activePage === 'journal' || activePage === 'search') ? 'active-parent' : '' %>">
-                        <a href="/journal" class="dropdown-toggle <%= activePage === 'journal' ? 'active' : '' %>">
-                            <%= t('nav.journal') %> <i class="fas fa-caret-down fa-xs"></i>
-                        </a>
-                        <ul class="sous-menu">
-                            <li><a href="/journal"><%= t('journal.view_all') %></a></li>
-                            <li><a href="/search" class="<%= activePage === 'search' ? 'active' : '' %>"><%= t('journal.advanced_search') %></a></li>
-
-                            <% if (locals.username) { %>
-                                <li class="dropdown dropdown-level-2">
-                                    <a href="#" class="dropdown-toggle">
-                                        <%= t('editor.title') %> <i class="fas fa-caret-right fa-xs"></i>
-                                    </a>
-                                    <ul class="sous-menu">
-                                        <li><a href="/journal/nouvelle"><%= t('editor.create') %></a></li>
-                                        <li><a href="/journal"><%= t('editor.modify') %></a></li>
-                                        <li><a href="/journal"><%= t('editor.delete') %></a></li>
-                                    </ul>
-                                </li>
-                            <% } %>
-                        </ul>
-                    </li>
-
-                    <li><a href="/contact" class="<%= activePage === 'contact' ? 'active' : '' %>"><%= t('page_titles.contact') %></a></li>
-
-                    <% if (locals.username) { %>
-                        <li class="dropdown <%= activePage === 'admin' ? 'active-parent' : '' %>">
-                            <a href="/admin" class="dropdown-toggle <%= activePage === 'admin' ? 'active' : '' %>">
-                                <%= t('nav.admin') %> <i class="fas fa-caret-down fa-xs"></i>
+                <li class="dropdown <%= (activePage === 'profil' || activePage === 'stage') ? 'active-parent' : '' %>">
+                    <a href="#" class="dropdown-toggle">
+                        <%= t('nav.about') %> <i class="fas fa-caret-down fa-xs"></i>
+                    </a>
+                    <ul class="sous-menu">
+                        <li class="dropdown dropdown-level-2 <%= activePage === 'profil' ? 'active-parent' : '' %>">
+                            <a href="#" class="dropdown-toggle">
+                                <%= t('nav.profile') %> <i class="fas fa-caret-right fa-xs"></i>
                             </a>
                             <ul class="sous-menu">
-                                <li><a href="/admin/tags"><%= t('admin_page.manage_tags_title') %></a></li>
-                                <li><a href="/admin/comments"><%= t('admin_page.action_manage_comments') %></a></li>
-                                <li><a href="/change-password"><%= t('admin_page.action_change_password') %></a></li>
-                                <li><a href="/deconnexion" onclick="return confirm('<%= t('nav.logout') %> ?');"><%= t('admin_page.action_logout') %></a></li>
+                                <li><a href="/profil/qui-suis-je"><%= t('subnav.who_am_i') %></a></li>
+                                <li><a href="/profil/parcours-scolaire"><%= t('subnav.school_path') %></a></li>
+                                <li><a href="/profil/parcours-pro"><%= t('subnav.work_path') %></a></li>
                             </ul>
                         </li>
-                    <% } %>
-                </ul>
-            </nav>
+                        <li class="dropdown dropdown-level-2 <%= activePage === 'stage' ? 'active-parent' : '' %>">
+                             <a href="#" class="dropdown-toggle">
+                                <%= t('nav.internship') %> <i class="fas fa-caret-right fa-xs"></i>
+                            </a>
+                            <ul class="sous-menu">
+                                <li><a href="/stage/l-entreprise"><%= t('subnav.company') %></a></li>
+                                <li><a href="/stage/mes-missions"><%= t('subnav.missions') %></a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
 
-            <div class="header-controls">
-                <div id="language-switcher" class="language-switcher">
-                    <a href="?lng=fr" title="Français" style="opacity: <%= i18n.language === 'fr' ? '1' : '0.6' %>;"><span class="fi fi-fr"></span></a>
-                    <span style="color: var(--c-border);">|</span>
-                    <a href="?lng=en" title="English" style="opacity: <%= i18n.language === 'en' ? '1' : '0.6' %>;"><span class="fi fi-gb"></span></a>
-                </div>
-                <button class="nav-toggle" aria-label="Ouvrir le menu de navigation" aria-expanded="false">
-                    <span class="hamburger"></span>
-                </button>
+                <li class="dropdown <%= (activePage === 'journal') ? 'active-parent' : '' %>">
+                    <a href="/journal" class="dropdown-toggle <%= activePage === 'journal' ? 'active' : '' %>">
+                        <%= t('nav.journal') %> <i class="fas fa-caret-down fa-xs"></i>
+                    </a>
+                    <ul class="sous-menu">
+                        <li><a href="/journal"><%= t('journal.view_all') %></a></li>
+                        <li><a href="/search" class="<%= activePage === 'search' ? 'active' : '' %>"><%= t('journal.advanced_search') %></a></li>
+                        
+                        <% if (locals.username) { %>
+                            <li class="dropdown dropdown-level-2">
+                                <a href="#" class="dropdown-toggle">
+                                    <%= t('editor.title') %> <i class="fas fa-caret-right fa-xs"></i>
+                                </a>
+                                <ul class="sous-menu">
+                                    <li><a href="/journal/nouvelle"><%= t('editor.create') %></a></li>
+                                    <li><a href="/journal"><%= t('editor.modify') %></a></li>
+                                    <li><a href="/journal"><%= t('editor.delete') %></a></li>
+                                </ul>
+                            </li>
+                        <% } %>
+                    </ul>
+                </li>
+                
+                <li><a href="/contact" class="<%= activePage === 'contact' ? 'active' : '' %>"><%= t('page_titles.contact') %></a></li>
+
+                <% if (locals.username) { %>
+                    <li class="dropdown <%= activePage === 'admin' ? 'active-parent' : '' %>">
+                        <a href="/admin" class="dropdown-toggle <%= activePage === 'admin' ? 'active' : '' %>">
+                            <%= t('nav.admin') %> <i class="fas fa-caret-down fa-xs"></i>
+                        </a>
+                        <ul class="sous-menu">
+                            <li><a href="/admin/tags"><%= t('admin_page.manage_tags_title') %></a></li>
+                            <li><a href="/admin/comments"><%= t('admin_page.action_manage_comments') %></a></li>
+                            <li><a href="/change-password"><%= t('admin_page.action_change_password') %></a></li>
+                            <li><a href="/deconnexion" data-confirm="<%= t('nav.logout') %> ?"><%= t('admin_page.action_logout') %></a></li>
+                        </ul>
+                    </li>
+                <% } %>
+            </ul>
+        </nav>
+
+        <div class="header-controls">
+            <div id="language-switcher" class="language-switcher">
+                <a href="?lng=fr" title="Français" style="opacity: <%= i18n.language === 'fr' ? '1' : '0.6' %>;"><span class="fi fi-fr"></span></a>
+                <span style="color: var(--c-border);">|</span>
+                <a href="?lng=en" title="English" style="opacity: <%= i18n.language === 'en' ? '1' : '0.6' %>;"><span class="fi fi-gb"></span></a>
             </div>
-
-        </header>
-        <div class="container">
+            <button class="nav-toggle" aria-label="Ouvrir le menu de navigation" aria-expanded="false">
+                <span class="hamburger"></span>
+            </button>
+        </div>
+    </header>
+    <div class="container">

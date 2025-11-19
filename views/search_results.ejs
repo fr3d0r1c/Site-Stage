@@ -81,7 +81,7 @@
                             <div class="actions">
                                 <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
                                 <form action="/entree/<%= entry.id %>/delete" method="POST" 
-                                      onsubmit="return confirm('<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>');"
+                                      data-confirm="<%= t('admin_page.delete_confirm') %>"
                                       style="display: inline;">
                                     <button type="submit"><%= t('journal.delete') %></button>
                                 </form>

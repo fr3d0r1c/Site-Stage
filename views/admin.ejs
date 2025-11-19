@@ -13,7 +13,7 @@
         <li><a href="/change-password"><%= t('admin_page.action_change_password') %></a></li>
         <li>
             <a href="/deconnexion" 
-               onclick="return confirm('<%= t('nav.logout') %> ?');"
+               data-confirm="<%= t('nav.logout') %> ?"
             ><%= t('admin_page.action_logout') %></a>
         </li>
     </ul>

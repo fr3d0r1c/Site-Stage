@@ -1171,8 +1171,10 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
     db.all(sqlTags, [], (err, allTags) => {
         if (err) { allTags = []; console.error("Erreur BDD (GET /journal/nouvelle tags):", err); }
         res.render('new_entry', {
-            pageTitle: req.t('page_titles.new_entry'), activePage: 'journal',
-            allTags: allTags, articleTags: []
+            pageTitle: req.t('page_titles.new_entry'), 
+            activePage: 'journal',
+            allTags: allTags, 
+            articleTags: []
         });
     });
 });
@@ -1204,7 +1206,15 @@ app.post('/journal', isAuthenticated, async (req, res) => {
     const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     
     db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url], async function(err) {
-        if (err) { console.error("Erreur BDD (POST /journal insert):", err); return res.status(500).send("Erreur serveur."); }
+        if (err) { 
+            console.error("Erreur BDD (POST /journal insert):", err);
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Erreur lors de la création de l\'entrée.',
+                detail: err.message // <-- On passe le message technique ici
+            };
+            return res.redirect('/journal');
+        }
         
         const articleId = this.lastID;
         try {

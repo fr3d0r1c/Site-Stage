@@ -84,7 +84,7 @@
     <div>
         <button type="submit" id="submit-button"><%= t('forms.create_entry') %></button>
         <a href="/journal" class="btn button-secondary" 
-           onclick="return confirm('Êtes-vous sûr de vouloir annuler ? Le contenu non sauvegardé sera perdu.');"><%= t('general.cancel') %></a>
+           data-confirm="Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues."><%= t('general.cancel') %></a>
     </div>
 </form>
 

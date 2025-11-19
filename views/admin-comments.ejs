@@ -32,7 +32,7 @@
                                 <button type="submit" class="button-small"><%= t('admin_page.approve_button') %></button>
                             </form>
                             <form action="/admin/comments/delete/<%= comment.id %>" method="POST" 
-                                  onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" 
+                                  data-confirm="<%= t('admin_page.delete_confirm') %>"
                                   style="display: inline;">
                                 <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
                             </form>
@@ -66,7 +66,7 @@
                         <td><a href="/entree/<%= comment.article_id %>"><%= comment.article_title %></a></td>
                         <td>
                             <form action="/admin/comments/delete/<%= comment.id %>" method="POST" 
-                                  onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" 
+                                  data-confirm="<%= t('admin_page.delete_confirm') %>"
                                   style="display: inline;">
                                 <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
                             </form>

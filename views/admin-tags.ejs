@@ -50,7 +50,7 @@
                         </td>
                         <td>
                             <form action="/admin/tags/delete/<%= tag.id %>" method="POST" 
-                                  onsubmit="return confirm('<%= t('admin_page.delete_confirm') %>');" 
+                                  data-confirm="<%= t('admin_page.delete_confirm') %>"
                                   style="display: inline;">
                                  <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
                             </form>
