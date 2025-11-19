@@ -37,7 +37,9 @@
     "username": "Nom d'utilisateur",
     "password": "Mot de passe",
     "login_button": "Se connecter",
-    "create_account_button": "Créer le compte"
+    "create_account_button": "Créer le compte",
+    "summary_fr": "Résumé (FR)",
+    "summary_en": "Résumé (EN)" 
   },
   "journal": {
     "add_entry": "Ajouter une entrée",

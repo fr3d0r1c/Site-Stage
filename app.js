@@ -256,18 +256,20 @@ const db = new sqlite3.Database(dbPath, (err) => {
   });
 });
 
-// Création de la table 'articles' (version bilingue + cover)
+// Création de la table 'articles' (version bilingue + cover + résumé)
 const createArticleTable = `
 CREATE TABLE IF NOT EXISTS articles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title_fr TEXT NOT NULL, title_en TEXT NOT NULL,
+  summary_fr TEXT, summary_en TEXT, -- NOUVEAUX CHAMPS
   content_fr TEXT NOT NULL, content_en TEXT NOT NULL,
   cover_image_url TEXT,
   publication_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER,
-  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL -- Garde l'article si user supprimé
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
 );
 `;
+
 db.run(createArticleTable, (err) => {
     if (err) console.error("Erreur création table articles:", err);
 });
@@ -440,7 +442,7 @@ app.get('/', (req, res) => {
     // Récupère les 3 derniers articles
     const sql = `
         SELECT
-            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
             a.cover_image_url, a.publication_date,
             GROUP_CONCAT(t.name_${lang}) as tags
         FROM articles a
@@ -464,16 +466,23 @@ app.get('/', (req, res) => {
                 finalCoverImage = match ? match[1] : null;
             }
 
-            // --- NETTOYAGE POUR L'EXTRAIT ---
-            let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlève les images
-            textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève le titre H1
-            const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlève le reste du Markdown
+            let excerpt = "";
+
+            if (article.summary) {
+                excerpt = article.summary;
+            }
+            else {
+                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlève images
+                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève titre H1
+                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlève markdown
+                excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
+            }
 
             return {
                 ...article,
                 tags: tagList,
                 coverImage: finalCoverImage,
-                excerpt: plainContent.substring(0, 350) // Coupe à 350 caractères
+                excerpt: excerpt
             };
         });
 
@@ -546,7 +555,7 @@ app.get('/journal', (req, res) => {
 
     const sqlEntries = `
         SELECT
-            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
             a.cover_image_url, a.publication_date,
             GROUP_CONCAT(t.name_${lang}) as tags
         FROM articles a
@@ -576,12 +585,25 @@ app.get('/journal', (req, res) => {
                     finalCoverImage = match ? match[1] : null;
                 }
 
-                // Nettoyage extrait
-                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
-                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
-                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+                let excerpt = "";
 
-                return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
+                if (article.summary) {
+                    excerpt = article.summary;
+                }
+                else {
+                    let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlève images
+                    textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève titre H1
+                    const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlève markdown
+                    excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
+                }
+                
+
+                return { 
+                    ...article, 
+                    tags: tagList, 
+                    coverImage: finalCoverImage, 
+                    excerpt: excerpt 
+                };
             });
 
             const message = req.session.flashMessage;
@@ -743,7 +765,7 @@ app.get('/search', (req, res) => {
 
         const sql = `
             SELECT
-                a.id, a.title_${lang} as title, a.content_${lang} as content,
+                a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
                 a.cover_image_url, a.publication_date,
                 GROUP_CONCAT(DISTINCT t.name_${lang}) as tags
             FROM articles a
@@ -767,12 +789,19 @@ app.get('/search', (req, res) => {
                     finalCoverImage = match ? match[1] : null;
                 }
 
-                // Nettoyage extrait
-                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
-                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
-                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+                let excerpt = "";
 
-                return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
+                if (article.summary) {
+                    excerpt = article.summary;
+                }
+                else {
+                    let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlève images
+                    textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève titre H1
+                    const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlève markdown
+                    excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
+                }
+
+                return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: excerpt };
             });
 
             res.render('search_results', {
@@ -804,16 +833,16 @@ app.get('/tags/:tagName', (req, res) => {
     db.get(sqlFindTag, [tagName], (errTag, tag) => {
         if (errTag) { console.error(`Erreur BDD (GET /tags/${tagName} findTag):`, errTag); return res.status(500).send("Erreur serveur."); }
         if (!tag) {
-             return res.render('journal', { 
-                 articles: [], pageTitle: `Tag introuvable : "${tagName}"`, activePage: 'journal', 
-                 currentPage: 1, totalPages: 0, currentTag: tagName, message: message 
-             });
+            return res.render('journal', { 
+                articles: [], pageTitle: `Tag introuvable : "${tagName}"`, activePage: 'journal', 
+                currentPage: 1, totalPages: 0, currentTag: tagName, message: message 
+            });
         }
         
         const tagId = tag.id;
         const sqlEntries = `
             SELECT
-                a.id, a.title_${lang} as title, a.content_${lang} as content,
+                a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
                 a.cover_image_url, a.publication_date,
                 GROUP_CONCAT(t.name_${lang}) as tags
             FROM articles a
@@ -831,38 +860,50 @@ app.get('/tags/:tagName', (req, res) => {
             if (err) { console.error(`Erreur BDD (GET /tags/${tagName} entries):`, err); return res.status(500).send("Erreur serveur."); }
             
             db.get(sqlCount, [tagId], (errCount, countResult) => {
-                 if (errCount) { console.error(`Erreur BDD (GET /tags/${tagName} count):`, errCount); return res.status(500).send("Erreur serveur."); }
+                if (errCount) { console.error(`Erreur BDD (GET /tags/${tagName} count):`, errCount); return res.status(500).send("Erreur serveur."); }
                  
-                 const totalEntries = countResult.totalCount;
-                 const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+                const totalEntries = countResult.totalCount;
+                const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
                  
-                 const articlesWithData = rows.map(article => {
-                     const tagList = article.tags ? article.tags.split(',') : [];
+                const articlesWithData = rows.map(article => {
+                    const tagList = article.tags ? article.tags.split(',') : [];
                      
-                     let finalCoverImage = article.cover_image_url;
-                     if (!finalCoverImage) {
-                         const match = article.content.match(/!\[.*?\]\((.*?)\)/);
-                         finalCoverImage = match ? match[1] : null;
-                     }
+                    let finalCoverImage = article.cover_image_url;
+                    if (!finalCoverImage) {
+                        const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                        finalCoverImage = match ? match[1] : null;
+                    }
+                     
+                    let excerpt = "";
 
-                     // Nettoyage extrait
-                     let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
-                     textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
-                     const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
-
-                     return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
-                 });
+                    if (article.summary) {
+                        excerpt = article.summary;
+                    }
+                    else {
+                        let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                        textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                        const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+                        excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
+                    }
+                    
+                    return { 
+                        ...article, 
+                        tags: tagList, 
+                        coverImage: finalCoverImage, 
+                        excerpt: plainContent.substring(0, 350) 
+                    };
+                });
                  
-                 res.render('journal', {
-                     articles: articlesWithData,
-                     pageTitle: `Tag : "${tagName}"`,
-                     activePage: 'journal',
-                     currentPage: currentPage,
-                     totalPages: totalPages,
-                     currentTag: tagName,
-                     message: message,
-                     currentSort: null // Pas de tri sur cette page pour l'instant
-                 });
+                res.render('journal', {
+                    articles: articlesWithData,
+                    pageTitle: `Tag : "${tagName}"`,
+                    activePage: 'journal',
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    currentTag: tagName,
+                    message: message,
+                    currentSort: null // Pas de tri sur cette page pour l'instant
+                });
             });
         });
     });
@@ -1153,14 +1194,15 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
 
 // Traite la création d'une entrée (bilingue + tags)
 app.post('/journal', isAuthenticated, async (req, res) => {
-    const { title_fr, title_en, content_fr, content_en, cover_image_url } = req.body;
+    const { title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, tags } = req.body;
     const userId = req.session.userId;
     let tagIds = req.body.tags;
     if (tagIds === undefined) { tagIds = []; } else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
     tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
     
-    const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?)';
-    db.run(sqlInsertArticle, [title_fr, title_en, content_fr, content_en, userId, cover_image_url], async function(err) {
+    const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    
+    db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url], async function(err) {
         if (err) { console.error("Erreur BDD (POST /journal insert):", err); return res.status(500).send("Erreur serveur."); }
         const articleId = this.lastID;
         try {
@@ -1203,12 +1245,12 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
 // Traite la modification d'une entrée (bilingue + tags)
 app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     const id = req.params.id;
-    const { title_fr, title_en, content_fr, content_en, cover_image_url } = req.body;
+    const { title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, tags } = req.body;
     let tagIds = req.body.tags;
     if (tagIds === undefined) { tagIds = []; } else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
     tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
-    const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
-    db.run(sqlUpdateArticle, [title_fr, title_en, content_fr, content_en, cover_image_url, id], async function(err) {
+    const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
+    db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, id], async function(err) {
         if (err) { console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); return res.status(500).send("Erreur serveur."); }
         try {
             await processTags(id, tagIds);

@@ -15,6 +15,18 @@
     </div>
     <hr>
 
+    <div class="dual-editor-layout">
+        <div style="flex: 1;">
+            <label for="summary_fr"><%= t('forms.summary_fr') %> :</label><br>
+            <textarea id="summary_fr" name="summary_fr" rows="3" placeholder="Un court texte d'accroche..."><%= (typeof article !== 'undefined' && article.summary_fr) ? article.summary_fr : '' %></textarea>
+        </div>
+        <div style="flex: 1;">
+            <label for="summary_en"><%= t('forms.summary_en') %> :</label><br>
+            <textarea id="summary_en" name="summary_en" rows="3" placeholder="A short summary..."><%= (typeof article !== 'undefined' && article.summary_en) ? article.summary_en : '' %></textarea>
+        </div>
+    </div>
+    <hr>
+
     <div class="editor-container-main">
 
         <div class="editor-and-preview-fr">

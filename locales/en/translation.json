@@ -37,7 +37,9 @@
     "username": "Username",
     "password": "Password",
     "login_button": "Login",
-    "create_account_button": "Create Account"
+    "create_account_button": "Create Account",
+    "summary_fr": "Summary (FR)",
+    "summary_en": "Summary (EN)"
   },
   "journal": {
     "add_entry": "Add Entry",
