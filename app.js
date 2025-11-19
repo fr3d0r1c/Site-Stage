@@ -1194,19 +1194,36 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
 
 // Traite la création d'une entrée (bilingue + tags)
 app.post('/journal', isAuthenticated, async (req, res) => {
-    const { title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, tags } = req.body;
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags } = req.body;
+    let summary_en = req.body.summary_en; // On prend la valeur du formulaire
     const userId = req.session.userId;
-    let tagIds = req.body.tags;
-    if (tagIds === undefined) { tagIds = []; } else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
+
+    // --- Gestion des Tags (Tableau d'IDs) ---
+    let tagIds = tags;
+    if (tagIds === undefined) { tagIds = []; }
+    else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
     tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+
+    if (summary_fr && !summary_en && translator) {
+        try {
+            console.log("Traduction automatique du résumé...");
+            const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
+            if (result && typeof result.text === 'string') {
+                summary_en = result.text;
+            }
+        } catch (error) {
+            console.error("Erreur traduction résumé :", error);
+        }
+    }
     
     const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     
     db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url], async function(err) {
         if (err) { console.error("Erreur BDD (POST /journal insert):", err); return res.status(500).send("Erreur serveur."); }
+        
         const articleId = this.lastID;
         try {
-            await processTags(articleId, tagIds); // Utilise les tag IDs
+            await processTags(articleId, tagIds);
             req.session.flashMessage = { type: 'success', text: 'Entrée créée avec succès !' };
             res.redirect('/journal');
         } catch (tagError) {
@@ -1245,14 +1262,32 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
 // Traite la modification d'une entrée (bilingue + tags)
 app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     const id = req.params.id;
-    const { title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, tags } = req.body;
-    let tagIds = req.body.tags;
-    if (tagIds === undefined) { tagIds = []; } else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags } = req.body;
+    let summary_en = req.body.summary_en; // Valeur du formulaire
+
+    // --- Gestion des Tags ---
+    let tagIds = tags;
+    if (tagIds === undefined) { tagIds = []; }
+    else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
     tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+
+    // --- TRADUCTION AUTOMATIQUE DU RÉSUMÉ ---
+    if (summary_fr && (!summary_en || summary_en.trim() === '') && translator) {
+        try {
+            console.log("Traduction automatique du résumé (edit)...");
+            const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
+            summary_en = result.text;
+        } catch (error) {
+            console.error("Erreur traduction résumé (edit) :", error);
+        }
+    }
+
     const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
+
     db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, id], async function(err) {
         if (err) { console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); return res.status(500).send("Erreur serveur."); }
-        try {
+
+        try  {
             await processTags(id, tagIds);
             req.session.flashMessage = { type: 'success', text: 'Entrée mise à jour avec succès !' };
             res.redirect('/journal');
