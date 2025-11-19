@@ -9,9 +9,14 @@
     </p>
     <hr>
 
-    <%# Affiche les erreurs de validation (ex: "email déjà pris") %>
-    <% if (error) { %>
-        <p class="error-message" style="display: none;"><%= error %></p>
+    <% if (locals.error) { %>
+        <p class="error-message" style="display: none;" data-detail="<%= locals.detail || '' %>">
+            <%= error %>
+        </p>
+    <% } %>
+
+    <% if (locals.success) { %>
+        <p class="feedback-message success" style="display: none;"><%= success %></p>
     <% } %>
 
     <form action="/inscription" method="POST">

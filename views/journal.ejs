@@ -31,9 +31,10 @@
     <h2 style="border-bottom: none; margin-bottom: 1.5rem;">Entrées pour le tag : "<%= currentTag %>"</h2>
 <% } %>
 
-<%# Affiche les messages flash (ex: "Entrée supprimée") via SweetAlert2 %>
-<% if (message) { %>
-    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+<% if (locals.message) { %>
+    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
+       style="display: none;"
+       data-detail="<%= message.detail || '' %>">
         <%= message.text %>
     </p>
 <% } %>

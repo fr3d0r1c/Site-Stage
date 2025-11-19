@@ -7,15 +7,22 @@
     <p class="feedback-message success" style="display: none;">Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter.</p>
 <% } %>
 
-<%# Affiche les messages flash (ex: "Compte créé") %>
+<%# Message Flash (ex: "Compte créé") %>
 <% if (locals.message) { %>
     <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
         <%= message.text %>
     </p>
 <% } %>
 
-<%# Affiche les erreurs de connexion (ex: "mot de passe incorrect") %>
-<% if (error) { %>
+<%# Succès Reset Password %>
+<% if (locals.resetSuccess) { %>
+    <p class="feedback-message success" style="display: none;">
+        Votre mot de passe a été réinitialisé avec succès !
+    </p>
+<% } %>
+
+<%# Erreur Login %>
+<% if (locals.error) { %>
     <p class="error-message" style="display: none;"><%= error %></p>
 <% } %>
 

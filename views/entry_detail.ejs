@@ -4,6 +4,18 @@
     <h1><%= article.title %></h1>
     <small><%= t('journal.published_on') %>: <%= new Date(article.publication_date).toLocaleString(i18n.language) %></small>
 
+    <% if (typeof messageSent !== 'undefined') { %>
+        <% if (messageSent === true) { %>
+            <p class="feedback-message success" style="display: none;">
+                <%= t('comments.pending_moderation') %>
+            </p>
+        <% } else if (messageSent === false) { %>
+            <p class="error-message" style="display: none;">
+                Une erreur s'est produite lors de l'envoi du commentaire.
+            </p>
+        <% } %>
+    <% } %>
+
     <%# Affiche les tags pour cet article %>
     <% if (article.tags && article.tags.length > 0) { %>
         <div class="tags-list entry-tags">
@@ -52,5 +64,17 @@
 <nav style="margin-top: 2rem;">
     <a href="/journal"><%= t('journal.back_to_journal') %></a>
 </nav>
+
+<% if (typeof messageSent !== 'undefined') { %>
+    <% if (messageSent === true) { %>
+        <p class="feedback-message success" style="display: none;">
+            <%= t('comments.pending_moderation') %>
+        </p>
+    <% } else if (messageSent === false) { %>
+        <p class="error-message" style="display: none;">
+            Une erreur s'est produite lors de l'envoi du commentaire.
+        </p>
+    <% } %>
+<% } %>
 
 <%- include('partials/footer') %>

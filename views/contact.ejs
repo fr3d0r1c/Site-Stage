@@ -5,15 +5,16 @@
     <p><%= t('contact.intro') %></p>
     <hr>
 
-    <%# Affiche les messages flash (succès ou erreur) via SweetAlert2 %>
-    <% if (messageSent === true) { %>
-        <div class="feedback-message success" style="display: none;">
-            <%= t('contact.success_message') %>
-        </div>
-    <% } else if (messageSent === false) { %>
-        <div class="feedback-message error" style="display: none;">
-            <%= t('contact.error_message') %>
-        </div>
+    <% if (typeof messageSent !== 'undefined') { %>
+        <% if (messageSent === true) { %>
+            <p class="feedback-message success" style="display: none;">
+                <%= t('contact.success_message') %>
+            </p>
+        <% } else if (messageSent === false) { %>
+            <p class="error-message" style="display: none;">
+                <%= error || t('contact.error_message') %>
+            </p>
+        <% } %>
     <% } %>
 
     <form action="/contact" method="POST" class="contact-form">

@@ -976,10 +976,8 @@ app.post('/inscription', checkAdminExists, authLimiter, (req, res) => {
         const sql = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
         db.run(sql, [username, hash, email], function(errInsert) {
             if (errInsert) {
-                 let errorMessage = "Erreur création compte.";
-                 if (errInsert.message.includes('UNIQUE constraint failed')) { errorMessage = "Ce nom d'utilisateur ou cet email est déjà pris."; }
-                 console.error("Erreur BDD (POST /inscription insert):", errInsert);
-                 return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: errorMessage });
+                let errorMessage = "Erreur création compte.";
+                return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: errorMessage + (errInsert.message ? ` (${errInsert.message})` : '') });
             }
             req.session.flashMessage = { type: 'success', text: 'Compte administrateur créé ! Vous pouvez vous connecter.' }; // Message de succès
             res.redirect('/connexion');
@@ -1099,8 +1097,11 @@ app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
                 db.run(sqlUpdatePass, [newHash, userId], (errUpdate) => {
                     if (errUpdate) {
                         return res.render('change-password', {
-                            pageTitle: pageTitle, activePage: activePage,
-                            error: 'Erreur lors de la mise à jour du mot de passe.', success: null
+                            pageTitle: pageTitle, 
+                            activePage: activePage,
+                            error: 'Erreur lors de la mise à jour du mot de passe.',
+                            deatil: errUpdate.message,
+                            success: null
                         });
                     }
 
@@ -1206,12 +1207,12 @@ app.post('/journal', isAuthenticated, async (req, res) => {
     const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     
     db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url], async function(err) {
-        if (err) { 
+        if (err) {
             console.error("Erreur BDD (POST /journal insert):", err);
             req.session.flashMessage = {
                 type: 'error',
                 text: 'Erreur lors de la création de l\'entrée.',
-                detail: err.message // <-- On passe le message technique ici
+                detail: err.message
             };
             return res.redirect('/journal');
         }
@@ -1222,7 +1223,13 @@ app.post('/journal', isAuthenticated, async (req, res) => {
             req.session.flashMessage = { type: 'success', text: 'Entrée créée avec succès !' };
             res.redirect('/journal');
         } catch (tagError) {
-            console.error("Erreur tags (POST /journal):", tagError); res.status(500).send("Erreur tags.");
+            console.error("Erreur tags:", tagError);
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Entrée créée, mais erreur lors de l\'ajout des tags.',
+                detail: tagError.message
+            };
+            res.redirect('/journal');
         }
     });
 });
@@ -1280,7 +1287,15 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
 
     db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, id], async function(err) {
-        if (err) { console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); return res.status(500).send("Erreur serveur."); }
+        if (err) { 
+            console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); 
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Erreur lors de la modification de l\'entrée.',
+                detail: err.message // <-- AJOUT DU DÉTAIL
+            };
+            return res.redirect('/journal');
+        }
 
         try  {
             await processTags(id, tagIds);
@@ -1288,7 +1303,12 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
             res.redirect('/journal');
         } catch (tagError) {
             console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
-            res.status(500).send("Erreur tags.");
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Entrée mise à jour, mais erreur sur les tags.',
+                detail: tagError.message
+            };
+            res.redirect('/journal');
         }
     });
 });
@@ -1298,7 +1318,15 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
     const id = req.params.id;
     const sql = 'DELETE FROM articles WHERE id = ?';
     db.run(sql, id, function(err) {
-        if (err) { console.error(`Erreur BDD (POST /entree/${id}/delete):`, err); return res.status(500).send("Erreur serveur."); }
+        if (err) {
+            console.error(`Erreur BDD (POST /entree/${id}/delete):`, err);
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Erreur lors de la suppression de l\'entrée.',
+                detail: err.message // <-- AJOUT DU DÉTAIL
+            };
+            return res.redirect('/journal');
+        }
         req.session.flashMessage = { type: 'success', text: 'Entrée supprimée avec succès.' };
         res.redirect('/journal');
     });
@@ -1334,8 +1362,13 @@ app.post('/admin/comments/approve/:id', isAuthenticated, (req, res) => {
     const commentId = req.params.id;
     const sql = 'UPDATE comments SET is_approved = 1 WHERE id = ?';
     db.run(sql, [commentId], function(err) {
-        if (err) { req.session.flashMessage = { type: 'error', text: 'Erreur approbation.' }; }
-        else { req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} approuvé.` }; }
+        if (err) { 
+            req.session.flashMessage = { 
+                type: 'error', 
+                text: 'Erreur approbation.',
+                detail: err.message
+            }; 
+        } else { req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} approuvé.` }; }
         res.redirect('/admin/comments');
     });
 });
@@ -1345,9 +1378,13 @@ app.post('/admin/comments/delete/:id', isAuthenticated, (req, res) => {
     const commentId = req.params.id;
     const sql = 'DELETE FROM comments WHERE id = ?';
     db.run(sql, [commentId], function(err) {
-        if (err) { req.session.flashMessage = { type: 'error', text: 'Erreur suppression.' }; }
-        else { req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} supprimé.` }; }
-        res.redirect('/admin/comments');
+        if (err) { 
+            req.session.flashMessage = { 
+                type: 'error', 
+                text: 'Erreur suppression.',
+                detail: err.message};
+            } else { req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} supprimé.` }; }
+            res.redirect('/admin/comments');
     });
 });
 
@@ -1512,24 +1549,24 @@ app.post('/admin/tags/create', isAuthenticated, async (req, res) => {
 
 app.post('/admin/tags/delete/:id', isAuthenticated, (req, res) => {
     const tagId = req.params.id;
-
     const sql = 'DELETE FROM tags WHERE id = ?';
 
     db.run(sql, [tagId], function(err) {
         let message;
         if (err) {
             console.error(`Erreur BDD (POST /admin/tags/delete/${tagId}):`, err);
-            message = { type: 'error', text: 'Erreur lors de la suppression du tag.' };
-        } else if (this.changes === 0) {
-            message = { type: 'error', text: 'Tag non trouvé pour la suppression.' };
+            message = { 
+                 type: 'error', 
+                 text: 'Erreur lors de la suppression du tag.', 
+                 detail: err.message // <-- AJOUT
+             };
         } else {
-            message = { type: 'success', text: `Tag #${tagId} supprimé avec succès.` };
+            message = { type: 'success', text: `Tag #${tagId} supprimé.` };
         }
-
         req.session.flashMessage = message;
         res.redirect('/admin/tags');
-    });
-});
+    })
+})
 
 // =================================================================
 // 7. EXPORT DE L'APPLICATION (pour les tests)

@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- PARTIE 1 : NOTIFICATIONS "TOAST" (Succès/Erreur) ---
-    // (Cette partie ne change pas)
+    // --- PARTIE 1 : NOTIFICATIONS "TOAST" AVEC DÉTAILS ---
+    
     const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
@@ -17,27 +17,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const successMessageElement = document.querySelector('.feedback-message.success');
     const errorMessageElement = document.querySelector('.error-message');
 
-    if (successMessageElement) {
-        const text = successMessageElement.textContent || successMessageElement.innerText;
-        Toast.fire({ icon: 'success', title: text });
-        successMessageElement.remove();
+    function showSmartToast(element, iconType) {
+        if (!element) return;
+
+        const text = element.textContent || element.innerText;
+        const detail = element.getAttribute('data-detail'); // Récupère le détail technique
+
+        // Configuration de base du toast
+        let toastConfig = {
+            icon: iconType,
+            title: text
+        };
+
+        // Si on a des détails techniques (ex: erreur SQL)
+        if (detail && detail !== '') {
+            toastConfig.title = text + ' (Cliquez pour détails)';
+            toastConfig.didOpen = (toast) => {
+                // Change le curseur pour montrer que c'est cliquable
+                toast.style.cursor = 'pointer';
+                // Ajoute l'événement de clic
+                toast.addEventListener('click', () => {
+                    Swal.fire({
+                        title: 'Détails de l\'erreur',
+                        text: detail,
+                        icon: 'info',
+                        confirmButtonText: 'Fermer',
+                        confirmButtonColor: 'var(--c-primary)'
+                    });
+                });
+                // Arrête le timer au survol
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            };
+        }
+
+        Toast.fire(toastConfig);
+        element.remove();
     }
 
-    if (errorMessageElement) {
-        const text = errorMessageElement.textContent || errorMessageElement.innerText;
-        Toast.fire({ icon: 'error', title: text });
-        errorMessageElement.remove();
-    }
+    // Affiche les toasts
+    showSmartToast(successMessageElement, 'success');
+    showSmartToast(errorMessageElement, 'error');
 
-    // --- PARTIE 2 : CONFIRMATIONS (NOUVELLE MÉTHODE) ---
 
-    // 1. Pour les formulaires (ex: Supprimer)
-    // On cherche les formulaires qui ont l'attribut 'data-confirm'
+    // --- PARTIE 2 : CONFIRMATIONS (Inchangé) ---
+    // (Garde le reste de ton code pour les formulaires et liens ici...)
     const formsToConfirm = document.querySelectorAll('form[data-confirm]');
-    
+    // ... (le reste du fichier reste identique à la version précédente) ...
     formsToConfirm.forEach(form => {
-        const message = form.getAttribute('data-confirm'); // Plus simple !
-
+        const message = form.getAttribute('data-confirm');
         form.addEventListener('submit', function(event) {
             event.preventDefault();
             Swal.fire({
@@ -55,14 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 2. Pour les liens (ex: Déconnexion, Annuler)
-    // On cherche les liens qui ont l'attribut 'data-confirm'
     const linksToConfirm = document.querySelectorAll('a[data-confirm]');
-    
     linksToConfirm.forEach(link => {
-        const message = link.getAttribute('data-confirm'); // Plus simple !
+        const message = link.getAttribute('data-confirm');
         const href = link.href;
-
         link.addEventListener('click', function(event) {
             event.preventDefault();
             Swal.fire({

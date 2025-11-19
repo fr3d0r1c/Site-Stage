@@ -4,8 +4,10 @@
     <h1><%= t('admin_page.manage_tags_title') %></h1>
 
     <%# Affichage des messages Flash (succès/erreur) %>
-    <% if (message) { %>
-        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+    <% if (locals.message) { %>
+        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
+        style="display: none;"
+        data-detail="<%= message.detail || '' %>">
             <%= message.text %>
         </p>
     <% } %>

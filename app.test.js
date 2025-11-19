@@ -167,7 +167,7 @@ describe('Tests des routes admin (authentifié)', () => {
   });
 
   // Test 11: La création échoue si des champs requis sont manquants
-  test('POST /journal - Échoue (Statut 500) si le titre est manquant', async () => {
+  test('POST /journal - Redirige (Statut 302) avec un message d\'erreur si le titre est manquant', async () => {
     const badEntry = {
       title_en: 'Bad Test Title',
       content_fr: 'Contenu...',
@@ -175,7 +175,10 @@ describe('Tests des routes admin (authentifié)', () => {
       tags: []
     };
     const response = await agent.post('/journal').send(badEntry);
-    expect(response.statusCode).toBe(500); // Attend une erreur 500 (contrainte BDD)
+
+
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe('/journal');
   });
 
   // Test 12: L'agent connecté peut supprimer une entrée
