@@ -19,6 +19,10 @@ afterAll((done) => {
 
 // --- Groupe de tests pour les routes publiques ---
 describe('Tests des routes publiques (GET)', () => {
+
+  beforeAll(async () => {
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre 1 seconde
+  });
   
   test('GET / - Doit répondre avec un statut 200 (OK)', async () => {
     const response = await request(app).get('/');
