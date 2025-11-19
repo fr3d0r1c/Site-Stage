@@ -436,24 +436,50 @@ async function sendAdminNotification(req, articleId, commentId, authorName, comm
 // Page d'accueil
 app.get('/', (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
+
+    // Récupère les 3 derniers articles
     const sql = `
-        SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name_${lang}) as tags
-        FROM articles a LEFT JOIN article_tags at ON a.id = at.article_id LEFT JOIN tags t ON at.tag_id = t.id
-        GROUP BY a.id ORDER BY a.publication_date DESC LIMIT 3
+        SELECT
+            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.cover_image_url, a.publication_date,
+            GROUP_CONCAT(t.name_${lang}) as tags
+        FROM articles a
+        LEFT JOIN article_tags at ON a.id = at.article_id
+        LEFT JOIN tags t ON at.tag_id = t.id
+        GROUP BY a.id
+        ORDER BY a.publication_date DESC
+        LIMIT 3
     `;
+
     db.all(sql, [], (err, rows) => {
         if (err) { console.error("Erreur BDD (GET /):", err); return res.status(500).send("Erreur serveur."); }
+
         const articlesWithData = rows.map(article => {
             const tagList = article.tags ? article.tags.split(',') : [];
-            let finalCoverImage = null;
-            if (article.cover_image_url) { finalCoverImage = article.cover_image_url; }
-            else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
-            const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
-            return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
+
+            // Gestion image de couverture
+            let finalCoverImage = article.cover_image_url;
+            if (!finalCoverImage) {
+                const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                finalCoverImage = match ? match[1] : null;
+            }
+
+            // --- NETTOYAGE POUR L'EXTRAIT ---
+            let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlève les images
+            textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève le titre H1
+            const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlève le reste du Markdown
+
+            return {
+                ...article,
+                tags: tagList,
+                coverImage: finalCoverImage,
+                excerpt: plainContent.substring(0, 350) // Coupe à 350 caractères
+            };
         });
-        
-        const message = req.session.flashMessage; // Pour le toast "Bonjour..."
-        req.session.flashMessage = null; 
+
+        // Gestion message flash
+        const message = req.session.flashMessage;
+        req.session.flashMessage = null;
 
         res.render('index', {
             articles: articlesWithData,
@@ -500,43 +526,33 @@ app.get('/admin', isAuthenticated, (req, res) => {
     });
 });
 
-// Page de tout le journal (avec pagination)
+// Page de tout le journal (avec pagination, tags et tri)
 app.get('/journal', (req, res) => {
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
     const lang = req.language === 'en' ? 'en' : 'fr';
 
-    const sortOption = req.query.sort || 'date_desc'; // 'date_desc' (plus récent) par défaut
-    let sortClause = 'ORDER BY a.publication_date DESC'; // Clause SQL par défaut
+    // --- LOGIQUE DE TRI ---
+    const sortOption = req.query.sort || 'date_desc';
+    let sortClause = 'ORDER BY a.publication_date DESC';
 
     switch (sortOption) {
-        case 'date_asc':
-            sortClause = 'ORDER BY a.publication_date ASC'; // Plus ancien
-            break;
-        case 'alpha_asc':
-            sortClause = `ORDER BY title_${lang} ASC`; // Titre (A-Z)
-            break;
-        case 'alpha_desc':
-            sortClause = `ORDER BY title_${lang} DESC`; // Titre (Z-A)
-            break;
-
-        case 'tag_asc':
-            sortClause = 'ORDER BY tags ASC'; // Trie sur la chaîne de tags (ex: "Culture, Test")
-            break;
-        case 'tag_desc':
-            sortClause = 'ORDER BY tags DESC';
-            break;
+        case 'date_asc': sortClause = 'ORDER BY a.publication_date ASC'; break;
+        case 'alpha_asc': sortClause = `ORDER BY title_${lang} ASC`; break;
+        case 'alpha_desc': sortClause = `ORDER BY title_${lang} DESC`; break;
+        case 'tag_asc': sortClause = 'ORDER BY tags ASC'; break;
+        case 'tag_desc': sortClause = 'ORDER BY tags DESC'; break;
     }
 
     const sqlEntries = `
-        SELECT 
-            a.id, a.title_${lang} as title, a.content_${lang} as content, 
-            a.cover_image_url, a.publication_date, 
+        SELECT
+            a.id, a.title_${lang} as title, a.content_${lang} as content,
+            a.cover_image_url, a.publication_date,
             GROUP_CONCAT(t.name_${lang}) as tags
-        FROM articles a 
-        LEFT JOIN article_tags at ON a.id = at.article_id 
+        FROM articles a
+        LEFT JOIN article_tags at ON a.id = at.article_id
         LEFT JOIN tags t ON at.tag_id = t.id
-        GROUP BY a.id 
+        GROUP BY a.id
         ${sortClause}
         LIMIT ? OFFSET ?
     `;
@@ -544,27 +560,40 @@ app.get('/journal', (req, res) => {
 
     db.all(sqlEntries, [ITEMS_PER_PAGE, offset], (err, rows) => {
         if (err) { console.error("Erreur BDD (GET /journal entries):", err); return res.status(500).send("Erreur serveur."); }
+
         db.get(sqlCount, [], (errCount, countResult) => {
             if (errCount) { console.error("Erreur BDD (GET /journal count):", errCount); return res.status(500).send("Erreur serveur."); }
+
             const totalEntries = countResult.totalCount;
             const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+
             const articlesWithData = rows.map(article => {
                 const tagList = article.tags ? article.tags.split(',') : [];
-                let finalCoverImage = null;
-                if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } 
-                else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
-                const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
+
+                let finalCoverImage = article.cover_image_url;
+                if (!finalCoverImage) {
+                    const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                    finalCoverImage = match ? match[1] : null;
+                }
+
+                // Nettoyage extrait
+                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+
                 return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
             });
+
             const message = req.session.flashMessage;
             req.session.flashMessage = null;
+
             res.render('journal', {
-                articles: articlesWithData, 
-                pageTitle: req.t('page_titles.journal'), 
+                articles: articlesWithData,
+                pageTitle: req.t('page_titles.journal'),
                 activePage: 'journal',
-                currentPage: currentPage, 
-                totalPages: totalPages, 
-                currentTag: null, 
+                currentPage: currentPage,
+                totalPages: totalPages,
+                currentTag: null,
                 message: message,
                 currentSort: sortOption
             });
@@ -572,24 +601,30 @@ app.get('/journal', (req, res) => {
     });
 });
 
-// Page de détail d'une entrée (avec Précédent/Suivant, Commentaires, OG tags)
+// Page de détail d'une entrée (avec tags, parsing, nav, commentaires, et SEO)
 app.get('/entree/:id', (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { return res.status(400).send("ID d'entrée invalide."); }
+
     const lang = req.language === 'en' ? 'en' : 'fr';
 
+    // Requête pour l'article actuel
     const sqlArticle = `SELECT *, title_${lang} as title, content_${lang} as content FROM articles WHERE id = ?`;
+    // Requête pour les tags
     const sqlTags = `SELECT t.name_${lang} as name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
+    // Requête pour les commentaires approuvés
     const sqlComments = `SELECT author_name, content, created_at FROM comments WHERE article_id = ? AND is_approved = 1 ORDER BY created_at ASC`;
 
     db.get(sqlArticle, id, (err, article) => {
         if (err) { console.error(`Erreur BDD (GET /entree/${id} article):`, err); return res.status(500).send("Erreur serveur."); }
         if (!article) { return res.status(404).send("Entrée non trouvée !"); }
 
+        // On a la date de l'article, on prépare les requêtes Précédent/Suivant
         const currentPublicationDate = article.publication_date;
         const sqlPrev = `SELECT id, title_${lang} as title FROM articles WHERE publication_date < ? ORDER BY publication_date DESC LIMIT 1`;
         const sqlNext = `SELECT id, title_${lang} as title FROM articles WHERE publication_date > ? ORDER BY publication_date ASC LIMIT 1`;
 
+        // On exécute les 4 requêtes restantes en parallèle
         Promise.all([
             new Promise((resolve, reject) => db.all(sqlTags, id, (err, rows) => err ? reject(err) : resolve(rows))),
             new Promise((resolve, reject) => db.get(sqlPrev, [currentPublicationDate], (err, row) => err ? reject(err) : resolve(row))),
@@ -599,33 +634,55 @@ app.get('/entree/:id', (req, res) => {
 
             article.tags = tagRows.map(tag => tag.name);
 
-            // Préparation des métadonnées OG
+            // --- LOGIQUE SEO & OPEN GRAPH ---
+            // Crée une description courte (extrait) pour les réseaux sociaux
             const ogDescription = (article.content || '')
-                .replace(/!\[.*?\]\(.*?\)/g, '').replace(/[#*`~_]/g, '').replace(/\s+/g, ' ')
+                .replace(/!\[.*?\]\(.*?\)/g, '') // Enlève les images Markdown
+                .replace(/[#*`~_]/g, '') // Enlève les symboles Markdown
+                .replace(/\s+/g, ' ') // Remplace les espaces multiples par un seul
                 .substring(0, 155).trim() + '...';
+
+            // Détermine l'image de couverture (soit le champ dédié, soit la 1ère image du contenu)
             let ogImage = article.cover_image_url;
-            if (!ogImage) { const match = article.content.match(/!\[.*?\]\((.*?)\)/); ogImage = match ? match[1] : null; }
+            if (!ogImage) {
+                const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                ogImage = match ? match[1] : null;
+            }
             
-            const siteBaseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`; // Utilise l'URL de Render si dispo
+            // Construit l'URL absolue pour l'image (nécessaire pour OG)
+            // Utilise la variable d'environnement de Render ou localhost par défaut
+            const siteBaseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`; 
             let absoluteOgImage = `${siteBaseUrl}/default-banner.png`;
             if (ogImage) {
                 absoluteOgImage = ogImage.startsWith('http') ? ogImage : `${siteBaseUrl}${ogImage}`;
             }
+            // --- FIN LOGIQUE SEO ---
 
-            // Nettoyage et parsing du contenu
-            let finalContent = article.content;
-            const markdownTitle = '# ' + article.title;
-            if (finalContent && finalContent.trim().startsWith(markdownTitle)) {
-                finalContent = finalContent.substring(markdownTitle.length).trim();
+            // --- NETTOYAGE DU CONTENU (Enlever le titre H1) ---
+            let finalContent = article.content || '';
+            // Enlève la première ligne si elle commence par # (Titre H1)
+            finalContent = finalContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+
+            // --- PARSING MARKDOWN ---
+            try {
+                article.content = marked.parse(finalContent);
+            } catch (parseError) {
+                console.error(`Erreur parsing Markdown article ${id}:`, parseError);
+                article.content = "<p style='color:red;'>Erreur rendu Markdown.</p>";
             }
-            try { article.content = marked.parse(finalContent || ''); } 
-            catch (parseError) { console.error(`Erreur parsing Markdown article ${id}:`, parseError); article.content = "<p style='color:red;'>Erreur rendu Markdown.</p>"; }
 
+            // Envoie toutes les données à la vue
             res.render('entry_detail', {
-                article: article, pageTitle: article.title, activePage: 'journal',
-                prevEntry: prevEntry || null, nextEntry: nextEntry || null,
+                article: article,
+                pageTitle: article.title,
+                activePage: 'journal',
+                prevEntry: prevEntry || null,
+                nextEntry: nextEntry || null,
                 comments: comments || [],
+                // Pour le feedback du formulaire de commentaire
                 messageSent: req.query.comment === 'success' ? true : (req.query.comment === 'error' ? false : null),
+                
+                // Variables OG pour le header
                 ogTitle: article.title,
                 ogDescription: ogDescription,
                 ogImage: absoluteOgImage,
@@ -633,7 +690,7 @@ app.get('/entree/:id', (req, res) => {
             });
 
         }).catch(promiseErr => {
-            console.error(`Erreur BDD (GET /entree/${id} promises):`, promiseErr);
+            console.error(`Erreur BDD (GET /entree/${id} tags/prev/next/comments):`, promiseErr);
             res.status(500).send("Erreur serveur lors de la récupération des données.");
         });
     });
@@ -641,55 +698,42 @@ app.get('/entree/:id', (req, res) => {
 
 // --- RECHERCHE (Page de Filtre Avancé) ---
 app.get('/search', (req, res) => {
-    const query = req.query.query || ''; // Terme de recherche textuelle
-    const tagId = parseInt(req.query.tag) || null; // ID du tag sélectionné
-    const sortOption = req.query.sort || 'date_desc'; // Option de tri
-
-    const lang = req.language === 'en' ? 'en' : 'fr'; // Langue actuelle
-    const message = req.session.flashMessage; // Message pop-up
+    const query = req.query.query || '';
+    const tagId = parseInt(req.query.tag) || null;
+    const sortOption = req.query.sort || 'date_desc';
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const message = req.session.flashMessage;
     req.session.flashMessage = null;
 
-    // 1. Récupérer TOUS les tags pour le menu déroulant du filtre
+    // 1. Récupérer TOUS les tags pour le menu déroulant
     const sqlAllTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
 
     db.all(sqlAllTags, [], (errTags, allTags) => {
-        if (errTags) {
-            console.error("Erreur BDD (GET /search tags):", errTags);
-            return res.status(500).send("Erreur serveur lors de la récupération des tags.");
-        }
+        if (errTags) { console.error("Erreur BDD (GET /search tags):", errTags); return res.status(500).send("Erreur serveur."); }
 
-        // 2. Si aucun filtre n'est appliqué, afficher la page vide (sans recherche)
+        // Si aucun filtre, page vide
         if (!query && !tagId) {
             return res.render('search_results', {
-                articles: [], // Pas de résultats à afficher
-                query: '',
-                currentTagId: null,
-                currentSort: sortOption,
-                allTags: allTags, // On passe la liste des tags pour le formulaire
-                pageTitle: req.t('page_titles.search'),
-                activePage: 'search',
-                message: message
+                articles: [], query: '', currentTagId: null, currentSort: sortOption,
+                allTags: allTags, pageTitle: req.t('page_titles.search'), activePage: 'search', message: message
             });
         }
 
-        // --- 3. Construction dynamique de la requête SQL de recherche ---
+        // 2. Construction de la requête SQL
         let sqlParams = [];
         let whereClauses = [];
 
-        // Ajoute le filtre de recherche textuelle
         if (query) {
             whereClauses.push('(a.title_fr LIKE ? OR a.title_en LIKE ? OR a.content_fr LIKE ? OR a.content_en LIKE ?)');
             const searchTerm = `%${query}%`;
             sqlParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
-
-        // Ajoute le filtre de tag
         if (tagId) {
+            // Jointure spécifique pour le filtre
             whereClauses.push('at_filter.tag_id = ?');
             sqlParams.push(tagId);
         }
 
-        // Clause de Tri
         let sortClause = 'ORDER BY a.publication_date DESC';
         switch (sortOption) {
             case 'date_asc': sortClause = 'ORDER BY a.publication_date ASC'; break;
@@ -703,24 +747,31 @@ app.get('/search', (req, res) => {
                 a.cover_image_url, a.publication_date,
                 GROUP_CONCAT(DISTINCT t.name_${lang}) as tags
             FROM articles a
-            LEFT JOIN article_tags at_display ON a.id = at_display.article_id -- Jointure pour afficher les tags
+            LEFT JOIN article_tags at_display ON a.id = at_display.article_id
             LEFT JOIN tags t ON at_display.tag_id = t.id
-            ${tagId ? 'JOIN article_tags at_filter ON a.id = at_filter.article_id' : ''} -- Jointure pour filtrer (si tagId existe)
+            ${tagId ? 'JOIN article_tags at_filter ON a.id = at_filter.article_id' : ''}
             WHERE ${whereClauses.join(' AND ')}
             GROUP BY a.id
             ${sortClause}
         `;
 
-        // --- 4. Exécuter la recherche ---
         db.all(sql, sqlParams, (err, rows) => {
             if (err) { console.error("Erreur BDD (GET /search execute):", err); return res.status(500).send("Erreur serveur."); }
 
             const articlesWithData = rows.map(article => {
                 const tagList = article.tags ? article.tags.split(',') : [];
-                let finalCoverImage = null;
-                if (article.cover_image_url) { finalCoverImage = article.cover_image_url; }
-                else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
-                const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
+                
+                let finalCoverImage = article.cover_image_url;
+                if (!finalCoverImage) {
+                    const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                    finalCoverImage = match ? match[1] : null;
+                }
+
+                // Nettoyage extrait
+                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+
                 return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
             });
 
@@ -744,29 +795,74 @@ app.get('/tags/:tagName', (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
     const message = req.session.flashMessage;
     req.session.flashMessage = null;
+
     const sqlFindTag = `SELECT id FROM tags WHERE name_${lang} = ?`;
+    
     db.get(sqlFindTag, [tagName], (errTag, tag) => {
         if (errTag) { console.error(`Erreur BDD (GET /tags/${tagName} findTag):`, errTag); return res.status(500).send("Erreur serveur."); }
-        if (!tag) { return res.render('journal', { articles: [], pageTitle: `Tag introuvable : "${tagName}"`, activePage: 'journal', currentPage: 1, totalPages: 0, currentTag: tagName, message: message }); }
+        if (!tag) {
+             return res.render('journal', { 
+                 articles: [], pageTitle: `Tag introuvable : "${tagName}"`, activePage: 'journal', 
+                 currentPage: 1, totalPages: 0, currentTag: tagName, message: message 
+             });
+        }
+        
         const tagId = tag.id;
-        const sqlEntries = `SELECT a.id, a.title_${lang} as title, a.content_${lang} as content, a.cover_image_url, a.publication_date, GROUP_CONCAT(t.name_${lang}) as tags FROM articles a JOIN article_tags at ON a.id = at.article_id LEFT JOIN article_tags at_all ON a.id = at_all.article_id LEFT JOIN tags t ON at_all.tag_id = t.id WHERE at.tag_id = ? GROUP BY a.id ORDER BY a.publication_date DESC LIMIT ? OFFSET ?`;
+        const sqlEntries = `
+            SELECT
+                a.id, a.title_${lang} as title, a.content_${lang} as content,
+                a.cover_image_url, a.publication_date,
+                GROUP_CONCAT(t.name_${lang}) as tags
+            FROM articles a
+            JOIN article_tags at ON a.id = at.article_id
+            LEFT JOIN article_tags at_all ON a.id = at_all.article_id
+            LEFT JOIN tags t ON at_all.tag_id = t.id
+            WHERE at.tag_id = ?
+            GROUP BY a.id
+            ORDER BY a.publication_date DESC
+            LIMIT ? OFFSET ?
+        `;
         const sqlCount = `SELECT COUNT(*) as totalCount FROM article_tags WHERE tag_id = ?`;
+        
         db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
             if (err) { console.error(`Erreur BDD (GET /tags/${tagName} entries):`, err); return res.status(500).send("Erreur serveur."); }
+            
             db.get(sqlCount, [tagId], (errCount, countResult) => {
                  if (errCount) { console.error(`Erreur BDD (GET /tags/${tagName} count):`, errCount); return res.status(500).send("Erreur serveur."); }
+                 
                  const totalEntries = countResult.totalCount;
                  const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+                 
                  const articlesWithData = rows.map(article => {
                      const tagList = article.tags ? article.tags.split(',') : [];
-                     let finalCoverImage = null;
-                     if (article.cover_image_url) { finalCoverImage = article.cover_image_url; } else { const match = article.content.match(/!\[.*?\]\((.*?)\)/); finalCoverImage = match ? match[1] : null; }
-                     const plainContent = article.content.replace(/!\[.*?\]\(.*?\)|[#*`~]|(\[.*?\]\(.*?\))/g, '');
+                     
+                     let finalCoverImage = article.cover_image_url;
+                     if (!finalCoverImage) {
+                         const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                         finalCoverImage = match ? match[1] : null;
+                     }
+
+                     // Nettoyage extrait
+                     let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                     textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                     const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+
                      return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: plainContent.substring(0, 350) };
                  });
-                 res.render('journal', { articles: articlesWithData, pageTitle: `Tag : "${tagName}"`, activePage: 'journal', currentPage: currentPage, totalPages: totalPages, currentTag: tagName, message: message });
+                 
+                 res.render('journal', {
+                     articles: articlesWithData,
+                     pageTitle: `Tag : "${tagName}"`,
+                     activePage: 'journal',
+                     currentPage: currentPage,
+                     totalPages: totalPages,
+                     currentTag: tagName,
+                     message: message,
+                     currentSort: null // Pas de tri sur cette page pour l'instant
+                 });
             });
         });
     });
