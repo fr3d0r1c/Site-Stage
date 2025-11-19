@@ -1,21 +1,23 @@
 // =================================================================
 // 1. IMPORTS (DÉPENDANCES)
 // =================================================================
-require('dotenv').config(); // Pour lire le .env (identifiants email, etc.)
+require('dotenv').config(); 
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
-const session = require('express-session'); // Pour la connexion admin
-const bcrypt = require('bcrypt'); // Pour hacher les mots de passe
-const multer = require('multer'); // Pour l'upload d'images
-const { marked } = require('marked'); // Version 4 de Marked
-const i18next = require('i18next'); // Pour la traduction
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+const multer = require('multer');
+const { marked } = require('marked'); 
+const i18next = require('i18next');
 const i18nextMiddleware = require('i18next-http-middleware');
 const FsBackend = require('i18next-fs-backend');
-const nodemailer = require('nodemailer'); // Pour envoyer les emails
-const crypto = require('crypto'); // Pour le token de reset password
-const path = require('path'); // Pour gérer les chemins de fichiers (ex: dossier views)
-const helmet = require('helmet'); // Pour la sécurité (CSP, etc.)
-const rateLimit = require('express-rate-limit'); // Pour la sécurité (anti-force brute)
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const sharp = require('sharp'); 
+const fs = require('fs');
 const deepl = require('deepl-node');
 
 // =================================================================
@@ -334,25 +336,17 @@ db.run(createCommentsTable, (err) => {
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
 // =================================================================
-/**
- * Traite et associe les tags à un article (version simplifiée).
- * Prend un tableau d'IDs de tags et les lie à l'article.
- * @param {number} articleId - L'ID de l'article à associer.
- * @param {number[]} tagIds - Un tableau d'IDs de tags (ex: [1, 2, 3]).
- */
 async function processTags(articleId, tagIds) {
-    // S'assure que tagIds est un tableau de nombres
-    const validIds = Array.isArray(tagIds) 
-        ? tagIds.map(id => parseInt(id)).filter(id => !isNaN(id)) 
+    const validIds = Array.isArray(tagIds)
+        ? tagIds.map(id => parseInt(id)).filter(id => !isNaN(id))
         : [];
-
-    // Utilisation de Promesses pour une meilleure gestion des appels BDD asynchrones
+    
     const deleteLinks = (artId) => new Promise((resolve, reject) => {
         db.run('DELETE FROM article_tags WHERE article_id = ?', [artId], (err) => err ? reject(err) : resolve());
     });
 
     const insertLinks = (artId, ids) => new Promise((resolve, reject) => {
-        if (ids.length === 0) return resolve(); // Ne fait rien si aucun tag n'est sélectionné
+        if (ids.length === 0) return resolve();
         const placeholders = ids.map(() => '(?, ?)').join(',');
         const values = ids.reduce((acc, tagId) => acc.concat([artId, tagId]), []);
         const sql = `INSERT INTO article_tags (article_id, tag_id) VALUES ${placeholders}`;
@@ -360,24 +354,15 @@ async function processTags(articleId, tagIds) {
     });
 
     try {
-        await deleteLinks(articleId); // Supprime les anciens liens
-        await insertLinks(articleId, validIds); // Ajoute les nouveaux liens
+        await deleteLinks(articleId);
+        await insertLinks(articleId, validIds);
     } catch (error) {
-         console.error(`Erreur dans processTags pour l'article ${articleId}:`, error);
-         throw error; // Relance l'erreur
+        console.error(`Erreur dans processTags pour l'article ${articleId}:`, error);
+        throw error;
     }
- }
+}
 
 
-/**
- * Envoie une notification par email à l'administrateur
- * lorsqu'un nouveau commentaire est posté.
- * @param {object} req - L'objet requête Express (pour host/protocol)
- * @param {number} articleId - L'ID de l'article commenté
- * @param {number} commentId - L'ID du nouveau commentaire
- * @param {string} authorName - Le nom de l'auteur du commentaire
- * @param {string} commentContent - Le contenu du commentaire
- */
 async function sendAdminNotification(req, articleId, commentId, authorName, commentContent) {
     // Vérifie si l'envoi d'email est configuré
     if (!transporter) {
@@ -1403,21 +1388,25 @@ app.post('/api/translate', isAuthenticated, async (req, res) => {
     if (!translator) {
         return res.status(503).json({ error: 'Service de traduction non disponible.' });
     }
+
     const textToTranslate = req.body.text;
     const targetLanguage = req.body.targetLang || 'en-GB';
-    if (!textToTranslate) {
-        return res.status(400).json({ error: 'Le champ "text" est manquant.' });
+
+
+    if (!textToTranslate || textToTranslate.trim() === '') {
+        return res.json({ translatedText: '' });
     }
+
     try {
         const result = await translator.translateText(textToTranslate, 'fr', targetLanguage);
         if (result && typeof result.text === 'string') {
-             res.json({ translatedText: result.text });
+            res.json({ translatedText: result.text });
         } else {
-             res.status(500).json({ error: 'Réponse invalide du service de traduction.' });
+            res.status(500).json({ error: 'Réponse invalide de DeepL.' });
         }
     } catch (error) {
         console.error("Erreur DeepL:", error);
-        res.status(500).json({ error: `Échec traduction: ${error.message || 'Erreur inconnue'}` });
+        res.status(500).json({ error: "Erreur lors de la traduction." });
     }
 });
 
