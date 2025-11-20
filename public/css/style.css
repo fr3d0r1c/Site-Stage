@@ -1215,3 +1215,41 @@ button[type="submit"] {
         text-align: left; /* Remet l'alignement à gauche sur mobile */
     }
 }
+
+/* --- MODE ZEN --- */
+body.zen-mode {
+    background-color: var(--c-surface);
+}
+
+body.zen-mode .site-header,
+body.zen-mode .site-footer,
+body.zen-mode .prev-next-nav,
+body.zen-mode .actions,
+body.zen-mode .tags-list,
+body.zen-mode hr,
+body.zen-mode nav,
+body.zen-mode .comments-section {
+    display: none !important;
+}
+
+body.zen-mode .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding-top: 4rem;
+}
+
+body.zen-mode .full-article {
+    border: none;
+    box-shadow: none;
+}
+
+/* Bouton flottant pour quitter */
+body.zen-mode #zen-mode-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 9999;
+    background-color: var(--c-primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}

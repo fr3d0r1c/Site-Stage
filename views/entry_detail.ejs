@@ -9,7 +9,13 @@
 <% } %>
 
 <article class="full-article">
-    <h1><%= article.title %></h1>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1><%= article.title %></h1>
+            <button id="zen-mode-btn" class="btn btn-secondary" title="Mode Lecture Zen" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-book-open"></i>
+            </button>
+    </div>
+    
     <small><%= t('journal.published_on') %>: <%= new Date(article.publication_date).toLocaleString(i18n.language) %></small>
 
     <% if (article.tags && article.tags.length > 0) { %>
