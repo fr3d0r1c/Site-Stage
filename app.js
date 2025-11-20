@@ -168,7 +168,8 @@ app.use(i18nextMiddleware.handle(i18next));
 
 // Middleware "maison" pour rendre 'username' disponible dans toutes les vues EJS
 app.use((req, res, next) => {
-    res.locals.username = req.session.username;
+    res.locals.message = req.session.flashMessage;
+    delete req.session.flashMessage; // Supprime le message après l'avoir passé
     next();
 });
 
@@ -1415,46 +1416,50 @@ app.post('/article/:id/comment', commentLimiter, (req, res) => {
     const articleId = req.params.id;
     const { author_name, content } = req.body;
 
-
-    // 1. Vérification Honeypot
+    // 1. Honeypot (Anti-bot)
     if (req.body.website_field && req.body.website_field !== '') {
         return res.redirect(`/entree/${articleId}`);
     }
 
-    // 2. Validation
+    // 2. Validation champs vides
     if (!author_name || !content || author_name.trim() === '' || content.trim() === '') {
         req.session.flashMessage = { type: 'error', text: 'Veuillez remplir tous les champs.' };
-        return res.redirect(`/entree/${articleId}`);
+        
+        return req.session.save(() => {
+            res.redirect(`/entree/${articleId}`);
+        });
     }
 
-    // --- 3. NOUVEAU : MODÉRATION AUTOMATIQUE ---
+    // 3. Modération Automatique (BAD-WORDS)
     if (filter.isProfane(content) || filter.isProfane(author_name)) {
         console.warn(`[Modération Auto] Rejeté : ${author_name}`);
-        
+
         req.session.flashMessage = {
             type: 'error',
             text: 'Votre commentaire a été rejeté car il contient un langage inapproprié.'
         };
 
-        return res.redirect(`/entree/${articleId}`);
+        return req.session.save(() => {
+            res.redirect(`/entree/${articleId}`);
+        });
     }
 
     // 4. Insertion BDD
     const sql = `INSERT INTO comments (article_id, author_name, content, is_approved) VALUES (?, ?, ?, 1)`;
 
     db.run(sql, [articleId, author_name, content], function(err) {
-        if (err) { 
+        if (err) {
             console.error("Erreur BDD Commentaire:", err);
-            req.session.flashMessage = { type: 'error', text: 'Erreur technique lors de l\'enregistrement.' };
-            return res.redirect(`/entree/${articleId}`);
+            req.session.flashMessage = { type: 'error', text: 'Erreur technique.' };
+            return req.session.save(() => res.redirect(`/entree/${articleId}`));
         }
 
-        // 4. Envoi notification admin (sans bloquer l'utilisateur)
         sendAdminNotification(req, articleId, this.lastID, author_name, content);
-        
+
         req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
-        req.session.save(function() {
-            res.redirect(`/entree/${articleId}`)
+
+        req.session.save(() => {
+            res.redirect(`/entree/${articleId}`);
         });
     });
 });
