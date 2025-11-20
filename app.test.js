@@ -1,7 +1,13 @@
 const request = require('supertest');
-// On importe 'app' et 'db' depuis notre fichier app.js
-// 'app' sera utilisée par supertest pour faire les requêtes
-// 'db' est nécessaire pour la BDD en mémoire et pour fermer la connexion
+
+const nodemailer = require('nodemailer');
+jest.mock('nodemailer');
+
+const sendMailMock = jest.fn().mockResolvedValue({ response: 'Email simulé envoyé' });
+nodemailer.createTransport.mockReturnValue({ 
+    sendMail: sendMailMock 
+});
+
 const { app, db } = require('./app');
 
 // On dit à Jest d'attendre la fin de la fermeture de la BDD avant de quitter
@@ -37,6 +43,21 @@ describe('Tests des routes publiques (GET)', () => {
   test('GET /page-inexistante - Doit répondre avec un statut 404 (Not Found)', async () => {
     const response = await request(app).get('/page-qui-n-existe-pas');
     expect(response.statusCode).toBe(404);
+  });
+
+  test('GET /profil/qui-suis-je - Doit répondre 200 OK', async () => {
+    const response = await request(app).get('/profil/qui-suis-je');
+    expect(response.statusCode).toBe(200);
+  });
+
+  test('GET /stage/l-entreprise - Doit répondre 200 OK', async () => {
+    const response = await request(app).get('/stage/l-entreprise');
+    expect(response.statusCode).toBe(200);
+  });
+
+  test('GET /?lng=en - Doit afficher le site en anglais', async () => {
+    const response = await request(app).get('/?lng=en');
+    expect(response.statusCode).toBe(200);
   });
 });
 
@@ -320,5 +341,55 @@ describe('Tests des routes admin (authentifié)', () => {
 
     expect(response.text).toContain('Article de Recherche A');
     expect(response.text).not.toContain('Article de Recherche B');
+  });
+});
+
+describe('Tests fonctionnels des Commentaires', () => {
+  let articleId;
+
+  beforeAll(async () => {
+    const creation = await new Promise((resolve, reject) => {
+      db.run("INSERT INTO articles (title_fr, title_en, content_fr, content_en, user_id) VALUES ('Art Com', 'Art Com', 'Contenu', 'Content', 1)", function(err) {
+        if (err) reject(err); else resolve(this.lastID);
+      });
+    });
+    articleId = creation;
+  });
+
+  test('POST /article/:id/comment - Accepte un commentaire valide', async () => {
+    const validComment = {
+      author_name: 'Testeur',
+      content: 'Ceci est un message très constructif et poli.'
+    };
+
+    const response = await request(app)
+      .post(`/article/${articleId}/comment`)
+      .send(validComment);
+
+    expect(response.statusCode).toBe(302);
+
+    const savedComment = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM comments WHERE content = ?', [validComment.content], (err, row) => err ? reject(err) : resolve(row));
+    });
+    expect(savedComment).toBeDefined();
+    expect(savedComment.is_approved).toBe(1); // Doit être auto-approuvé
+  });
+
+  test('POST /article/:id/comment - Rejette un commentaire vulgaire', async () => {
+    const badComment = {
+      author_name: 'Troll',
+      content: 'Ceci est un message de merde avec des insultes.' // Contient "merde"
+    };
+
+    const response = await request(app)
+      .post(`/article/${articleId}/comment`)
+      .send(badComment);
+
+    expect(response.statusCode).toBe(302);
+
+    const rejectedComment = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM comments WHERE content = ?', [badComment.content], (err, row) => err ? reject(err) : resolve(row));
+    });
+    expect(rejectedComment).toBeUndefined();
   });
 });
