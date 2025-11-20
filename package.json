@@ -23,6 +23,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.0",
     "express-session": "^1.18.2",
+    "french-badwords-list": "^1.0.7",
     "helmet": "^8.1.0",
     "i18next": "^25.6.0",
     "i18next-fs-backend": "^2.6.0",

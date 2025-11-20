@@ -20,6 +20,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const deepl = require('deepl-node');
 const Filter = require('bad-words');
+const frenchBadWordsList = require('french-badwords-list').array;
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -135,12 +136,9 @@ app.use(
 
 // --- CONFIGURATION MODÉRATEUR AUTO ---
 const filter = new Filter();
-const frenchBadWords = [
-    'merde', 'con', 'connard', 'salope', 'pute', 'enculé', 
-    'batard', 'putain', 'foutre', 'bordel', 'chiant', 'abruti', 'débile',
-    'bouffon', 'gueule', 'testbad' // 'testbad' pour tester sans être vulgaire
-];
-filter.addWords(...frenchBadWords);
+
+filter.addWords(...frenchBadWordsList);
+filter.addWords('testbad');
 
 // Servir les fichiers statiques (CSS, JS, images) depuis le dossier 'public'
 app.use(express.static('public'));
