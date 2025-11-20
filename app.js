@@ -21,6 +21,7 @@ const fs = require('fs');
 const deepl = require('deepl-node');
 const Filter = require('bad-words');
 const frenchBadWordsList = require('french-badwords-list').array;
+const SQLiteStore = require('connect-sqlite3')(session);
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -60,10 +61,22 @@ i18next
 // --- NODEMAILER CONFIGURATION ---
 let transporter = null;
 if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    transporter = nodemailer.createTransport({ /* ... (ta config nodemailer) ... */ });
-    console.log("Nodemailer configuré.");
+    transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+
+    console.log("✅ Nodemailer configuré avec succès.");
+
 } else {
-    console.warn("AVERTISSEMENT : Identifiants email manquants...");
+    console.warn("⚠️ AVERTISSEMENT : Identifiants email (EMAIL_USER, EMAIL_PASS) manquants dans .env.");
+    console.warn("   -> Les fonctionnalités suivantes seront désactivées :");
+    console.warn("      - Formulaire de contact");
+    console.warn("      - Réinitialisation de mot de passe");
+    console.warn("      - Notifications de commentaires");
 }
 
 // --- DEEPL INITIALIZATION --- (Vérifie bien ceci)
@@ -138,6 +151,8 @@ app.use(
 const filter = new Filter();
 
 filter.addWords(...frenchBadWordsList);
+
+// filter.addWords(...frenchBadWordsList);
 filter.addWords('testbad');
 
 // Servir les fichiers statiques (CSS, JS, images) depuis le dossier 'public'
@@ -150,26 +165,36 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Configuration du middleware de session (pour la connexion admin)
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(session({
-  secret: 'Z6*31121Mt', // À CHANGER
-  resave: false,
-  saveUninitialized: true,
-  cookie: { 
-      secure: process.env.NODE_ENV === 'production', // Mettre à true en production (si HTTPS)
-      httpOnly: true, // Le cookie n'est pas accessible en JS côté client
-      sameSite: 'strict'
+    store: new SQLiteStore({ 
+        db: 'sessions.db', 
+        dir: __dirname 
+    }),
+    secret: 'Z6*31121Mt',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'strict',
+        maxAge: 1000 * 60 * 60 * 24
     }
 }));
 
-// Middleware pour i18next (traduction)
-app.use(i18nextMiddleware.handle(i18next));
-
-// Middleware "maison" pour rendre 'username' disponible dans toutes les vues EJS
+// --- MIDDLEWARE GLOBAL POUR LES MESSAGES FLASH ---
 app.use((req, res, next) => {
+    res.locals.username = req.session.username;
+    res.locals.userId = req.session.userId;
+
     res.locals.message = req.session.flashMessage;
-    delete req.session.flashMessage; // Supprime le message après l'avoir passé
+    delete req.session.flashMessage;
     next();
 });
+
+// Middleware pour i18next (traduction)
+app.use(i18nextMiddleware.handle(i18next));
 
 // Middleware "maison" (garde) pour vérifier si l'utilisateur est authentifié
 function isAuthenticated(req, res, next) {
@@ -430,6 +455,10 @@ async function sendAdminNotification(req, articleId, commentId, authorName, comm
 
 // Page d'accueil
 app.get('/', (req, res) => {
+
+    console.log("GET / - Session ID reçue :", req.sessionID);
+    console.log("GET / - User ID dans la session :", req.session.userId);
+
     const lang = req.language === 'en' ? 'en' : 'fr';
 
     // Récupère les 3 derniers articles
@@ -955,10 +984,31 @@ app.post('/connexion', authLimiter, (req, res) => {
         bcrypt.compare(password, user.password, (errCompare, result) => {
             if (errCompare) { return res.render('login', { /* ... error: "Erreur serveur" ... */ }); }
             if (result) {
-                req.session.userId = user.id; req.session.username = user.username;
-                req.session.flashMessage = { type: 'success', text: `Bonjour, ${user.username} !` }; // Message de bienvenue
-                res.redirect('/');
-            } else { res.render('login', { pageTitle: req.t('page_titles.login'), error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true, activePage: 'admin', resetSuccess: false, message: null }); }
+                console.log("1. Mot de passe OK. Initialisation session...");
+                req.session.userId = user.id; 
+                req.session.username = user.username;
+                req.session.flashMessage = { type: 'success', text: `Bonjour, ${user.username} !` };
+
+                console.log("2. Session définie :", req.session);
+
+                req.session.save((err) => {
+                    if (err) {
+                        console.error("ERREUR SAUVEGARDE SESSION :", err);
+                    } else {
+                        console.log("3. Session sauvegardée avec succès. Redirection...");
+                        res.redirect('/');
+                    }
+                });
+            } else { 
+                res.render('login', { 
+                    pageTitle: req.t('page_titles.login'), 
+                    error: "Nom d'utilisateur ou mot de passe incorrect.", 
+                    adminExists: true, 
+                    activePage: 'admin', 
+                    resetSuccess: false, 
+                    message: null 
+                }); 
+            }
         });
     });
 });

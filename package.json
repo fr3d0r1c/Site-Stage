@@ -16,6 +16,7 @@
     "axios": "^1.12.2",
     "bad-words": "^3.0.4",
     "bcrypt": "^6.0.0",
+    "connect-sqlite3": "^0.9.16",
     "cors": "^2.8.5",
     "deepl-node": "^1.20.0",
     "dotenv": "^17.2.3",
