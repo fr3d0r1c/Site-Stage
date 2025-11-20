@@ -1,0 +1,22 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page" style="max-width: 400px; margin: 0 auto;">
+    <h1>🔐 Vérification</h1>
+    <p>Veuillez entrer le code à 6 chiffres de votre application d'authentification.</p>
+
+    <%# Gestion des erreurs pour le Toastify (swal-handler.js) %>
+    <% if (locals.error) { %>
+        <p class="error-message" style="display: none;"><%= error %></p>
+    <% } %>
+
+    <form action="/connexion/2fa" method="POST">
+        <div class="form-group">
+            <input type="text" name="token" placeholder="000000" required autofocus autocomplete="one-time-code" 
+                   style="text-align: center; letter-spacing: 5px; font-size: 1.5rem; padding: 10px;">
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">Valider</button>
+    </form>
+    <p style="margin-top: 1rem; text-align: center;"><a href="/connexion">Retour</a></p>
+</div>
+
+<%- include('partials/footer') %>

@@ -22,6 +22,8 @@ const deepl = require('deepl-node');
 const Filter = require('bad-words');
 const frenchBadWordsList = require('french-badwords-list').array;
 const SQLiteStore = require('connect-sqlite3')(session);
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -311,7 +313,7 @@ db.run(createArticleTable, (err) => {
     if (err) console.error("Erreur création table articles:", err);
 });
 
-// Création de la table 'users' (avec email et reset token)
+// Création de la table 'users'
 const createUserTable = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -319,7 +321,10 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   email TEXT UNIQUE,
   reset_token TEXT,
-  reset_token_expires INTEGER
+  reset_token_expires INTEGER,
+  two_fa_secret TEXT,
+  two_fa_enabled INTEGER DEFAULT 0,
+  two_fa_prompted INTEGER DEFAULT 0
 );
 `;
 db.run(createUserTable, (err) => {
@@ -1026,39 +1031,138 @@ app.get('/connexion', (req, res) => {
 // Traite la tentative de connexion
 app.post('/connexion', authLimiter, (req, res) => {
     const { username, password } = req.body;
+
+    // 1. On cherche l'utilisateur
     const sql = 'SELECT * FROM users WHERE username = ?';
+
     db.get(sql, [username], (err, user) => {
-        if (err) { console.error("Erreur BDD (POST /connexion findUser):", err); return res.status(500).send("Erreur serveur."); }
-        if (!user) { return res.render('login', { pageTitle: req.t('page_titles.login'), error: "Nom d'utilisateur ou mot de passe incorrect.", adminExists: true, activePage: 'admin', resetSuccess: false, message: null }); }
+        if (err) {
+            console.error("Erreur BDD (POST /connexion):", err);
+            // En cas d'erreur technique, on affiche une erreur générique sur la page de login
+            return res.render('login', { 
+                pageTitle: req.t('page_titles.login'), 
+                error: "Erreur serveur lors de la connexion.", 
+                adminExists: true, activePage: 'admin', resetSuccess: false, message: null 
+            });
+        }
+
+        // 2. Utilisateur introuvable
+        if (!user) { 
+            return res.render('login', { 
+                pageTitle: req.t('page_titles.login'), 
+                error: "Nom d'utilisateur ou mot de passe incorrect.", 
+                adminExists: true, activePage: 'admin', resetSuccess: false, message: null 
+            }); 
+        }
+
+        // 3. Vérification du mot de passe
         bcrypt.compare(password, user.password, (errCompare, result) => {
-            if (errCompare) { return res.render('login', { /* ... error: "Erreur serveur" ... */ }); }
+            if (errCompare) { 
+                console.error("Erreur bcrypt:", errCompare);
+                return res.render('login', { /* ... erreur technique ... */ }); 
+            }
+
+            // --- SUCCÈS : MOT DE PASSE CORRECT ---
             if (result) {
-                console.log("1. Mot de passe OK. Initialisation session...");
-                req.session.userId = user.id; 
+                // ============================================================
+                // CAS 1 : La 2FA est ACTIVÉE (Priorité Absolue)
+                // ============================================================
+                if (user.two_fa_enabled === 1) {
+                    console.log(`Connexion 2FA requise pour ${user.username}`);
+
+                    // On ne connecte PAS encore complètement (pas de userId dans la session)
+                    // On stocke juste l'ID temporaire pour la page de vérification
+                    req.session.tempUserId = user.id;
+
+                    // On sauvegarde et on redirige vers le formulaire du CODE
+                    return req.session.save((errSave) => {
+                        if (errSave) console.error("Erreur save session 2FA:", errSave);
+                        res.redirect('/connexion/2fa');
+                    });
+                }
+
+                // ============================================================
+                // Si on arrive ici, c'est que la 2FA n'est PAS active.
+                // On peut donc connecter l'utilisateur.
+                // ============================================================
+
+                req.session.userId = user.id;
                 req.session.username = user.username;
+
+                // ============================================================
+                // CAS 2 : ONBOARDING (Jamais demandé d'activer la 2FA)
+                // ============================================================
+                if (user.two_fa_prompted === 0) {
+                    console.log(`Premier login (ou reset) pour ${user.username} -> Onboarding 2FA`);
+
+                    // On redirige vers la page de proposition "Voulez-vous sécuriser ?"
+                    return req.session.save((errSave) => {
+                        if (errSave) console.error("Erreur save session onboarding:", errSave);
+                        res.redirect('/admin/2fa/choice');
+                    });
+                }
+
+                // ============================================================
+                // CAS 3 : CONNEXION STANDARD (Classique)
+                // ============================================================
+                console.log(`Connexion standard réussie pour ${user.username}`);
+
                 req.session.flashMessage = { type: 'success', text: `Bonjour, ${user.username} !` };
 
-                console.log("2. Session définie :", req.session);
-
-                req.session.save((err) => {
-                    if (err) {
-                        console.error("ERREUR SAUVEGARDE SESSION :", err);
-                    } else {
-                        console.log("3. Session sauvegardée avec succès. Redirection...");
-                        res.redirect('/');
-                    }
+                req.session.save((errSave) => {
+                    if (errSave) console.error("Erreur save session standard:", errSave);
+                    res.redirect('/');
                 });
-            } else { 
+            } else {
+                // --- ÉCHEC : MOT DE PASSE INCORRECT ---
                 res.render('login', { 
                     pageTitle: req.t('page_titles.login'), 
                     error: "Nom d'utilisateur ou mot de passe incorrect.", 
-                    adminExists: true, 
-                    activePage: 'admin', 
-                    resetSuccess: false, 
-                    message: null 
-                }); 
+                    adminExists: true, activePage: 'admin', resetSuccess: false, message: null 
+                });
             }
         });
+    });
+});
+
+// Affiche le formulaire du code 2FA
+app.get('/connexion/2fa', (req, res) => {
+    if (!req.session.tempUserId) return res.redirect('/connexion'); // Sécurité
+    res.render('login-2fa', { pageTitle: 'Vérification 2FA', activePage: 'admin', error: null });
+});
+
+// Vérifie le code 2FA final pour connecter
+app.post('/connexion/2fa', authLimiter, (req, res) => {
+    const { token } = req.body;
+    const userId = req.session.tempUserId; // ID temporaire stocké à l'étape précédente
+
+    if (!userId) return res.redirect('/connexion');
+
+    db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
+        const verified = speakeasy.totp.verify({
+            secret: user.two_fa_secret,
+            encoding: 'base32',
+            token: token
+        });
+
+        if (verified) {
+            // SUCCÈS !
+            req.session.userId = user.id;
+            req.session.username = user.username;
+            delete req.session.tempUserId;
+
+            req.session.flashMessage = { type: 'success', text: `Connexion sécurisée réussie !` };
+            // SAUVEGARDE AVANT REDIRECTION (Très important ici)
+            req.session.save(() => res.redirect('/'));
+        } else {
+            // ERREUR : On ré-affiche la page avec l'erreur
+            // Ici on n'utilise pas flashMessage car on ne redirige pas, on fait un render
+            res.render('login-2fa', {
+                pageTitle: 'Vérification 2FA',
+                activePage: 'admin',
+                error: 'Code incorrect.'
+            });
+        }
     });
 });
 
@@ -1221,6 +1325,128 @@ app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
             });
         });
      });
+});
+
+// --- GESTION DOUBLE AUTHENTIFICATION (2FA) ---
+
+app.get('/admin/2fa', isAuthenticated, (req, res) => {
+    const userId = req.session.userId;
+
+    db.get('SELECT two_fa_enabled FROM users WHERE id = ?', [userId], (err, user) => {
+        if (err) return res.status(500).send('Erreur BDD');
+
+        res.render('admin-2fa', { 
+            pageTitle: 'Sécurité 2FA', 
+            activePage: 'admin', 
+            step: user.two_fa_enabled ? 'enabled' : 'disabled', // 'enabled' ou 'disabled'
+            qrCodeUrl: null, 
+            secret: null 
+        });
+    });
+});
+
+app.get('/admin/2fa/choice', isAuthenticated, (req, res) => {
+    res.render('admin-2fa-choice', {
+        pageTitle: 'Sécuriser votre compte',
+        activePage: 'admin'
+    });
+});
+
+// Traite le refus ("Plus tard")
+app.post('/admin/2fa/skip', isAuthenticated, (req, res) => {
+    const userId = req.session.userId;
+    // On note qu'on a posé la question (prompted = 1)
+    db.run('UPDATE users SET two_fa_prompted = 1 WHERE id = ?', [userId], (err) => {
+        req.session.flashMessage = { type: 'info', text: 'Vous pourrez activer la 2FA plus tard dans l\'administration.' };
+        res.redirect('/');
+    });
+});
+
+app.post('/admin/2fa/accept', isAuthenticated, (req, res) => {
+    res.redirect('/admin/2fa/setup-start'); // On va créer cette petite route helper juste après
+});
+
+app.get('/admin/2fa/setup-start', isAuthenticated, (req, res) => {
+    const userId = req.session.userId;
+    const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
+
+    db.run('UPDATE users SET two_fa_secret = ?, two_fa_prompted = 1 WHERE id = ?', [secret.base32, userId], (err) => {
+        if (err) {
+            console.error("Erreur setup 2FA:", err);
+            return res.status(500).send('Erreur serveur');
+        }
+
+        QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
+            res.render('admin-2fa', { 
+                pageTitle: 'Configuration 2FA', 
+                activePage: 'admin', 
+                step: 'setup',
+                qrCodeUrl: data_url, 
+                secret: secret.base32 
+            });
+        });
+    });
+});
+
+// 2. Lancer la configuration (Générer QR Code)
+app.post('/admin/2fa/setup', isAuthenticated, (req, res) => {
+    const userId = req.session.userId;
+    const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
+
+    // On sauvegarde le secret mais ON NE L'ACTIVE PAS ENCORE (enabled = 0)
+    db.run('UPDATE users SET two_fa_secret = ? WHERE id = ?', [secret.base32, userId], (err) => {
+        if (err) return res.status(500).send('Erreur sauvegarde secret');
+
+        QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
+            // On affiche la page en mode "setup"
+            res.render('admin-2fa', { 
+                pageTitle: 'Configuration 2FA', 
+                activePage: 'admin',
+                step: 'setup', // Mode configuration
+                qrCodeUrl: data_url, 
+                secret: secret.base32 
+            });
+        });
+    });
+});
+
+// 3. Valider et Activer (Vérification du code)
+app.post('/admin/2fa/enable', isAuthenticated, (req, res) => {
+    const { token } = req.body;
+    const userId = req.session.userId;
+
+    db.get('SELECT two_fa_secret FROM users WHERE id = ?', [userId], (err, user) => {
+        const verified = speakeasy.totp.verify({
+            secret: user.two_fa_secret,
+            encoding: 'base32',
+            token: token
+        });
+
+        if (verified) {
+            // Le code est bon, on active pour de bon
+            db.run('UPDATE users SET two_fa_enabled = 1 WHERE id = ?', [userId], (err) => {
+                req.session.flashMessage = { type: 'success', text: 'Double authentification activée avec succès !' };
+                
+                // --- MODIFICATION ICI ---
+                // On sauvegarde la session et on redirige vers l'ACCUEIL au lieu de /admin/2fa
+                req.session.save(() => res.redirect('/'));
+                // ------------------------
+            });
+        } else {
+            req.session.flashMessage = { type: 'error', text: 'Code incorrect. Recommencez la configuration.' };
+            // En cas d'erreur, on reste sur la page de config pour qu'il puisse réessayer
+            req.session.save(() => res.redirect('/admin/2fa'));
+        }
+    });
+});
+
+// 4. Désactiver le 2FA
+app.post('/admin/2fa/disable', isAuthenticated, (req, res) => {
+    db.run('UPDATE users SET two_fa_enabled = 0, two_fa_secret = NULL WHERE id = ?', [req.session.userId], (err) => {
+        req.session.flashMessage = { type: 'success', text: 'Double authentification désactivée.' };
+        // SAUVEGARDE AVANT REDIRECTION
+        req.session.save(() => res.redirect('/admin/2fa'));
+    });
 });
 
 // --- API UPLOAD IMAGE (pour EasyMDE) ---

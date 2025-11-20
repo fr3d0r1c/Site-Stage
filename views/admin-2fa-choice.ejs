@@ -1,0 +1,28 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page" style="max-width: 600px; margin: 0 auto; text-align: center;">
+    <i class="fas fa-shield-alt fa-4x" style="color: var(--c-primary); margin-bottom: 1.5rem;"></i>
+
+    <h1>Sécurisez votre compte</h1>
+
+    <p style="font-size: 1.1rem; margin-bottom: 2rem;">
+        Nous vous recommandons d'activer l'authentification à deux facteurs (2FA).
+        Cela protège votre journal en demandant un code depuis votre téléphone à chaque connexion.
+    </p>
+
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <form action="/admin/2fa/accept" method="POST">
+            <button type="submit" class="btn" style="padding: 15px 30px; font-size: 1.1rem;">
+                <i class="fas fa-check-circle"></i> Activer la sécurité (Recommandé)
+            </button>
+        </form>
+
+        <form action="/admin/2fa/skip" method="POST">
+            <button type="submit" class="btn btn-secondary" style="padding: 15px 30px; font-size: 1.1rem;">
+                Plus tard
+            </button>
+        </form>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

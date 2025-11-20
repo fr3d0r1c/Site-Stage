@@ -1,0 +1,67 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page" style="max-width: 600px; margin: 0 auto;">
+    <h1>Sécurité : Double Authentification (2FA)</h1>
+
+    <% if (locals.message) { %>
+        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
+           style="display: none;" 
+           data-detail="<%= message.detail || '' %>">
+           <%= message.text %>
+        </p>
+    <% } %>
+
+    <hr>
+
+    <% if (step === 'enabled') { %>
+        <div style="text-align: center; padding: 2rem; background-color: rgba(46, 204, 113, 0.1); border: 1px solid #2ecc71; border-radius: 8px;">
+            <i class="fas fa-shield-check fa-4x" style="color: #2ecc71; margin-bottom: 1rem;"></i>
+            <h2 style="color: #27ae60; margin-top: 0;">Protection Active</h2>
+            <p>Votre compte est sécurisé. Un code temporaire vous sera demandé à chaque connexion.</p>
+
+            <form action="/admin/2fa/disable" method="POST" data-confirm="Voulez-vous vraiment désactiver la sécurité 2FA ? Votre compte sera moins protégé.">
+                <button type="submit" class="btn btn-danger">Désactiver la 2FA</button>
+            </form>
+        </div>
+
+    <% } else if (step === 'setup') { %>
+        <div style="text-align: center;">
+            <h2>Configuration</h2>
+            <p>1. Scannez ce QR Code avec votre application (Google Authenticator, Authy...).</p>
+
+            <div style="background: white; display: inline-block; padding: 15px; border-radius: 8px; margin: 1rem 0; border: 1px solid #ddd;">
+                <img src="<%= qrCodeUrl %>" alt="QR Code 2FA">
+            </div>
+            <p><small style="color: var(--c-text-light);">Clé secrète : <code><%= secret %></code></small></p>
+
+            <p>2. Entrez le code à 6 chiffres affiché par l'application pour valider.</p>
+
+            <form action="/admin/2fa/enable" method="POST" style="max-width: 300px; margin: 0 auto;">
+                <div class="form-group">
+                    <input type="text" name="token" placeholder="000 000" required pattern="[0-9]*"
+                        style="text-align: center; letter-spacing: 5px; font-size: 1.5rem; padding: 10px;">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <a href="/admin/2fa" class="btn btn-secondary">Annuler</a>
+                    <button type="submit" class="btn">Activer</button>
+                </div>
+            </form>
+        </div>
+    <% } else { %>
+        <div style="text-align: center; padding: 2rem; border: 1px dashed var(--c-border); border-radius: 8px;">
+            <i class="fas fa-shield-alt fa-3x" style="color: var(--c-text-light); margin-bottom: 1rem;"></i>
+            <h2>La 2FA n'est pas activée</h2>
+            <p>Nous vous recommandons d'activer l'authentification à deux facteurs pour protéger l'accès à votre journal.</p>
+            <p>Cela ajoutera une étape de sécurité lors de votre connexion.</p>
+
+            <form action="/admin/2fa/setup" method="POST">
+                <button type="submit" class="btn">Configurer la 2FA</button>
+            </form>
+        </div>
+    <% } %>
+
+    <hr>
+    <nav style="text-align: center;"><a href="/admin">Retour au Tableau de Bord</a></nav>
+</div>
+
+<%- include('partials/footer') %>
