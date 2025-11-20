@@ -126,6 +126,7 @@ app.use(
           "data:", // Images encodées (ex: data:image/png;...)
           "https://via.placeholder.com", // Images d'exemple
           "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // SVG des drapeaux
+          "https:"
         ],
         fontSrc: [
             "'self'",
