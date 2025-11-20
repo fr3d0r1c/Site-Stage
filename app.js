@@ -840,6 +840,55 @@ app.get('/search', (req, res) => {
     });
 });
 
+// --- API RECHERCHE LIVE (JSON) ---
+app.get('/api/search', async (req, res) => {
+    const query = req.query.q;
+    const lang = req.language === 'en' ? 'en' : 'fr'; // Utilise la langue détectée
+
+    // Si la recherche est vide, on renvoie une liste vide
+    if (!query || query.trim() === '') {
+        return res.json([]);
+    }
+
+    const searchTerm = `%${query}%`;
+
+    // Requête simplifiée pour la recherche rapide (Titre ou Contenu)
+    const sql = `
+        SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date
+        FROM articles
+        WHERE title_fr LIKE ? OR title_en LIKE ? OR content_fr LIKE ? OR content_en LIKE ?
+        ORDER BY publication_date DESC
+        LIMIT 10
+    `;
+
+    db.all(sql, [searchTerm, searchTerm, searchTerm, searchTerm], (err, rows) => {
+        if (err) {
+            console.error("Erreur API Search:", err);
+            return res.status(500).json({ error: "Erreur serveur" });
+        }
+
+        // On prépare les données pour le frontend (nettoyage du markdown, formatage date)
+        const results = rows.map(article => {
+            // Nettoyage du contenu pour l'extrait
+            let text = article.content
+                .replace(/!\[.*?\]\(.*?\)/g, '') // Enlève images
+                .replace(/^#\s+.*(\r\n|\n|\r)?/, '') // Enlève titre H1
+                .replace(/[#*`~_]/g, '') // Enlève symboles
+                .trim();
+
+            return {
+                id: article.id,
+                title: article.title,
+                date: new Date(article.publication_date).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR'),
+                excerpt: text.substring(0, 150) + '...',
+                image: article.cover_image_url
+            };
+        });
+
+        res.json(results);
+    });
+});
+
 // --- FILTRAGE PAR TAG ---
 app.get('/tags/:tagName', (req, res) => {
     const tagName = req.params.tagName;

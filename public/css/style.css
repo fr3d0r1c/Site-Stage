@@ -1253,3 +1253,30 @@ body.zen-mode #zen-mode-btn {
     color: white;
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
+
+/*
+=========================================
+--- 25. Preloader de Recherche (Local) ---
+=========================================
+*/
+
+.search-loader {
+    text-align: center;
+    padding: 2rem 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--c-text-light);
+}
+
+.small-spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--c-border);
+    border-top-color: var(--c-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 0.5rem;
+}

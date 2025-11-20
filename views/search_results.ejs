@@ -1,6 +1,7 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <h1><%= t('page_titles.search') %></h1>
+<p>Utilisez les filtres ci-dessous pour affiner votre recherche.</p>
 
 <form action="/search" method="GET" class="filter-form">
     <div class="form-row">
@@ -8,7 +9,7 @@
             <label for="query">Recherche textuelle :</label>
             <input type="search" name="query" id="query" value="<%= query %>" placeholder="Mot-clé...">
         </div>
-        
+
         <div class="form-group">
             <label for="tag">Filtrer par tag :</label>
             <select name="tag" id="tag">
@@ -22,7 +23,7 @@
                 <% } %>
             </select>
         </div>
-        
+
         <div class="form-group">
             <label for="sort-select">Trier par :</label>
             <select name="sort" id="sort-select">
@@ -33,82 +34,88 @@
             </select>
         </div>
     </div>
-    
+
     <button type="submit" class="filter-submit-btn">Filtrer</button>
 </form>
 <hr>
 
-<%# --- NOUVELLE LOGIQUE D'AFFICHAGE --- %>
-<%# On vérifie si une recherche a été activement lancée (soit un texte, soit un tag) %>
+<%# On affiche le titre seulement si une recherche est active %>
 <% if (query || currentTagId) { %>
-
     <h2>Résultats</h2>
+<% } %>
 
-    <%# Affiche les messages flash (si un redirect vient d'une action) %>
-    <% if (locals.message) { %>
-        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
+<div id="search-loader" class="search-loader" style="display: none;">
+    <div class="spinner small-spinner"></div>
+    <p>Recherche en cours...</p>
+</div>
+
+
+<%# Affiche les messages flash (si un redirect vient d'une action) %>
+<% if (locals.message) { %>
+    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>"
         style="display: none;"
         data-detail="<%= message.detail || '' %>">
-            <%= message.text %>
-        </p>
-    <% } %>
-    
-    <%# Vérifie s'il y a des articles à afficher %>
-    <% if (articles.length > 0) { %>
-        <p><%= t('search.results_count') %> : <%= articles.length %></p>
-        <div class="entries-grid">
-            
-            <% articles.forEach(entry => { %>
-                <article class="entry-card">
-                    <% if (entry.coverImage) { %>
-                        <a href="/entree/<%= entry.id %>" class="card-image-link">
-                            <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
-                        </a>
-                    <% } %>
-                    <div class="card-body">
-                        <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
-                        <small><%= t('journal.published_on') %>: <%= new Date(entry.publication_date).toLocaleString(i18n.language) %></small>
-                        
-                        <% if (entry.tags && entry.tags.length > 0) { %>
-                            <div class="tags-list">
-                                <% entry.tags.forEach(tag => { %>
-                                    <a href="/tags/<%= tag %>" class="tag-item"><%= tag %></a>
-                                <% }); %>
-                            </div>
-                        <% } %>
-                        
-                        <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
-                        
-                        <% if (locals.username) { %>
-                            <div class="actions">
-                                <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
-                                <form action="/entree/<%= entry.id %>/delete" method="POST" 
-                                      data-confirm="<%= t('admin_page.delete_confirm') %>"
-                                      style="display: inline;">
-                                    <button type="submit"><%= t('journal.delete') %></button>
-                                </form>
-                            </div>
-                        <% } %>
-                    </div>
-                </article>
-            <% }); %>
-            
-        </div>
-    <% } else { %>
-        <%# Affiche "Aucun résultat" si la recherche n'a rien donné %>
-        <p><%= t('search.no_results') %> "<%= query %>".</p>
-    <% } %>
-
-<% } else { %>
-    <%# Affiche ce message si la page est chargée sans recherche (état initial) %>
-    <p>Veuillez lancer une recherche ou appliquer un filtre pour voir les résultats.</p>
+        <%= message.text %>
+    </p>
 <% } %>
-<%# --- FIN DE LA NOUVELLE LOGIQUE D'AFFICHAGE --- %>
 
+<div class="entries-grid">
 
+    <%# Cas 1: Il y a des résultats venant du serveur (recherche classique) %>
+    <% if (articles && articles.length > 0) { %>
+        <p style="width: 100%; margin-bottom: 1rem;"><%= t('search.results_count') %> : <%= articles.length %></p>
+
+        <% articles.forEach(entry => { %>
+            <article class="entry-card">
+                <% if (entry.coverImage) { %>
+                    <a href="/entree/<%= entry.id %>" class="card-image-link">
+                        <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
+                    </a>
+                <% } %>
+                <div class="card-body">
+                    <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
+                    <small><%= t('journal.published_on') %>: <%= new Date(entry.publication_date).toLocaleString(i18n.language) %></small>
+
+                    <% if (entry.tags && entry.tags.length > 0) { %>
+                        <div class="tags-list">
+                            <% entry.tags.forEach(tag => { %>
+                                <a href="/tags/<%= tag %>" class="tag-item"><%= tag %></a>
+                            <% }); %>
+                        </div>
+                    <% } %>
+
+                    <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
+
+                    <% if (locals.username) { %>
+                        <div class="actions">
+                            <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
+                            <form action="/entree/<%= entry.id %>/delete" method="POST" 
+                                  data-confirm="<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>"
+                                  style="display: inline;">
+                                <button type="submit"><%= t('journal.delete') %></button>
+                            </form>
+                        </div>
+                    <% } %>
+                </div>
+            </article>
+        <% }); %>
+
+    <%# Cas 2: Pas de résultats, mais une recherche a été faite %>
+    <% } else if (query || currentTagId) { %>
+        <p><%= t('search.no_results') %> "<%= query %>".</p>
+
+    <%# Cas 3: État initial (pas de recherche) %>
+    <% } else { %>
+        <p><i>Veuillez lancer une recherche ou appliquer un filtre pour voir les résultats.</i></p>
+    <% } %>
+
+</div>
 <hr>
+
 <nav>
     <a href="/journal"><%= t('journal.back_to_journal') %></a>
 </nav>
+
+<script src="/js/live-search.js"></script>
 
 <%- include('partials/footer') %>
