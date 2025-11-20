@@ -1,0 +1,67 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <h1>Tableau de Bord du Stage</h1>
+    
+    <div class="dashboard-cards" style="display: flex; gap: 1rem; margin-bottom: 3rem; justify-content: center;">
+        <div class="stat-card">
+            <div class="stat-number"><%= globalData.totalEntries %></div>
+            <div class="stat-label">Entrées</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number"><%= globalData.totalComments %></div>
+            <div class="stat-label">Commentaires</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number"><%= globalData.totalTags %></div>
+            <div class="stat-label">Tags utilisés</div>
+        </div>
+    </div>
+
+    <hr>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
+        
+        <div>
+            <h2 style="text-align: center;">Suivi Hebdomadaire</h2>
+            <div style="height: 300px;">
+                <canvas id="weeklyChart" data-stats='<%- JSON.stringify(weeklyData || []) %>'></canvas>
+            </div>
+        </div>
+
+        <div>
+            <h2 style="text-align: center;">Suivi Mensuel</h2>
+            <div style="height: 300px;">
+                <canvas id="monthlyChart" data-stats='<%- JSON.stringify(monthlyData || []) %>'></canvas>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <h2 style="text-align: center;">Répartition par Sujets (Tags)</h2>
+    <div style="height: 400px; max-width: 600px; margin: 0 auto;">
+        <canvas id="tagsChart" data-stats='<%- JSON.stringify(tagData || []) %>'></canvas>
+    </div>
+
+</div>
+
+<style>
+    .stat-card {
+        background: var(--c-background);
+        border: 1px solid var(--c-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        flex: 1;
+        min-width: 150px;
+    }
+    .stat-number { font-size: 2.5rem; font-weight: bold; color: var(--c-primary); }
+    .stat-label { color: var(--c-text-light); text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+    @media (max-width: 768px) { .dashboard-cards, div[style*="grid-template-columns"] { flex-direction: column; grid-template-columns: 1fr !important; } }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/js/dashboard-charts.js"></script>
+
+<%- include('partials/footer') %>

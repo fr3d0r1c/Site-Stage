@@ -138,11 +138,10 @@ describe('Tests des routes admin (authentifié)', () => {
   });
 
   // Test 7 (corrigé): L'agent connecté peut accéder à la page admin
-  test('GET /admin - Doit répondre avec un statut 200 (OK)', async () => {
+  test('GET /admin - Doit rediriger vers /admin/dashboard', async () => {
     const response = await agent.get('/admin');
-    expect(response.statusCode).toBe(200);
-    // On vérifie le titre h1 encodé en HTML
-    expect(response.text).toContain("Panneau d&#39;Administration"); 
+    expect(response.statusCode).toBe(302); // Redirection
+    expect(response.headers.location).toBe('/admin/dashboard');
   });
 
   // Test 8: L'agent connecté peut accéder à la page de création d'article

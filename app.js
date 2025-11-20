@@ -109,6 +109,7 @@ app.use(
           "https://cdn.jsdelivr.net/npm/marked/marked.min.js", // CDN Marked.js
           "https://unpkg.com/easymde/dist/easymde.min.js", // CDN EasyMDE JS
           "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js", // CDN SweetAlert2 JS
+          "https://cdn.jsdelivr.net/"
         ],
         styleSrc: [
           "'self'",
@@ -550,11 +551,9 @@ app.get('/contact', (req, res) => {
     });
 });
 
+// --- REDIRECTION RACINE ADMIN ---
 app.get('/admin', isAuthenticated, (req, res) => {
-    res.render('admin', {
-        pageTitle: req.t('admin_page.title'),
-        activePage: 'admin'
-    });
+    res.redirect('/admin/dashboard');
 });
 
 // Page de tout le journal (avec pagination, tags et tri)
@@ -1717,6 +1716,64 @@ app.post('/admin/tags/delete/:id', isAuthenticated, (req, res) => {
         res.redirect('/admin/tags');
     })
 })
+
+// --- TABLEAU DE BORD COMPLET (Statistiques) ---
+app.get('/admin/dashboard', isAuthenticated, (req, res) => {
+    
+    // 1. Stats par SEMAINE (Numéro de semaine)
+    const sqlWeekly = `
+        SELECT strftime('%Y-W%W', publication_date) as period, COUNT(*) as count
+        FROM articles
+        GROUP BY period
+        ORDER BY period ASC
+    `;
+
+    // 2. Stats par MOIS (Année-Mois)
+    const sqlMonthly = `
+        SELECT strftime('%Y-%m', publication_date) as period, COUNT(*) as count
+        FROM articles
+        GROUP BY period
+        ORDER BY period ASC
+    `;
+
+    // 3. Stats par TAG (Pour le dashboard final/global)
+    const sqlTags = `
+        SELECT t.name_fr as label, COUNT(at.article_id) as count 
+        FROM tags t 
+        JOIN article_tags at ON t.id = at.tag_id 
+        GROUP BY t.id
+    `;
+
+    // 4. Stats GLOBALES (Totaux)
+    const sqlGlobal = `
+        SELECT 
+            COUNT(*) as totalEntries,
+            (SELECT COUNT(*) FROM comments) as totalComments,
+            (SELECT COUNT(*) FROM tags) as totalTags
+        FROM articles
+    `;
+
+    Promise.all([
+        new Promise((resolve, reject) => db.all(sqlWeekly, [], (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.all(sqlMonthly, [], (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.all(sqlTags, [], (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.get(sqlGlobal, [], (err, row) => err ? reject(err) : resolve(row)))
+    ]).then(([weeklyData, monthlyData, tagData, globalData]) => {
+        
+        res.render('dashboard', {
+            pageTitle: "Tableau de Bord",
+            activePage: 'admin',
+            weeklyData,
+            monthlyData,
+            tagData,
+            globalData
+        });
+
+    }).catch(err => {
+        console.error("Erreur Dashboard:", err);
+        res.status(500).send("Erreur lors de la génération du tableau de bord.");
+    });
+});
 
 // =================================================================
 // 7. EXPORT DE L'APPLICATION (pour les tests)
