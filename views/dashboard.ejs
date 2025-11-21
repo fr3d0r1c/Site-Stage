@@ -1,16 +1,16 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <div class="static-page">
-    <h1>Tableau de Bord du Stage</h1>
+    <h1><%= t('dashboard.title') %></h1>
     
     <div class="dashboard-cards" style="display: flex; gap: 1rem; margin-bottom: 3rem; justify-content: center;">
         <div class="stat-card">
             <div class="stat-number"><%= globalData.totalEntries %></div>
-            <div class="stat-label">Entrées</div>
+            <div class="stat-label"><%= t('dashboard.stat_entries') %></div>
         </div>
         <div class="stat-card">
             <div class="stat-number"><%= globalData.totalComments %></div>
-            <div class="stat-label">Commentaires</div>
+            <div class="stat-label"><%= t('dashboard.stat_comments') %></div>
         </div>
         <div class="stat-card">
             <div class="stat-number"><%= globalData.totalTags %></div>
@@ -23,7 +23,7 @@
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
         
         <div>
-            <h2 style="text-align: center;">Suivi Hebdomadaire</h2>
+            <h2 style="text-align: center;"><%= t('dashboard.weekly_title') %></h2>
             <div style="height: 300px;">
                 <canvas id="weeklyChart" data-stats='<%- JSON.stringify(weeklyData || []) %>'></canvas>
             </div>

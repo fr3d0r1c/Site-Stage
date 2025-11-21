@@ -195,5 +195,62 @@
     "pending_moderation": "Your comment is awaiting moderation.",
     "no_comments": "No comments yet. Be the first to react!",
     "anonymous": "Anonymous"
+  },
+  "dashboard": {
+    "title": "Internship Dashboard",
+    "stat_entries": "Entries",
+    "stat_comments": "Comments",
+    "stat_tags": "Tags Used",
+    "weekly_title": "Weekly Progress",
+    "monthly_title": "Monthly Progress",
+    "tags_chart_title": "Topic Distribution (Tags)",
+    "chart_weekly_label": "Entries per week",
+    "chart_monthly_label": "Monthly progress",
+    "chart_tags_label": "Articles by Tag",
+    "backup_db": "Backup DB",
+    "download_pdf": "Download PDF"
+  },
+  "security": {
+    "2fa_main_title": "Security: Two-Factor Authentication (2FA)",
+    "2fa_enabled_title": "2FA is ENABLED",
+    "2fa_enabled_desc": "Your account is secure. A code will be requested at each login.",
+    "2fa_disable_btn": "Disable 2FA",
+    "2fa_confirm_disable": "Are you sure you want to disable 2FA security?",
+    "2fa_config_title": "Configuration",
+    "2fa_step1": "1. Scan this QR Code with your authenticator app (Google Authenticator, Authy...).",
+    "2fa_secret": "Secret Key:",
+    "2fa_step2": "2. Enter the 6-digit code displayed by the app to validate.",
+    "2fa_code_label": "Verification Code (6 digits):",
+    "2fa_enable_btn": "Enable",
+    "2fa_cancel_btn": "Cancel",
+    "2fa_disabled_title": "2FA is not enabled",
+    "2fa_disabled_desc": "We recommend enabling two-factor authentication to protect access to your log.",
+    "2fa_configure_btn": "Configure 2FA",
+    "verify_title": "🔐 Verification",
+    "verify_desc": "Please enter the 6-digit code from your authenticator app.",
+    "validate_btn": "Validate",
+    "onboarding_title": "Secure your account",
+    "onboarding_desc": "We recommend enabling two-factor authentication (2FA). This protects your log by asking for a code from your phone at each login.",
+    "onboarding_accept": "Enable Security (Recommended)",
+    "onboarding_skip": "Later",
+    "audit_title": "🕵️‍♂️ Audit Log (Security)",
+    "audit_intro": "History of the last 100 critical actions on the site.",
+    "audit_col_date": "Date",
+    "audit_col_user": "User",
+    "audit_col_action": "Action",
+    "audit_col_details": "Details",
+    "audit_col_ip": "IP",
+    "audit_empty": "No logs recorded.",
+    "back_dashboard": "Back to Dashboard",
+    "back_login": "Back to Login"
+  },
+  "map_page": {
+    "title": "Location of my Path",
+    "intro": "Here are the different places where I studied and worked."
+  },
+  "pdf": {
+    "main_title": "Internship Log -",
+    "published": "Published on",
+    "tags": "Tags:"
   }
 }

@@ -197,5 +197,62 @@
     "pending_moderation": "Votre commentaire est en attente de modération.",
     "no_comments": "Il n'y a pas encore de commentaires. Soyez le premier à réagir !",
     "anonymous": "Anonyme"
+  },
+  "dashboard": {
+    "title": "Tableau de Bord du Stage",
+    "stat_entries": "Entrées",
+    "stat_comments": "Commentaires",
+    "stat_tags": "Tags utilisés",
+    "weekly_title": "Suivi Hebdomadaire",
+    "monthly_title": "Suivi Mensuel",
+    "tags_chart_title": "Répartition par Sujets (Tags)",
+    "chart_weekly_label": "Entrées par semaine",
+    "chart_monthly_label": "Progression mensuelle",
+    "chart_tags_label": "Articles par Tag",
+    "backup_db": "Sauvegarder BDD",
+    "download_pdf": "Télécharger en PDF"
+  },
+  "security": {
+    "2fa_main_title": "Sécurité : Double Authentification (2FA)",
+    "2fa_enabled_title": "La 2FA est ACTIVÉE",
+    "2fa_enabled_desc": "Votre compte est sécurisé. Un code sera demandé à chaque connexion.",
+    "2fa_disable_btn": "Désactiver la 2FA",
+    "2fa_confirm_disable": "Voulez-vous vraiment désactiver la sécurité 2FA ?",
+    "2fa_config_title": "Configuration",
+    "2fa_step1": "1. Scannez ce QR Code avec votre application (Google Authenticator, Authy...).",
+    "2fa_secret": "Clé secrète :",
+    "2fa_step2": "2. Entrez le code à 6 chiffres affiché par l'application pour valider.",
+    "2fa_code_label": "Code de vérification (6 chiffres) :",
+    "2fa_enable_btn": "Activer",
+    "2fa_cancel_btn": "Annuler",
+    "2fa_disabled_title": "La 2FA n'est pas activée",
+    "2fa_disabled_desc": "Nous vous recommandons d'activer l'authentification à deux facteurs pour protéger l'accès à votre journal.",
+    "2fa_configure_btn": "Configurer la 2FA",
+    "verify_title": "🔐 Vérification",
+    "verify_desc": "Veuillez entrer le code à 6 chiffres de votre application d'authentification.",
+    "validate_btn": "Valider",
+    "onboarding_title": "Sécurisez votre compte",
+    "onboarding_desc": "Nous vous recommandons d'activer l'authentification à deux facteurs (2FA). Cela protège votre journal en demandant un code depuis votre téléphone à chaque connexion.",
+    "onboarding_accept": "Activer la sécurité (Recommandé)",
+    "onboarding_skip": "Plus tard",
+    "audit_title": "🕵️‍♂️ Journal d'Audit (Sécurité)",
+    "audit_intro": "Historique des 100 dernières actions critiques sur le site.",
+    "audit_col_date": "Date",
+    "audit_col_user": "Utilisateur",
+    "audit_col_action": "Action",
+    "audit_col_details": "Détails",
+    "audit_col_ip": "IP",
+    "audit_empty": "Aucun log enregistré.",
+    "back_dashboard": "Retour au Tableau de Bord",
+    "back_login": "Retour à la connexion"
+  },
+  "map_page": {
+    "title": "Localisation de mon Parcours",
+    "intro": "Voici les différents lieux où j'ai étudié et travaillé."
+  },
+  "pdf": {
+    "main_title": "Carnet de Stage -",
+    "published": "Publié le",
+    "tags": "Tags :"
   }
 }
