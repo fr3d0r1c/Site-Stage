@@ -1,20 +1,34 @@
-</div> <footer class="site-footer">
-        <div class="theme-switcher">
-            <span><%= t('themes.label') %> :</span>
-            <button data-theme="system"><%= t('themes.system') %></button>
-            <button data-theme="light"><%= t('themes.light') %></button>
-            <button data-theme="dark"><%= t('themes.dark') %></button>
-            <button data-theme="sepia"><%= t('themes.sepia') %></button>
-        </div>
+</div>
+<footer class="site-footer">
+    <div class="theme-switcher">
+        <span class="theme-label"><%= t('themes.label') %> :</span>
 
-        <p>
-            <a href="/"><%= t('nav.home') %></a> |
-            <a href="/profil"><%= t('nav.profile') %></a> |
-            <a href="/stage"><%= t('nav.internship') %></a> |
-            <a href="/journal"><%= t('nav.journal') %></a> |
-            <a href="/contact"><%= t('page_titles.contact') %></a>
-        </p>
-    </footer>
+        <button data-theme="system" title="<%= t('themes.system') %>" aria-label="<%= t('themes.system') %>">
+            <i class="fas fa-desktop"></i>
+        </button>
+
+        <button data-theme="light" title="<%= t('themes.light') %>" aria-label="<%= t('themes.light') %>">
+            <i class="fas fa-sun"></i>
+        </button>
+
+        <button data-theme="dark" title="<%= t('themes.dark') %>" aria-label="<%= t('themes.dark') %>">
+            <i class="fas fa-moon"></i>
+        </button>
+
+        <button data-theme="sepia" title="<%= t('themes.sepia') %>" aria-label="<%= t('themes.sepia') %>">
+            <i class="fas fa-coffee"></i>
+        </button>
+    </div>
+
+    <p>&copy; <%= new Date().getFullYear() %> Frederic Alleron. <%= t('footer.rights') %></p>
+    <ul class="footer-links">
+        <li><a href="/"><%= t('nav.home') %></a></li>
+        <li><a href="/profil/qui-suis-je"><%= t('nav.profile') %></a></li>
+        <li><a href="/stage/l-entreprise"><%= t('nav.internship') %></a></li>
+        <li><a href="/journal"><%= t('nav.journal') %></a></li>
+        <li><a href="/contact"><%= t('page_titles.contact') %></a></li>
+    </ul>
+</footer>
 
     <script src="/js/main.js"></script>
     <script src="/js/theme-switcher.js"></script>

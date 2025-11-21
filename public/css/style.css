@@ -437,15 +437,76 @@ button[type="submit"] {
 --- 8. Footer ---
 =========================================
 */
+
 .site-footer {
-    text-align: center; padding: 3rem 1rem; margin-top: 3rem;
-    background-color: var(--c-surface); color: var(--c-gray);
+    text-align: center;
+    padding: 3rem 1rem;
+    margin-top: 4rem; /* Un peu plus d'espace avant le footer */
+    background-color: var(--c-surface);
+    color: var(--c-gray);
     border-top: 1px solid var(--c-border);
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
-.site-footer p { margin: 0.5rem 0; font-size: 0.9rem; }
-.site-footer a { color: var(--c-text-light); text-decoration: none; }
-.site-footer a:hover { color: var(--c-primary); text-decoration: none; }
+
+/* Style du copyright */
+.site-footer p {
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* --- Nouveaux liens du footer --- */
+.footer-links {
+    list-style: none; /* Enlève les puces */
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: center; /* Centre les liens */
+    flex-wrap: wrap; /* Permet de passer à la ligne sur mobile */
+    gap: 2rem; /* Espace généreux entre les liens */
+}
+
+.footer-links li {
+    display: inline-block;
+}
+
+.footer-links a {
+    color: var(--c-text-light);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: color 0.2s ease;
+    position: relative;
+}
+
+/* Petit effet au survol : changement de couleur */
+.footer-links a:hover {
+    color: var(--c-primary);
+    text-decoration: none; /* Pas de soulignement classique */
+}
+
+/* Optionnel : Petit point ou soulignement animé au survol */
+.footer-links a::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -4px;
+    left: 0;
+    background-color: var(--c-primary);
+    transition: width 0.3s ease;
+}
+.footer-links a:hover::after {
+    width: 100%;
+}
+
+/* Responsive : Sur petit mobile, on peut réduire l'espacement */
+@media (max-width: 480px) {
+    .footer-links {
+        gap: 1rem;
+        flex-direction: column; /* Empile les liens verticalement sur très petits écrans */
+    }
+}
 
 /*
 =========================================
@@ -533,16 +594,47 @@ button[type="submit"] {
 --- 12. Sélecteur de Thème ---
 =========================================
 */
-.theme-switcher { margin-bottom: 1.5rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem; }
-.theme-switcher span { margin-right: 0.5rem; font-size: 0.9rem; color: var(--c-gray); }
-.theme-switcher button {
-    background: none; border: 1px solid var(--c-border); color: var(--c-text-light);
-    padding: 5px 12px; border-radius: 99px; font-size: 0.8rem; cursor: pointer;
-    transition: all 0.2s ease;
+
+.theme-switcher {
+    margin-bottom: 2rem; /* Plus d'espace avec le reste */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.8rem;
 }
+
+.theme-switcher .theme-label {
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--c-text-light);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.theme-switcher button {
+    background: transparent;
+    border: 2px solid var(--c-border); /* Bordure subtile */
+    color: var(--c-text-light);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%; /* Cercle parfait */
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    /* Centrage de l'icône */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0; /* Annule le padding des boutons globaux */
+}
+
 .theme-switcher button:hover {
-    background: var(--c-background); color: var(--c-text); border-color: var(--c-text-light);
-    transform: none; opacity: 1;
+    background: var(--c-background);
+    color: var(--c-primary);
+    border-color: var(--c-primary);
+    transform: translateY(-2px);
 }
 
 /*
@@ -579,18 +671,32 @@ button[type="submit"] {
 .tags-label-container {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    gap: 10px; /* Espace entre le label et le bouton */
+    margin-bottom: 10px;
 }
+
 .tags-label-container label { margin-bottom: 0; }
 .add-tag-btn {
-    background-color: var(--c-primary); color: var(--c-white); border: none;
-    border-radius: 50%; cursor: pointer; font-weight: bold; font-size: 1rem;
-    width: 24px; height: 24px; display: inline-flex; justify-content: center;
-    align-items: center; line-height: 1; padding: 0; transform: none;
-    transition: all 0.2s ease;
+    background-color: var(--c-primary); /* Cyan */
+    color: var(--c-button-text); /* Texte blanc/noir */
+    border: none;
+    border-radius: 50%; /* Cercle parfait */
+    width: 30px;
+    height: 30px;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    padding: 0; /* Important pour centrer le + */
 }
-.add-tag-btn:hover { transform: scale(1.1); opacity: 0.9; }
+.add-tag-btn:hover {
+    transform: scale(1.1); /* Petit effet de zoom au survol */
+    opacity: 0.9;
+}
+
 .tags-checkbox-list {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 0.75rem; padding: 1rem; border: 1px solid var(--c-border);
@@ -1279,4 +1385,49 @@ body.zen-mode #zen-mode-btn {
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin-bottom: 0.5rem;
+}
+
+
+/*
+=========================================
+--- Styles des Boutons d'Action (Créer/Annuler) ---
+=========================================
+*/
+
+/* Style commun pour tous les boutons (pilule) */
+.btn {
+    display: inline-block;
+    padding: 10px 24px;
+    border-radius: 50px; /* Forme pilule */
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1rem;
+    cursor: pointer;
+    text-align: center;
+    border: 2px solid transparent; /* Pour l'alignement */
+    transition: all 0.3s ease;
+}
+
+/* Bouton Principal (Créer/Modifier) - Cyan */
+#submit-button, button[type="submit"] {
+    background-color: var(--c-primary);
+    color: var(--c-button-text);
+    border-color: var(--c-primary);
+}
+#submit-button:hover, button[type="submit"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Bouton Secondaire (Annuler) - Gris/Transparent */
+.btn-secondary {
+    background-color: transparent;
+    color: var(--c-text-light);
+    border-color: var(--c-border); /* Bordure grise fine */
+    margin-left: 10px; /* Espace avec le bouton principal */
+}
+.btn-secondary:hover {
+    background-color: var(--c-border); /* Fond gris léger au survol */
+    color: var(--c-text);
+    text-decoration: none;
 }

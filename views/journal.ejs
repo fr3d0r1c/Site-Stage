@@ -1,28 +1,36 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <h1><%= t('nav.journal') %></h1>
-<nav>
-    <% if (locals.username) { %>
-        <a href="/journal/nouvelle"><%= t('journal.add_entry') %></a> |
-    <% } %>
-    <a href="/"><%= t('nav.home') %></a>
-</nav>
 
-<div class="sort-container">
-    <form action="/journal" method="GET" id="sort-form">
-        <label for="sort-select">Trier par :</label>
-        <select name="sort" id="sort-select">
-            <option value="date_desc" <%= currentSort === 'date_desc' ? 'selected' : '' %>>Date (Plus récent)</option>
-            <option value="date_asc" <%= currentSort === 'date_asc' ? 'selected' : '' %>>Date (Plus ancien)</option>
-            <option value="alpha_asc" <%= currentSort === 'alpha_asc' ? 'selected' : '' %>>Titre (A-Z)</option>
-            <option value="alpha_desc" <%= currentSort === 'alpha_desc' ? 'selected' : '' %>>Titre (Z-A)</option>
-            <option value="tag_asc" <%= currentSort === 'tag_asc' ? 'selected' : '' %>>Tag (A-Z)</option>
-            <option value="tag_desc" <%= currentSort === 'tag_desc' ? 'selected' : '' %>>Tag (Z-A)</option>
-        </select>
-        <% if (typeof currentTag !== 'undefined' && currentTag) { %>
-            <input type="hidden" name="tag" value="<%= currentTag %>">
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem;">
+    <div class="journal-actions" style="display: flex; gap: 0.5rem;">
+        <% if (locals.username) { %>
+            <a href="/journal/nouvelle" class="btn">
+                <i class="fas fa-plus-circle"></i> <%= t('journal.add_entry') %>
+            </a>
         <% } %>
-    </form>
+        <a href="/" class="btn btn-secondary">
+            <i class="fas fa-home"></i> <%= t('nav.home') %>
+        </a>
+    </div>
+
+    <div class="sort-container" style="margin: 0;">
+        <form action="/journal" method="GET" id="sort-form" style="display: flex; align-items: center; gap: 0.5rem;">
+            <label for="sort-select" style="margin-bottom: 0; color: var(--c-text-light);"><i class="fas fa-sort"></i> Trier par :</label>
+            <select name="sort" id="sort-select" style="width: auto; padding: 8px 12px;">
+                <option value="date_desc" <%= currentSort === 'date_desc' ? 'selected' : '' %>>Date (Plus récent)</option>
+                <option value="date_asc" <%= currentSort === 'date_asc' ? 'selected' : '' %>>Date (Plus ancien)</option>
+                <option value="alpha_asc" <%= currentSort === 'alpha_asc' ? 'selected' : '' %>>Titre (A-Z)</option>
+                <option value="alpha_desc" <%= currentSort === 'alpha_desc' ? 'selected' : '' %>>Titre (Z-A)</option>
+                <option value="tag_asc" <%= currentSort === 'tag_asc' ? 'selected' : '' %>>Tag (A-Z)</option>
+                <option value="tag_desc" <%= currentSort === 'tag_desc' ? 'selected' : '' %>>Tag (Z-A)</option>
+            </select>
+            <% if (typeof currentTag !== 'undefined' && currentTag) { %>
+                <input type="hidden" name="tag" value="<%= currentTag %>">
+            <% } %>
+        </form>
+    </div>
+
 </div>
 <hr>
 

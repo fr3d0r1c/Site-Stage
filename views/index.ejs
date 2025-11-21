@@ -11,12 +11,17 @@
 <h1><%= t('homepage.title') %></h1>
 <p><%= t('homepage.welcome') %></p>
 
-<nav>
+<div style="display: flex; gap: 1rem; margin: 1.5rem 0;">
     <% if (locals.username) { %>
-        <a href="/journal/nouvelle"><%= t('journal.add_entry') %></a> |
+        <a href="/journal/nouvelle" class="btn">
+            <i class="fas fa-plus-circle"></i> <%= t('journal.add_entry') %>
+        </a>
     <% } %>
-    <a href="/journal"><%= t('journal.view_all') %></a>
-</nav>
+    
+    <a href="/journal" class="btn btn-secondary">
+        <i class="fas fa-list"></i> <%= t('journal.view_all') %>
+    </a>
+</div>
 
 <hr>
 <h2><%= t('general.latest_entries') %></h2>

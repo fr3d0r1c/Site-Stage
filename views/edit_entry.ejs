@@ -62,7 +62,7 @@
     <div>
         <div class="tags-label-container">
             <label>Tags :</label>
-            <button type="button" id="open-tag-modal-btn" class="add-tag-btn" title="<%= t('admin_page.add_new_tag_title') %>">+</button>
+            <button type="button" id="open-tag-modal-btn" class="add-tag-btn" title="Ajouter un tag">+</button>
         </div>
         <div class="tags-checkbox-list">
             <% if (allTags && allTags.length > 0) { %>
@@ -84,9 +84,16 @@
         </div>
     </div>
 
-    <div>
-        <button type="submit" id="submit-button"><%= t('forms.update_entry') %></button>
-        <a href="/journal" class="btn btn-secondary" data-confirm="Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues."><%= t('general.cancel') %></a>
+    <div style="margin-top: 2rem;">
+        <button type="submit" id="submit-button" class="btn">
+            <%= t('forms.update_entry') %>
+        </button>
+
+        <a href="/journal"
+            class="btn btn-secondary"
+            data-confirm="<%= t('general.cancel_confirm', 'Êtes-vous sûr de vouloir annuler ?') %>">
+            <%= t('general.cancel') %>
+        </a>
     </div>
 </form>
 

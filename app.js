@@ -2136,8 +2136,26 @@ app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
             console.error("Erreur génération PDF:", pdfError);
             res.status(500).send("Erreur lors de la génération du PDF.");
         }
-    })
-})
+    });
+});
+
+// --- SAUVEGARDE BASE DE DONNÉES (Backup) ---
+app.get('/admin/backup', isAuthenticated, (req, res) => {
+    const dbFile = path.join(__dirname, 'blog.db');
+    const date = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const filename = `backup-blog-${date}.db`;
+
+    res.download(dbFile, filename, (err) => {
+        if (err) {
+            console.error("Erreur lors du téléchargement du backup:", err);
+            // Si le téléchargement échoue (ex: fichier introuvable), on essaie d'afficher une erreur
+            if (!res.headersSent) {
+                res.status(500).send("Erreur : Impossible de télécharger la base de données.");
+            }
+        }
+    });
+});
+
 
 // =================================================================
 // 7. EXPORT DE L'APPLICATION (pour les tests)
