@@ -498,9 +498,9 @@ function logAction(req, action, details = '') {
 // 6. ROUTES (Le Cœur de l'Application)
 // =================================================================
 
-// --- PAGES PUBLIQUES (LECTURE) ---
+// --- Routes Publiques (Lecture & Navigation) ---
 
-// Page d'accueil
+// Accueil
 app.get('/', (req, res) => {
 
     console.log("GET / - Session ID reçue :", req.sessionID);
@@ -568,7 +568,7 @@ app.get('/', (req, res) => {
     });
 });
 
-// Pages statiques
+// Pages Statiques (Profil & Stage)
 app.get('/profil/qui-suis-je', (req, res) => {
     res.render('whoami', { pageTitle: 'Qui suis-je ?', activePage: 'profil' });
 });
@@ -578,7 +578,6 @@ app.get('/profil/parcours-scolaire', (req, res) => {
 app.get('/profil/parcours-pro', (req, res) => {
     res.render('work', { pageTitle: 'Parcours Professionnel', activePage: 'profil' });
 });
-
 app.get('/stage/l-entreprise', (req, res) => {
     res.render('company', { pageTitle: "L'entreprise", activePage: 'stage' });
 });
@@ -586,23 +585,7 @@ app.get('/stage/mes-missions', (req, res) => {
     res.render('missions', { pageTitle: 'Mes Missions', activePage: 'stage' });
 });
 
-app.get('/contact', (req, res) => {
-    res.render('contact', {
-        pageTitle: req.t('page_titles.contact'),
-        activePage: 'contact',
-        messageSent: null,
-        ogTitle: req.t('page_titles.contact'),
-        ogDescription: req.t('contact.intro'),
-        ogImage: null
-    });
-});
-
-// --- REDIRECTION RACINE ADMIN ---
-app.get('/admin', isAuthenticated, (req, res) => {
-    res.redirect('/admin/dashboard');
-});
-
-// Page de tout le journal (avec pagination, tags et tri)
+// Journal & Articles
 app.get('/journal', (req, res) => {
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -689,8 +672,6 @@ app.get('/journal', (req, res) => {
         });
     });
 });
-
-// Page de détail d'une entrée (avec tags, parsing, nav, commentaires, et SEO)
 app.get('/entree/:id', (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { return res.status(400).send("ID d'entrée invalide."); }
@@ -784,8 +765,97 @@ app.get('/entree/:id', (req, res) => {
         });
     });
 });
+app.get('/tags/:tagName', (req, res) => {
+    const tagName = req.params.tagName;
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const currentPage = parseInt(req.query.page) || 1;
+    const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-// --- RECHERCHE (Page de Filtre Avancé) ---
+    const message = req.session.flashMessage;
+    req.session.flashMessage = null;
+
+    const sqlFindTag = `SELECT id FROM tags WHERE name_${lang} = ?`;
+    
+    db.get(sqlFindTag, [tagName], (errTag, tag) => {
+        if (errTag) { console.error(`Erreur BDD (GET /tags/${tagName} findTag):`, errTag); return res.status(500).send("Erreur serveur."); }
+        if (!tag) {
+            return res.render('journal', { 
+                articles: [], pageTitle: `Tag introuvable : "${tagName}"`, activePage: 'journal', 
+                currentPage: 1, totalPages: 0, currentTag: tagName, message: message 
+            });
+        }
+        
+        const tagId = tag.id;
+        const sqlEntries = `
+            SELECT
+                a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
+                a.cover_image_url, a.publication_date,
+                GROUP_CONCAT(t.name_${lang}) as tags
+            FROM articles a
+            JOIN article_tags at ON a.id = at.article_id
+            LEFT JOIN article_tags at_all ON a.id = at_all.article_id
+            LEFT JOIN tags t ON at_all.tag_id = t.id
+            WHERE at.tag_id = ?
+            GROUP BY a.id
+            ORDER BY a.publication_date DESC
+            LIMIT ? OFFSET ?
+        `;
+        const sqlCount = `SELECT COUNT(*) as totalCount FROM article_tags WHERE tag_id = ?`;
+        
+        db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
+            if (err) { console.error(`Erreur BDD (GET /tags/${tagName} entries):`, err); return res.status(500).send("Erreur serveur."); }
+            
+            db.get(sqlCount, [tagId], (errCount, countResult) => {
+                if (errCount) { console.error(`Erreur BDD (GET /tags/${tagName} count):`, errCount); return res.status(500).send("Erreur serveur."); }
+                 
+                const totalEntries = countResult.totalCount;
+                const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+                 
+                const articlesWithData = rows.map(article => {
+                    const tagList = article.tags ? article.tags.split(',') : [];
+                     
+                    let finalCoverImage = article.cover_image_url;
+                    if (!finalCoverImage) {
+                        const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                        finalCoverImage = match ? match[1] : null;
+                    }
+                     
+                    let excerpt = "";
+
+                    if (article.summary) {
+                        excerpt = article.summary;
+                    }
+                    else {
+                        let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                        textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                        const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+                        excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
+                    }
+                    
+                    return { 
+                        ...article, 
+                        tags: tagList, 
+                        coverImage: finalCoverImage, 
+                        excerpt: plainContent.substring(0, 350) 
+                    };
+                });
+                 
+                res.render('journal', {
+                    articles: articlesWithData,
+                    pageTitle: `Tag : "${tagName}"`,
+                    activePage: 'journal',
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    currentTag: tagName,
+                    message: message,
+                    currentSort: null // Pas de tri sur cette page pour l'instant
+                });
+            });
+        });
+    });
+});
+
+// Recherche
 app.get('/search', (req, res) => {
     const query = req.query.query || '';
     const tagId = parseInt(req.query.tag) || null;
@@ -885,147 +955,40 @@ app.get('/search', (req, res) => {
     });
 });
 
-// --- API RECHERCHE LIVE (JSON) ---
-app.get('/api/search', async (req, res) => {
-    const query = req.query.q;
-    const lang = req.language === 'en' ? 'en' : 'fr'; // Utilise la langue détectée
-
-    // Si la recherche est vide, on renvoie une liste vide
-    if (!query || query.trim() === '') {
-        return res.json([]);
+// Contact
+app.get('/contact', (req, res) => {
+    res.render('contact', {
+        pageTitle: req.t('page_titles.contact'),
+        activePage: 'contact',
+        messageSent: null,
+        ogTitle: req.t('page_titles.contact'),
+        ogDescription: req.t('contact.intro'),
+        ogImage: null
+    });
+});
+app.post('/contact', contactLimiter, (req, res) => {
+    // 1. Vérification Honeypot
+    if (req.body.website_field && req.body.website_field !== '') {
+        console.warn("Honeypot (contact) déclenché ! Rejet silencieux.");
+        return res.render('contact', { pageTitle: req.t('page_titles.contact'), activePage: 'contact', messageSent: true }); // Faux succès
     }
-
-    const searchTerm = `%${query}%`;
-
-    // Requête simplifiée pour la recherche rapide (Titre ou Contenu)
-    const sql = `
-        SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date
-        FROM articles
-        WHERE title_fr LIKE ? OR title_en LIKE ? OR content_fr LIKE ? OR content_en LIKE ?
-        ORDER BY publication_date DESC
-        LIMIT 10
-    `;
-
-    db.all(sql, [searchTerm, searchTerm, searchTerm, searchTerm], (err, rows) => {
-        if (err) {
-            console.error("Erreur API Search:", err);
-            return res.status(500).json({ error: "Erreur serveur" });
-        }
-
-        // On prépare les données pour le frontend (nettoyage du markdown, formatage date)
-        const results = rows.map(article => {
-            // Nettoyage du contenu pour l'extrait
-            let text = article.content
-                .replace(/!\[.*?\]\(.*?\)/g, '') // Enlève images
-                .replace(/^#\s+.*(\r\n|\n|\r)?/, '') // Enlève titre H1
-                .replace(/[#*`~_]/g, '') // Enlève symboles
-                .trim();
-
-            return {
-                id: article.id,
-                title: article.title,
-                date: new Date(article.publication_date).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR'),
-                excerpt: text.substring(0, 150) + '...',
-                image: article.cover_image_url
-            };
-        });
-
-        res.json(results);
+    // 2. Vérification Nodemailer
+    if (!transporter) { return res.status(503).render('contact', { /* ... error: 'Service email non dispo' ... */ }); }
+    // 3. Validation champs
+    const { name, email, message } = req.body;
+    if (!name || !email || !message || !email.includes('@')) { return res.status(400).render('contact', { /* ... error: 'Champs invalides' ... */ }); }
+    // 4. Préparation email
+    const mailOptions = { /* ... (détails email) ... */ };
+    // 5. Envoi email
+    transporter.sendMail(mailOptions, (error, info) => {
+        let messageStatus = null;
+        if (error) { console.error("Erreur envoi email:", error); messageStatus = false; }
+        else { console.log('Email contact envoyé: ' + info.response); messageStatus = true; }
+        res.render('contact', { pageTitle: req.t('page_titles.contact'), activePage: 'contact', messageSent: messageStatus, error: !messageStatus ? req.t('contact.error_message') : null });
     });
 });
 
-// --- FILTRAGE PAR TAG ---
-app.get('/tags/:tagName', (req, res) => {
-    const tagName = req.params.tagName;
-    const lang = req.language === 'en' ? 'en' : 'fr';
-    const currentPage = parseInt(req.query.page) || 1;
-    const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-
-    const message = req.session.flashMessage;
-    req.session.flashMessage = null;
-
-    const sqlFindTag = `SELECT id FROM tags WHERE name_${lang} = ?`;
-    
-    db.get(sqlFindTag, [tagName], (errTag, tag) => {
-        if (errTag) { console.error(`Erreur BDD (GET /tags/${tagName} findTag):`, errTag); return res.status(500).send("Erreur serveur."); }
-        if (!tag) {
-            return res.render('journal', { 
-                articles: [], pageTitle: `Tag introuvable : "${tagName}"`, activePage: 'journal', 
-                currentPage: 1, totalPages: 0, currentTag: tagName, message: message 
-            });
-        }
-        
-        const tagId = tag.id;
-        const sqlEntries = `
-            SELECT
-                a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
-                a.cover_image_url, a.publication_date,
-                GROUP_CONCAT(t.name_${lang}) as tags
-            FROM articles a
-            JOIN article_tags at ON a.id = at.article_id
-            LEFT JOIN article_tags at_all ON a.id = at_all.article_id
-            LEFT JOIN tags t ON at_all.tag_id = t.id
-            WHERE at.tag_id = ?
-            GROUP BY a.id
-            ORDER BY a.publication_date DESC
-            LIMIT ? OFFSET ?
-        `;
-        const sqlCount = `SELECT COUNT(*) as totalCount FROM article_tags WHERE tag_id = ?`;
-        
-        db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
-            if (err) { console.error(`Erreur BDD (GET /tags/${tagName} entries):`, err); return res.status(500).send("Erreur serveur."); }
-            
-            db.get(sqlCount, [tagId], (errCount, countResult) => {
-                if (errCount) { console.error(`Erreur BDD (GET /tags/${tagName} count):`, errCount); return res.status(500).send("Erreur serveur."); }
-                 
-                const totalEntries = countResult.totalCount;
-                const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
-                 
-                const articlesWithData = rows.map(article => {
-                    const tagList = article.tags ? article.tags.split(',') : [];
-                     
-                    let finalCoverImage = article.cover_image_url;
-                    if (!finalCoverImage) {
-                        const match = article.content.match(/!\[.*?\]\((.*?)\)/);
-                        finalCoverImage = match ? match[1] : null;
-                    }
-                     
-                    let excerpt = "";
-
-                    if (article.summary) {
-                        excerpt = article.summary;
-                    }
-                    else {
-                        let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
-                        textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
-                        const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
-                        excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
-                    }
-                    
-                    return { 
-                        ...article, 
-                        tags: tagList, 
-                        coverImage: finalCoverImage, 
-                        excerpt: plainContent.substring(0, 350) 
-                    };
-                });
-                 
-                res.render('journal', {
-                    articles: articlesWithData,
-                    pageTitle: `Tag : "${tagName}"`,
-                    activePage: 'journal',
-                    currentPage: currentPage,
-                    totalPages: totalPages,
-                    currentTag: tagName,
-                    message: message,
-                    currentSort: null // Pas de tri sur cette page pour l'instant
-                });
-            });
-        });
-    });
-});
-
-// --- PLAN DU SITE (SITEMAP) ---
+// SEO
 app.get('/sitemap.xml', async (req, res) => {
     const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
     try {
@@ -1046,10 +1009,9 @@ app.get('/sitemap.xml', async (req, res) => {
     }
 });
 
+// --- Authentification & Sécurité ---
 
-// --- AUTHENTIFICATION ET GESTION COMPTE ---
-
-// Affiche le formulaire de connexion
+// Connexion (avec logique 2FA et Onboarding)
 app.get('/connexion', (req, res) => {
     const resetSuccess = req.query.reset === 'success';
     const message = req.session.flashMessage; // Lit le message flash (ex: "Compte créé")
@@ -1067,8 +1029,6 @@ app.get('/connexion', (req, res) => {
         });
     });
 });
-
-// Traite la tentative de connexion
 app.post('/connexion', authLimiter, (req, res) => {
     const { username, password } = req.body;
 
@@ -1168,13 +1128,94 @@ app.post('/connexion', authLimiter, (req, res) => {
     });
 });
 
-// Affiche le formulaire du code 2FA
+// Inscription (Admin unique)
+app.get('/inscription', checkAdminExists, (req, res) => { res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); });
+app.post('/inscription', checkAdminExists, authLimiter, (req, res) => {
+    const { username, password, email } = req.body;
+    if (!email || !email.includes('@')) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Adresse email invalide.' }); }
+    if (!password || password.length < 8) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Le mot de passe doit faire au moins 8 caractères.' }); }
+    const saltRounds = 10;
+    bcrypt.hash(password, saltRounds, (errHash, hash) => {
+        if (errHash) { console.error("Erreur hachage (inscription):", errHash); return res.status(500).send("Erreur serveur."); }
+        const sql = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
+        db.run(sql, [username, hash, email], function(errInsert) {
+            if (errInsert) {
+                let errorMessage = "Erreur création compte.";
+                return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: errorMessage + (errInsert.message ? ` (${errInsert.message})` : '') });
+            }
+            req.session.flashMessage = { type: 'success', text: 'Compte administrateur créé ! Vous pouvez vous connecter.' }; // Message de succès
+            res.redirect('/connexion');
+        });
+    });
+});
+
+// Déconnexion
+app.get('/deconnexion', (req, res) => {
+    req.session.destroy(err => {
+        if (err) { console.error("Erreur déconnexion:", err); return res.redirect('/'); }
+        res.clearCookie('connect.sid');
+        res.redirect('/');
+    });
+});
+
+// Mot de passe oublié
+app.get('/forgot-password', (req, res) => { res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: null, info: null }); });
+app.post('/forgot-password', authLimiter, async (req, res) => {
+    const email = req.body.email;
+    if (!email) { return res.render('forgot-password', { /* ... error: 'Email requis' ... */ }); }
+    if (!transporter) { return res.render('forgot-password', { /* ... error: 'Service email non configuré' ... */ }); }
+    const sqlFindUser = 'SELECT * FROM users WHERE email = ?';
+    db.get(sqlFindUser, [email], async (err, user) => {
+        const infoMsg = 'Si un compte avec cet email existe, un lien de réinitialisation a été envoyé.';
+        if (err) { console.error("Erreur BDD (POST /forgot-password findUser):", err); }
+        if (!err && user) {
+            const token = crypto.randomBytes(32).toString('hex');
+            const expires = Date.now() + 3600000; // 1 heure
+            const sqlUpdateToken = 'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?';
+            db.run(sqlUpdateToken, [token, expires, user.id], (errUpdate) => {
+                if (errUpdate) { /* ... gestion erreur ... */ }
+                const resetLink = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
+                const mailOptions = { /* ... (détails email) ... */ text: `Cliquez ici: ${resetLink} (expire dans 1h)` };
+                transporter.sendMail(mailOptions, (errMail) => {
+                    if (errMail) { /* ... gestion erreur ... */ }
+                    res.render('forgot-password', { /* ... info: infoMsg ... */ });
+                });
+            });
+        } else { res.render('forgot-password', { /* ... info: infoMsg ... */ }); }
+    });
+});
+app.get('/reset-password/:token', (req, res) => {
+    const token = req.params.token;
+    const sqlFindToken = 'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?';
+    db.get(sqlFindToken, [token, Date.now()], (err, user) => {
+        if (err || !user) { return res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: 'Lien invalide ou expiré.', info: null }); }
+        res.render('reset-password', { pageTitle: 'Réinitialiser Mot de Passe', activePage: 'admin', token: token, error: null });
+    });
+});
+app.post('/reset-password/:token', authLimiter, (req, res) => {
+    const token = req.params.token;
+    const { newPassword, confirmPassword } = req.body;
+    if (newPassword !== confirmPassword || newPassword.length < 8) { return res.render('reset-password', { /* ... error: 'Mots de passe invalides' ... */ }); }
+    const sqlFindToken = 'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?';
+    db.get(sqlFindToken, [token, Date.now()], (err, user) => {
+        if (err || !user) { return res.render('forgot-password', { /* ... error: 'Lien invalide ou expiré.' ... */ }); }
+        const saltRounds = 10;
+        bcrypt.hash(newPassword, saltRounds, (errHash, newHash) => {
+            if (errHash) { return res.render('reset-password', { /* ... error: 'Erreur hachage.' ... */ }); }
+            const sqlUpdatePass = 'UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?';
+            db.run(sqlUpdatePass, [newHash, user.id], (errUpdate) => {
+                if (errUpdate) { return res.render('reset-password', { /* ... error: 'Erreur mise à jour.' ... */ }); }
+                res.redirect('/connexion?reset=success');
+            });
+        });
+    });
+});
+
+// Vérification 2FA (lors du login)
 app.get('/connexion/2fa', (req, res) => {
     if (!req.session.tempUserId) return res.redirect('/connexion'); // Sécurité
     res.render('login-2fa', { pageTitle: 'Vérification 2FA', activePage: 'admin', error: null });
 });
-
-// Vérifie le code 2FA final pour connecter
 app.post('/connexion/2fa', authLimiter, (req, res) => {
     const { token } = req.body;
     const userId = req.session.tempUserId; // ID temporaire stocké à l'étape précédente
@@ -1209,91 +1250,223 @@ app.post('/connexion/2fa', authLimiter, (req, res) => {
     });
 });
 
-// Route de déconnexion
-app.get('/deconnexion', (req, res) => {
-    req.session.destroy(err => {
-        if (err) { console.error("Erreur déconnexion:", err); return res.redirect('/'); }
-        res.clearCookie('connect.sid');
-        res.redirect('/');
+// --- Administration (Tableau de bord & Outils) ---
+
+// Redirection racine
+app.get('/admin', isAuthenticated, (req, res) => {
+    res.redirect('/admin/dashboard');
+});
+
+// Tableau de bord (Stats)
+app.get('/admin/dashboard', isAuthenticated, (req, res) => {
+    
+    // 1. Stats par SEMAINE (Numéro de semaine)
+    const sqlWeekly = `
+        SELECT strftime('%Y-W%W', publication_date) as period, COUNT(*) as count
+        FROM articles
+        GROUP BY period
+        ORDER BY period ASC
+    `;
+
+    // 2. Stats par MOIS (Année-Mois)
+    const sqlMonthly = `
+        SELECT strftime('%Y-%m', publication_date) as period, COUNT(*) as count
+        FROM articles
+        GROUP BY period
+        ORDER BY period ASC
+    `;
+
+    // 3. Stats par TAG (Pour le dashboard final/global)
+    const sqlTags = `
+        SELECT t.name_fr as label, COUNT(at.article_id) as count 
+        FROM tags t 
+        JOIN article_tags at ON t.id = at.tag_id 
+        GROUP BY t.id
+    `;
+
+    // 4. Stats GLOBALES (Totaux)
+    const sqlGlobal = `
+        SELECT 
+            COUNT(*) as totalEntries,
+            (SELECT COUNT(*) FROM comments) as totalComments,
+            (SELECT COUNT(*) FROM tags) as totalTags
+        FROM articles
+    `;
+
+    Promise.all([
+        new Promise((resolve, reject) => db.all(sqlWeekly, [], (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.all(sqlMonthly, [], (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.all(sqlTags, [], (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.get(sqlGlobal, [], (err, row) => err ? reject(err) : resolve(row)))
+    ]).then(([weeklyData, monthlyData, tagData, globalData]) => {
+        
+        res.render('dashboard', {
+            pageTitle: "Tableau de Bord",
+            activePage: 'admin',
+            weeklyData,
+            monthlyData,
+            tagData,
+            globalData
+        });
+
+    }).catch(err => {
+        console.error("Erreur Dashboard:", err);
+        res.status(500).send("Erreur lors de la génération du tableau de bord.");
     });
 });
 
-// Affiche/Traite le formulaire d'inscription (conditionnel)
-app.get('/inscription', checkAdminExists, (req, res) => { res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); });
-app.post('/inscription', checkAdminExists, authLimiter, (req, res) => {
-    const { username, password, email } = req.body;
-    if (!email || !email.includes('@')) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Adresse email invalide.' }); }
-    if (!password || password.length < 8) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Le mot de passe doit faire au moins 8 caractères.' }); }
-    const saltRounds = 10;
-    bcrypt.hash(password, saltRounds, (errHash, hash) => {
-        if (errHash) { console.error("Erreur hachage (inscription):", errHash); return res.status(500).send("Erreur serveur."); }
-        const sql = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
-        db.run(sql, [username, hash, email], function(errInsert) {
-            if (errInsert) {
-                let errorMessage = "Erreur création compte.";
-                return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: errorMessage + (errInsert.message ? ` (${errInsert.message})` : '') });
+// Gestion des Tags
+app.get('/admin/tags', isAuthenticated, (req, res) => {
+    const sql = 'SELECT * FROM tags ORDER BY name_fr ASC';
+    db.all(sql, [], (err, tags) => {
+        if (err) {
+            console.error("Erreur BDD (GET /admin/tags):", err);
+            return res.status(500).send("Erreur serveur.");
+        }
+        const message = req.session.flashMessage;
+        req.session.flashMessage = null;
+        res.render('admin-tags', {
+            pageTitle: req.t('admin_page.manage_tags_title'),
+            activePage: 'admin',
+            tags: tags,
+            message: message
+        });
+    });
+});
+app.post('/admin/tags/create', isAuthenticated, async (req, res) => {
+    const name_fr = req.body.name_fr; // On récupère seulement le nom FR
+
+    // On ne vérifie que name_fr
+    if (!name_fr || name_fr.trim() === '') {
+        req.session.flashMessage = { type: 'error', text: 'Le nom français est requis.' };
+        return res.redirect('/admin/tags');
+    }
+
+    let name_en = name_fr.trim(); // Valeur par défaut si la traduction échoue
+    const name_fr_trimmed = name_fr.trim();
+
+    // --- Traduction via DeepL ---
+    // Vérifie si le client DeepL (translator) est initialisé ET que la clé API existe
+    if (translator) {
+        try {
+            console.log(`[Tag Create] Traduction de "${name_fr_trimmed}" vers EN...`);
+            const result = await translator.translateText(name_fr_trimmed, 'fr', 'en-GB');
+            if (result && typeof result.text === 'string') {
+                name_en = result.text; // Utilise la traduction
+                console.log(`[Tag Create] Traduction réussie: "${name_en}"`);
+            } else {
+                console.warn("[Tag Create] Réponse DeepL invalide pour la traduction du tag.");
             }
-            req.session.flashMessage = { type: 'success', text: 'Compte administrateur créé ! Vous pouvez vous connecter.' }; // Message de succès
-            res.redirect('/connexion');
+        } catch (error) {
+            console.error("[Tag Create] Erreur lors de la traduction DeepL:", error);
+            // Si erreur, name_en garde la valeur de name_fr (fallback)
+        }
+    } else {
+        console.warn("[Tag Create] Client DeepL non initialisé, utilise le nom FR pour EN.");
+    }
+
+    // Insertion dans la base de données avec les deux noms
+    const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
+    db.run(sql, [name_fr_trimmed, name_en], function(err) {
+        let message;
+        if (err) {
+            console.error("Erreur BDD (POST /admin/tags/create):", err);
+            // Gère l'erreur si un nom existe déjà (contrainte UNIQUE)
+            if (err.message.includes('UNIQUE constraint failed')) {
+                message = { type: 'error', text: 'Un tag avec ce nom (FR ou EN) existe déjà.' };
+            } else {
+                message = { type: 'error', text: 'Erreur lors de la création du tag.' };
+            }
+        } else {
+            message = { type: 'success', text: `Tag "${name_fr_trimmed}" / "${name_en}" créé avec succès.` };
+        }
+        req.session.flashMessage = message;
+        res.redirect('/admin/tags');
+    })
+});
+app.post('/admin/tags/update/:id', isAuthenticated, (req, res) => {
+    const id = req.params.id;
+    const { name_en } = req.body; // On récupère le nouveau nom anglais envoyé par le formulaire
+
+    if (!name_en || name_en.trim() === '') {
+        req.session.flashMessage = { type: 'error', text: 'Le nom anglais ne peut pas être vide.' };
+        return res.redirect('/admin/tags');
+    }
+
+    const sql = 'UPDATE tags SET name_en = ? WHERE id = ?';
+
+    db.run(sql, [name_en, id], function(err) {
+        if (err) {
+            console.error(`Erreur BDD (POST /admin/tags/update/${id}):`, err);
+            req.session.flashMessage = { type: 'error', text: 'Erreur lors de la mise à jour du tag.' };
+        } else {
+            req.session.flashMessage = { type: 'success', text: `Tag #${id} mis à jour avec succès.` };
+        }
+        res.redirect('/admin/tags');
+    })
+})
+app.post('/admin/tags/delete/:id', isAuthenticated, (req, res) => {
+    const tagId = req.params.id;
+    const sql = 'DELETE FROM tags WHERE id = ?';
+
+    db.run(sql, [tagId], function(err) {
+        let message;
+        if (err) {
+            console.error(`Erreur BDD (POST /admin/tags/delete/${tagId}):`, err);
+            message = { 
+                 type: 'error', 
+                 text: 'Erreur lors de la suppression du tag.', 
+                 detail: err.message // <-- AJOUT
+             };
+        } else {
+            message = { type: 'success', text: `Tag #${tagId} supprimé.` };
+        }
+        req.session.flashMessage = message;
+        res.redirect('/admin/tags');
+    })
+});
+
+// Gestion des Commentaires (Historique & Suppression)
+app.get('/admin/comments', isAuthenticated, (req, res) => {
+    const sql = `
+        SELECT c.id, c.author_name, c.content, c.created_at, a.title_fr as article_title, a.id as article_id 
+        FROM comments c 
+        JOIN articles a ON c.article_id = a.id 
+        ORDER BY c.created_at DESC
+    `;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error("Erreur BDD (GET /admin/comments):", err);
+            return res.status(500).send("Erreur serveur.");
+        }
+
+        const message = req.session.flashMessage;
+        req.session.flashMessage = null;
+
+        res.render('admin-comments', {
+            pageTitle: req.t('admin_page.manage_comments_title'),
+            activePage: 'admin',
+            comments: rows, // Une seule liste
+            message: message
         });
     });
 });
-
-// --- MOT DE PASSE OUBLIÉ ---
-app.get('/forgot-password', (req, res) => { res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: null, info: null }); });
-app.post('/forgot-password', authLimiter, async (req, res) => {
-    const email = req.body.email;
-    if (!email) { return res.render('forgot-password', { /* ... error: 'Email requis' ... */ }); }
-    if (!transporter) { return res.render('forgot-password', { /* ... error: 'Service email non configuré' ... */ }); }
-    const sqlFindUser = 'SELECT * FROM users WHERE email = ?';
-    db.get(sqlFindUser, [email], async (err, user) => {
-        const infoMsg = 'Si un compte avec cet email existe, un lien de réinitialisation a été envoyé.';
-        if (err) { console.error("Erreur BDD (POST /forgot-password findUser):", err); }
-        if (!err && user) {
-            const token = crypto.randomBytes(32).toString('hex');
-            const expires = Date.now() + 3600000; // 1 heure
-            const sqlUpdateToken = 'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?';
-            db.run(sqlUpdateToken, [token, expires, user.id], (errUpdate) => {
-                if (errUpdate) { /* ... gestion erreur ... */ }
-                const resetLink = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
-                const mailOptions = { /* ... (détails email) ... */ text: `Cliquez ici: ${resetLink} (expire dans 1h)` };
-                transporter.sendMail(mailOptions, (errMail) => {
-                    if (errMail) { /* ... gestion erreur ... */ }
-                    res.render('forgot-password', { /* ... info: infoMsg ... */ });
-                });
-            });
-        } else { res.render('forgot-password', { /* ... info: infoMsg ... */ }); }
+app.post('/admin/comments/delete/:id', isAuthenticated, (req, res) => {
+    const commentId = req.params.id;
+    const sql = 'DELETE FROM comments WHERE id = ?';
+    db.run(sql, [commentId], function(err) {
+        if (err) { 
+            req.session.flashMessage = { 
+                type: 'error', 
+                text: 'Erreur suppression.',
+                detail: err.message};
+            } else { req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} supprimé.` }; }
+            res.redirect('/admin/comments');
     });
 });
 
-app.get('/reset-password/:token', (req, res) => {
-    const token = req.params.token;
-    const sqlFindToken = 'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?';
-    db.get(sqlFindToken, [token, Date.now()], (err, user) => {
-        if (err || !user) { return res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: 'Lien invalide ou expiré.', info: null }); }
-        res.render('reset-password', { pageTitle: 'Réinitialiser Mot de Passe', activePage: 'admin', token: token, error: null });
-    });
-});
-app.post('/reset-password/:token', authLimiter, (req, res) => {
-    const token = req.params.token;
-    const { newPassword, confirmPassword } = req.body;
-    if (newPassword !== confirmPassword || newPassword.length < 8) { return res.render('reset-password', { /* ... error: 'Mots de passe invalides' ... */ }); }
-    const sqlFindToken = 'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?';
-    db.get(sqlFindToken, [token, Date.now()], (err, user) => {
-        if (err || !user) { return res.render('forgot-password', { /* ... error: 'Lien invalide ou expiré.' ... */ }); }
-        const saltRounds = 10;
-        bcrypt.hash(newPassword, saltRounds, (errHash, newHash) => {
-            if (errHash) { return res.render('reset-password', { /* ... error: 'Erreur hachage.' ... */ }); }
-            const sqlUpdatePass = 'UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?';
-            db.run(sqlUpdatePass, [newHash, user.id], (errUpdate) => {
-                if (errUpdate) { return res.render('reset-password', { /* ... error: 'Erreur mise à jour.' ... */ }); }
-                res.redirect('/connexion?reset=success');
-            });
-        });
-    });
-});
-
-// --- CHANGER MOT DE PASSE (LOGGED IN) ---
+// Compte Admin
 app.get('/change-password', isAuthenticated, (req, res) => { res.render('change-password', { pageTitle: 'Changer Mot de Passe', activePage: 'admin', error: null, success: null }); });
 app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
     const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -1370,687 +1543,7 @@ app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
      });
 });
 
-// --- GESTION DOUBLE AUTHENTIFICATION (2FA) ---
-
-app.get('/admin/2fa', isAuthenticated, (req, res) => {
-    const userId = req.session.userId;
-
-    db.get('SELECT two_fa_enabled FROM users WHERE id = ?', [userId], (err, user) => {
-        if (err) return res.status(500).send('Erreur BDD');
-
-        res.render('admin-2fa', { 
-            pageTitle: 'Sécurité 2FA', 
-            activePage: 'admin', 
-            step: user.two_fa_enabled ? 'enabled' : 'disabled', // 'enabled' ou 'disabled'
-            qrCodeUrl: null, 
-            secret: null 
-        });
-    });
-});
-
-app.get('/admin/2fa/choice', isAuthenticated, (req, res) => {
-    res.render('admin-2fa-choice', {
-        pageTitle: 'Sécuriser votre compte',
-        activePage: 'admin'
-    });
-});
-
-// Traite le refus ("Plus tard")
-app.post('/admin/2fa/skip', isAuthenticated, (req, res) => {
-    const userId = req.session.userId;
-    // On note qu'on a posé la question (prompted = 1)
-    db.run('UPDATE users SET two_fa_prompted = 1 WHERE id = ?', [userId], (err) => {
-        req.session.flashMessage = { type: 'info', text: 'Vous pourrez activer la 2FA plus tard dans l\'administration.' };
-        res.redirect('/');
-    });
-});
-
-app.post('/admin/2fa/accept', isAuthenticated, (req, res) => {
-    res.redirect('/admin/2fa/setup-start'); // On va créer cette petite route helper juste après
-});
-
-app.get('/admin/2fa/setup-start', isAuthenticated, (req, res) => {
-    const userId = req.session.userId;
-    const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
-
-    db.run('UPDATE users SET two_fa_secret = ?, two_fa_prompted = 1 WHERE id = ?', [secret.base32, userId], (err) => {
-        if (err) {
-            console.error("Erreur setup 2FA:", err);
-            return res.status(500).send('Erreur serveur');
-        }
-
-        QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
-            res.render('admin-2fa', { 
-                pageTitle: 'Configuration 2FA', 
-                activePage: 'admin', 
-                step: 'setup',
-                qrCodeUrl: data_url, 
-                secret: secret.base32 
-            });
-        });
-    });
-});
-
-// 2. Lancer la configuration (Générer QR Code)
-app.post('/admin/2fa/setup', isAuthenticated, (req, res) => {
-    const userId = req.session.userId;
-    const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
-
-    // On sauvegarde le secret mais ON NE L'ACTIVE PAS ENCORE (enabled = 0)
-    db.run('UPDATE users SET two_fa_secret = ? WHERE id = ?', [secret.base32, userId], (err) => {
-        if (err) return res.status(500).send('Erreur sauvegarde secret');
-
-        QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
-            // On affiche la page en mode "setup"
-            res.render('admin-2fa', { 
-                pageTitle: 'Configuration 2FA', 
-                activePage: 'admin',
-                step: 'setup', // Mode configuration
-                qrCodeUrl: data_url, 
-                secret: secret.base32 
-            });
-        });
-    });
-});
-
-// 3. Valider et Activer (Vérification du code)
-app.post('/admin/2fa/enable', isAuthenticated, (req, res) => {
-    const { token } = req.body;
-    const userId = req.session.userId;
-
-    db.get('SELECT two_fa_secret FROM users WHERE id = ?', [userId], (err, user) => {
-        const verified = speakeasy.totp.verify({
-            secret: user.two_fa_secret,
-            encoding: 'base32',
-            token: token
-        });
-
-        if (verified) {
-            // Le code est bon, on active pour de bon
-            db.run('UPDATE users SET two_fa_enabled = 1 WHERE id = ?', [userId], (err) => {
-                req.session.flashMessage = { type: 'success', text: 'Double authentification activée avec succès !' };
-                
-                // --- MODIFICATION ICI ---
-                // On sauvegarde la session et on redirige vers l'ACCUEIL au lieu de /admin/2fa
-                req.session.save(() => res.redirect('/'));
-                // ------------------------
-            });
-        } else {
-            req.session.flashMessage = { type: 'error', text: 'Code incorrect. Recommencez la configuration.' };
-            // En cas d'erreur, on reste sur la page de config pour qu'il puisse réessayer
-            req.session.save(() => res.redirect('/admin/2fa'));
-        }
-    });
-});
-
-// 4. Désactiver le 2FA
-app.post('/admin/2fa/disable', isAuthenticated, (req, res) => {
-    db.run('UPDATE users SET two_fa_enabled = 0, two_fa_secret = NULL WHERE id = ?', [req.session.userId], (err) => {
-        req.session.flashMessage = { type: 'success', text: 'Double authentification désactivée.' };
-        // SAUVEGARDE AVANT REDIRECTION
-        req.session.save(() => res.redirect('/admin/2fa'));
-    });
-});
-
-// --- API UPLOAD IMAGE (pour EasyMDE) ---
-app.post('/upload-image', isAuthenticated, apiLimiter, upload.single('image'), async (req, res) => {
-    if (!req.file) { return res.status(400).json({ error: 'Aucun fichier reçu.' }); }
-    const originalPath = req.file.path;
-    const originalFilename = req.file.filename;
-    const optimizedFilename = originalFilename.replace(/(\.[\w\d_-]+)$/i, '-opt.webp'); 
-    const optimizedPath = path.join('public', 'uploads', optimizedFilename);
-    console.log(`[Sharp] Traitement de ${originalFilename} vers ${optimizedFilename}`);
-    try {
-        await sharp(originalPath)
-            .resize({ width: 1200, withoutEnlargement: true })
-            .webp({ quality: 80 })
-            .toFile(optimizedPath);
-        fs.unlink(originalPath, (err) => { if (err) console.error(`[Sharp] Erreur suppression original ${originalPath}:`, err); });
-        const optimizedImageUrl = '/uploads/' + optimizedFilename;
-        res.json({ imageUrl: optimizedImageUrl });
-    } catch (error) {
-        console.error("[Sharp] Erreur optimisation image:", error);
-        try { fs.unlinkSync(originalPath); } catch (e) {}
-        res.status(500).json({ error: "Erreur traitement image." });
-    }
-});
-
-// --- FORMULAIRE CONTACT ---
-app.post('/contact', contactLimiter, (req, res) => {
-    // 1. Vérification Honeypot
-    if (req.body.website_field && req.body.website_field !== '') {
-        console.warn("Honeypot (contact) déclenché ! Rejet silencieux.");
-        return res.render('contact', { pageTitle: req.t('page_titles.contact'), activePage: 'contact', messageSent: true }); // Faux succès
-    }
-    // 2. Vérification Nodemailer
-    if (!transporter) { return res.status(503).render('contact', { /* ... error: 'Service email non dispo' ... */ }); }
-    // 3. Validation champs
-    const { name, email, message } = req.body;
-    if (!name || !email || !message || !email.includes('@')) { return res.status(400).render('contact', { /* ... error: 'Champs invalides' ... */ }); }
-    // 4. Préparation email
-    const mailOptions = { /* ... (détails email) ... */ };
-    // 5. Envoi email
-    transporter.sendMail(mailOptions, (error, info) => {
-        let messageStatus = null;
-        if (error) { console.error("Erreur envoi email:", error); messageStatus = false; }
-        else { console.log('Email contact envoyé: ' + info.response); messageStatus = true; }
-        res.render('contact', { pageTitle: req.t('page_titles.contact'), activePage: 'contact', messageSent: messageStatus, error: !messageStatus ? req.t('contact.error_message') : null });
-    });
-});
-
-
-// --- GESTION DU CONTENU (ROUTES PROTÉGÉES) ---
-
-// Affiche le formulaire de création
-app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
-    const lang = req.language === 'en' ? 'en' : 'fr';
-    const sqlTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
-    db.all(sqlTags, [], (err, allTags) => {
-        if (err) { allTags = []; console.error("Erreur BDD (GET /journal/nouvelle tags):", err); }
-        res.render('new_entry', {
-            pageTitle: req.t('page_titles.new_entry'), 
-            activePage: 'journal',
-            allTags: allTags, 
-            articleTags: []
-        });
-    });
-});
-
-// Traite la création d'une entrée (bilingue + tags)
-app.post('/journal', isAuthenticated, async (req, res) => {
-    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags } = req.body;
-    let summary_en = req.body.summary_en; // On prend la valeur du formulaire
-    const userId = req.session.userId;
-
-    // --- Gestion des Tags (Tableau d'IDs) ---
-    let tagIds = tags;
-    if (tagIds === undefined) { tagIds = []; }
-    else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
-    tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
-
-    if (summary_fr && !summary_en && translator) {
-        try {
-            console.log("Traduction automatique du résumé...");
-            const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
-            if (result && typeof result.text === 'string') {
-                summary_en = result.text;
-            }
-        } catch (error) {
-            console.error("Erreur traduction résumé :", error);
-        }
-    }
-    
-    const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-    
-    db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url], async function(err) {
-        if (err) {
-            console.error("Erreur BDD (POST /journal insert):", err);
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Erreur lors de la création de l\'entrée.',
-                detail: err.message
-            };
-            return res.redirect('/journal');
-        }
-        
-        const articleId = this.lastID;
-
-        logAction(req, 'CREATE_ARTICLE', `Titre: ${title_fr} (ID: ${articleId})`);
-
-        try {
-            await processTags(articleId, tagIds);
-            req.session.flashMessage = { type: 'success', text: 'Entrée créée avec succès !' };
-
-            req.session.save(function() {
-                res.redirect('/journal');
-            });
-
-        } catch (tagError) {
-            console.error("Erreur tags:", tagError);
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Entrée créée, mais erreur lors de l\'ajout des tags.',
-                detail: tagError.message
-            };
-            res.redirect('/journal');
-        }
-    });
-});
-
-// Affiche le formulaire de modification (bilingue + tags)
-app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
-    const id = req.params.id;
-    const lang = req.language === 'en' ? 'en' : 'fr';
-    const sqlArticle = "SELECT * FROM articles WHERE id = ?";
-    const sqlArticleTags = `SELECT tag_id FROM article_tags WHERE article_id = ?`;
-    const sqlAllTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
-    Promise.all([
-        new Promise((resolve, reject) => db.get(sqlArticle, id, (err, row) => err ? reject(err) : resolve(row))),
-        new Promise((resolve, reject) => db.all(sqlArticleTags, id, (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(sqlAllTags, [], (err, rows) => err ? reject(err) : resolve(rows)))
-    ]).then(([article, articleTagRows, allTags]) => {
-        if (!article) { return res.status(404).send("Entrée non trouvée !"); }
-        const articleTagIds = new Set(articleTagRows.map(row => row.tag_id));
-        res.render('edit_entry', {
-            article: article,
-            pageTitle: `${req.t('page_titles.edit_entry')}: ${article.title_fr}`,
-            activePage: 'journal',
-            allTags: allTags,
-            articleTagIds: articleTagIds
-        });
-    }).catch(err => {
-        console.error(`Erreur BDD (GET /entree/${id}/edit combined):`, err);
-        res.status(500).send("Erreur serveur.");
-    });
-});
-
-// Traite la modification d'une entrée (bilingue + tags)
-app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
-    const id = req.params.id;
-    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags } = req.body;
-    let summary_en = req.body.summary_en; // Valeur du formulaire
-
-    // --- Gestion des Tags ---
-    let tagIds = tags;
-    if (tagIds === undefined) { tagIds = []; }
-    else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
-    tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
-
-    // --- TRADUCTION AUTOMATIQUE DU RÉSUMÉ ---
-    if (summary_fr && (!summary_en || summary_en.trim() === '') && translator) {
-        try {
-            console.log("Traduction automatique du résumé (edit)...");
-            const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
-            summary_en = result.text;
-        } catch (error) {
-            console.error("Erreur traduction résumé (edit) :", error);
-        }
-    }
-
-    const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
-
-    db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, id], async function(err) {
-        if (err) { 
-            console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); 
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Erreur lors de la modification de l\'entrée.',
-                detail: err.message // <-- AJOUT DU DÉTAIL
-            };
-            return res.redirect('/journal');
-        }
-
-        try  {
-            await processTags(id, tagIds);
-            req.session.flashMessage = { type: 'success', text: 'Entrée mise à jour avec succès !' };
-            req.session.save(function() {
-                res.redirect('/journal')
-            })
-        } catch (tagError) {
-            console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Entrée mise à jour, mais erreur sur les tags.',
-                detail: tagError.message
-            };
-            res.redirect('/journal');
-        }
-    });
-});
-
-// Traite la suppression d'une entrée
-app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
-    const id = req.params.id;
-    const sql = 'DELETE FROM articles WHERE id = ?';
-    db.run(sql, id, function(err) {
-        if (err) {
-            console.error(`Erreur BDD (POST /entree/${id}/delete):`, err);
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Erreur lors de la suppression de l\'entrée.',
-                detail: err.message // <-- AJOUT DU DÉTAIL
-            };
-            return res.redirect('/journal');
-        }
-        logAction(req, 'DELETE_ARTICLE', `ID supprimé: ${id}`);
-
-        req.session.flashMessage = { type: 'success', text: 'Entrée supprimée avec succès.' };
-        
-        req.session.save(function() {
-            res.redirect('/journal');
-        });
-    });
-});
-
-// --- GESTION DES COMMENTAIRES (Admin & Public) ---
-
-// (Admin) Affiche la page de modération
-app.get('/admin/comments', isAuthenticated, (req, res) => {
-    const sql = `
-        SELECT c.id, c.author_name, c.content, c.created_at, a.title_fr as article_title, a.id as article_id 
-        FROM comments c 
-        JOIN articles a ON c.article_id = a.id 
-        ORDER BY c.created_at DESC
-    `;
-
-    db.all(sql, [], (err, rows) => {
-        if (err) {
-            console.error("Erreur BDD (GET /admin/comments):", err);
-            return res.status(500).send("Erreur serveur.");
-        }
-
-        const message = req.session.flashMessage;
-        req.session.flashMessage = null;
-
-        res.render('admin-comments', {
-            pageTitle: req.t('admin_page.manage_comments_title'),
-            activePage: 'admin',
-            comments: rows, // Une seule liste
-            message: message
-        });
-    });
-});
-
-// (Admin) Traite l'approbation d'un commentaire
-app.post('/admin/comments/approve/:id', isAuthenticated, (req, res) => {
-    const commentId = req.params.id;
-    const sql = 'UPDATE comments SET is_approved = 1 WHERE id = ?';
-    db.run(sql, [commentId], function(err) {
-        if (err) { 
-            req.session.flashMessage = { 
-                type: 'error', 
-                text: 'Erreur approbation.',
-                detail: err.message
-            }; 
-        } else { req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} approuvé.` }; }
-        res.redirect('/admin/comments');
-    });
-});
-
-// (Admin) Traite la suppression d'un commentaire
-app.post('/admin/comments/delete/:id', isAuthenticated, (req, res) => {
-    const commentId = req.params.id;
-    const sql = 'DELETE FROM comments WHERE id = ?';
-    db.run(sql, [commentId], function(err) {
-        if (err) { 
-            req.session.flashMessage = { 
-                type: 'error', 
-                text: 'Erreur suppression.',
-                detail: err.message};
-            } else { req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} supprimé.` }; }
-            res.redirect('/admin/comments');
-    });
-});
-
-// (Public) Traite la soumission d'un nouveau commentaire
-app.post('/article/:id/comment', commentLimiter, (req, res) => {
-    const articleId = req.params.id;
-    const { author_name, content } = req.body;
-
-    // 1. Honeypot (Anti-bot)
-    if (req.body.website_field && req.body.website_field !== '') {
-        return res.redirect(`/entree/${articleId}`);
-    }
-
-    // 2. Validation champs vides
-    if (!author_name || !content || author_name.trim() === '' || content.trim() === '') {
-        req.session.flashMessage = { type: 'error', text: 'Veuillez remplir tous les champs.' };
-        
-        return req.session.save(() => {
-            res.redirect(`/entree/${articleId}`);
-        });
-    }
-
-    // 3. Modération Automatique (BAD-WORDS)
-    if (filter.isProfane(content) || filter.isProfane(author_name)) {
-        console.warn(`[Modération Auto] Rejeté : ${author_name}`);
-
-        req.session.flashMessage = {
-            type: 'error',
-            text: 'Votre commentaire a été rejeté car il contient un langage inapproprié.'
-        };
-
-        return req.session.save(() => {
-            res.redirect(`/entree/${articleId}`);
-        });
-    }
-
-    // 4. Insertion BDD
-    const sql = `INSERT INTO comments (article_id, author_name, content, is_approved) VALUES (?, ?, ?, 1)`;
-
-    db.run(sql, [articleId, author_name, content], function(err) {
-        if (err) {
-            console.error("Erreur BDD Commentaire:", err);
-            req.session.flashMessage = { type: 'error', text: 'Erreur technique.' };
-            return req.session.save(() => res.redirect(`/entree/${articleId}`));
-        }
-
-        sendAdminNotification(req, articleId, this.lastID, author_name, content);
-
-        req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
-
-        req.session.save(() => {
-            res.redirect(`/entree/${articleId}`);
-        });
-    });
-});
-
-// --- GESTION DES TAGS (Admin) ---
-app.get('/admin/tags', isAuthenticated, (req, res) => {
-    const sql = 'SELECT * FROM tags ORDER BY name_fr ASC';
-    db.all(sql, [], (err, tags) => {
-        if (err) {
-            console.error("Erreur BDD (GET /admin/tags):", err);
-            return res.status(500).send("Erreur serveur.");
-        }
-        const message = req.session.flashMessage;
-        req.session.flashMessage = null;
-        res.render('admin-tags', {
-            pageTitle: req.t('admin_page.manage_tags_title'),
-            activePage: 'admin',
-            tags: tags,
-            message: message
-        });
-    });
-});
-
-// --- API POUR LA TRADUCTION ---
-app.post('/api/translate', isAuthenticated, async (req, res) => {
-    if (!translator) {
-        return res.status(503).json({ error: 'Service de traduction non disponible.' });
-    }
-
-    const textToTranslate = req.body.text;
-    const targetLanguage = req.body.targetLang || 'en-GB';
-
-
-    if (!textToTranslate || textToTranslate.trim() === '') {
-        return res.json({ translatedText: '' });
-    }
-
-    try {
-        const result = await translator.translateText(textToTranslate, 'fr', targetLanguage);
-        if (result && typeof result.text === 'string') {
-            res.json({ translatedText: result.text });
-        } else {
-            res.status(500).json({ error: 'Réponse invalide de DeepL.' });
-        }
-    } catch (error) {
-        console.error("Erreur DeepL:", error);
-        res.status(500).json({ error: "Erreur lors de la traduction." });
-    }
-});
-
-// --- API POUR LA CRÉATION RAPIDE DE TAGS (JSON) ---
-app.post('/api/tags/create', isAuthenticated, async (req, res) => {
-    const { name_fr, name_en_auto } = req.body;
-    if (!name_fr) {
-        return res.status(400).json({ error: 'Le nom français est requis.' });
-    }
-    let name_en = req.body.name_en; // Récupère le nom EN manuel
-
-    if (name_en_auto && translator) { // Si auto-traduction demandée ET DeepL dispo
-        try {
-            const result = await translator.translateText(name_fr, 'fr', 'en-GB');
-            if (result && typeof result.text === 'string') { name_en = result.text; }
-            else { name_en = name_fr; } // Fallback
-        } catch (error) { name_en = name_fr; /* Fallback */ }
-    } else if (!name_en) {
-        name_en = name_fr;
-    }
-
-    const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
-    db.run(sql, [name_fr, name_en], function(err) {
-        if (err) {
-            let message = 'Erreur lors de la création du tag.';
-            if (err.message.includes('UNIQUE constraint failed')) {
-                message = 'Un tag avec ce nom (FR ou EN) existe déjà.';
-            }
-            return res.status(409).json({ error: message }); // 409 Conflict 
-        }
-
-        const lang = req.language === 'en' ? 'en' : 'fr';
-        res.status(201).json({
-            id: this.lastID,
-            name: (lang === 'en' ? name_en : name_fr), // Nom dans la langue actuelle
-            name_fr: name_fr,
-            name_en: name_en
-        });
-    });
-});
-
-app.post('/admin/tags/create', isAuthenticated, async (req, res) => {
-    const name_fr = req.body.name_fr; // On récupère seulement le nom FR
-
-    // On ne vérifie que name_fr
-    if (!name_fr || name_fr.trim() === '') {
-        req.session.flashMessage = { type: 'error', text: 'Le nom français est requis.' };
-        return res.redirect('/admin/tags');
-    }
-
-    let name_en = name_fr.trim(); // Valeur par défaut si la traduction échoue
-    const name_fr_trimmed = name_fr.trim();
-
-    // --- Traduction via DeepL ---
-    // Vérifie si le client DeepL (translator) est initialisé ET que la clé API existe
-    if (translator) {
-        try {
-            console.log(`[Tag Create] Traduction de "${name_fr_trimmed}" vers EN...`);
-            const result = await translator.translateText(name_fr_trimmed, 'fr', 'en-GB');
-            if (result && typeof result.text === 'string') {
-                name_en = result.text; // Utilise la traduction
-                console.log(`[Tag Create] Traduction réussie: "${name_en}"`);
-            } else {
-                console.warn("[Tag Create] Réponse DeepL invalide pour la traduction du tag.");
-            }
-        } catch (error) {
-            console.error("[Tag Create] Erreur lors de la traduction DeepL:", error);
-            // Si erreur, name_en garde la valeur de name_fr (fallback)
-        }
-    } else {
-        console.warn("[Tag Create] Client DeepL non initialisé, utilise le nom FR pour EN.");
-    }
-
-    // Insertion dans la base de données avec les deux noms
-    const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
-    db.run(sql, [name_fr_trimmed, name_en], function(err) {
-        let message;
-        if (err) {
-            console.error("Erreur BDD (POST /admin/tags/create):", err);
-            // Gère l'erreur si un nom existe déjà (contrainte UNIQUE)
-            if (err.message.includes('UNIQUE constraint failed')) {
-                message = { type: 'error', text: 'Un tag avec ce nom (FR ou EN) existe déjà.' };
-            } else {
-                message = { type: 'error', text: 'Erreur lors de la création du tag.' };
-            }
-        } else {
-            message = { type: 'success', text: `Tag "${name_fr_trimmed}" / "${name_en}" créé avec succès.` };
-        }
-        req.session.flashMessage = message;
-        res.redirect('/admin/tags');
-    })
-})
-
-app.post('/admin/tags/delete/:id', isAuthenticated, (req, res) => {
-    const tagId = req.params.id;
-    const sql = 'DELETE FROM tags WHERE id = ?';
-
-    db.run(sql, [tagId], function(err) {
-        let message;
-        if (err) {
-            console.error(`Erreur BDD (POST /admin/tags/delete/${tagId}):`, err);
-            message = { 
-                 type: 'error', 
-                 text: 'Erreur lors de la suppression du tag.', 
-                 detail: err.message // <-- AJOUT
-             };
-        } else {
-            message = { type: 'success', text: `Tag #${tagId} supprimé.` };
-        }
-        req.session.flashMessage = message;
-        res.redirect('/admin/tags');
-    })
-})
-
-// --- TABLEAU DE BORD COMPLET (Statistiques) ---
-app.get('/admin/dashboard', isAuthenticated, (req, res) => {
-    
-    // 1. Stats par SEMAINE (Numéro de semaine)
-    const sqlWeekly = `
-        SELECT strftime('%Y-W%W', publication_date) as period, COUNT(*) as count
-        FROM articles
-        GROUP BY period
-        ORDER BY period ASC
-    `;
-
-    // 2. Stats par MOIS (Année-Mois)
-    const sqlMonthly = `
-        SELECT strftime('%Y-%m', publication_date) as period, COUNT(*) as count
-        FROM articles
-        GROUP BY period
-        ORDER BY period ASC
-    `;
-
-    // 3. Stats par TAG (Pour le dashboard final/global)
-    const sqlTags = `
-        SELECT t.name_fr as label, COUNT(at.article_id) as count 
-        FROM tags t 
-        JOIN article_tags at ON t.id = at.tag_id 
-        GROUP BY t.id
-    `;
-
-    // 4. Stats GLOBALES (Totaux)
-    const sqlGlobal = `
-        SELECT 
-            COUNT(*) as totalEntries,
-            (SELECT COUNT(*) FROM comments) as totalComments,
-            (SELECT COUNT(*) FROM tags) as totalTags
-        FROM articles
-    `;
-
-    Promise.all([
-        new Promise((resolve, reject) => db.all(sqlWeekly, [], (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(sqlMonthly, [], (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(sqlTags, [], (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.get(sqlGlobal, [], (err, row) => err ? reject(err) : resolve(row)))
-    ]).then(([weeklyData, monthlyData, tagData, globalData]) => {
-        
-        res.render('dashboard', {
-            pageTitle: "Tableau de Bord",
-            activePage: 'admin',
-            weeklyData,
-            monthlyData,
-            tagData,
-            globalData
-        });
-
-    }).catch(err => {
-        console.error("Erreur Dashboard:", err);
-        res.status(500).send("Erreur lors de la génération du tableau de bord.");
-    });
-});
-
-// --- JOURNAL D'AUDIT (Logs de sécurité) ---
+// Journal d'Audit (Logs de sécurité)
 app.get('/admin/audit', isAuthenticated, (req, res) => {
     // On récupère les 100 derniers logs
     const sql = `SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100`;
@@ -2066,7 +1559,22 @@ app.get('/admin/audit', isAuthenticated, (req, res) => {
     });
 });
 
-// --- EXPORT PDF ---
+// Outils de Sauvegarde & Export
+app.get('/admin/backup', isAuthenticated, (req, res) => {
+    const dbFile = path.join(__dirname, 'blog.db');
+    const date = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const filename = `backup-blog-${date}.db`;
+
+    res.download(dbFile, filename, (err) => {
+        if (err) {
+            console.error("Erreur lors du téléchargement du backup:", err);
+            // Si le téléchargement échoue (ex: fichier introuvable), on essaie d'afficher une erreur
+            if (!res.headersSent) {
+                res.status(500).send("Erreur : Impossible de télécharger la base de données.");
+            }
+        }
+    });
+});
 app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
 
@@ -2139,20 +1647,488 @@ app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
     });
 });
 
-// --- SAUVEGARDE BASE DE DONNÉES (Backup) ---
-app.get('/admin/backup', isAuthenticated, (req, res) => {
-    const dbFile = path.join(__dirname, 'blog.db');
-    const date = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-    const filename = `backup-blog-${date}.db`;
+// --- Configuration 2FA (Double Authentification) ---
 
-    res.download(dbFile, filename, (err) => {
+// Onboarding (Choix initial)
+app.get('/admin/2fa/choice', isAuthenticated, (req, res) => {
+    res.render('admin-2fa-choice', {
+        pageTitle: 'Sécuriser votre compte',
+        activePage: 'admin'
+    });
+});
+app.post('/admin/2fa/accept', isAuthenticated, (req, res) => {
+    res.redirect('/admin/2fa/setup-start'); // On va créer cette petite route helper juste après
+});
+app.post('/admin/2fa/skip', isAuthenticated, (req, res) => {
+    const userId = req.session.userId;
+    // On note qu'on a posé la question (prompted = 1)
+    db.run('UPDATE users SET two_fa_prompted = 1 WHERE id = ?', [userId], (err) => {
+        req.session.flashMessage = { type: 'info', text: 'Vous pourrez activer la 2FA plus tard dans l\'administration.' };
+        res.redirect('/');
+    });
+});
+
+// Configuration & Activation
+app.get('/admin/2fa', isAuthenticated, (req, res) => {
+    const userId = req.session.userId;
+
+    db.get('SELECT two_fa_enabled FROM users WHERE id = ?', [userId], (err, user) => {
+        if (err) return res.status(500).send('Erreur BDD');
+
+        res.render('admin-2fa', { 
+            pageTitle: 'Sécurité 2FA', 
+            activePage: 'admin', 
+            step: user.two_fa_enabled ? 'enabled' : 'disabled', // 'enabled' ou 'disabled'
+            qrCodeUrl: null, 
+            secret: null 
+        });
+    });
+});
+app.get('/admin/2fa/setup-start', isAuthenticated, (req, res) => {
+    const userId = req.session.userId;
+    const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
+
+    db.run('UPDATE users SET two_fa_secret = ?, two_fa_prompted = 1 WHERE id = ?', [secret.base32, userId], (err) => {
         if (err) {
-            console.error("Erreur lors du téléchargement du backup:", err);
-            // Si le téléchargement échoue (ex: fichier introuvable), on essaie d'afficher une erreur
-            if (!res.headersSent) {
-                res.status(500).send("Erreur : Impossible de télécharger la base de données.");
-            }
+            console.error("Erreur setup 2FA:", err);
+            return res.status(500).send('Erreur serveur');
         }
+
+        QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
+            res.render('admin-2fa', { 
+                pageTitle: 'Configuration 2FA', 
+                activePage: 'admin', 
+                step: 'setup',
+                qrCodeUrl: data_url, 
+                secret: secret.base32 
+            });
+        });
+    });
+});
+app.post('/admin/2fa/setup', isAuthenticated, (req, res) => {
+    const userId = req.session.userId;
+    const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
+
+    // On sauvegarde le secret mais ON NE L'ACTIVE PAS ENCORE (enabled = 0)
+    db.run('UPDATE users SET two_fa_secret = ? WHERE id = ?', [secret.base32, userId], (err) => {
+        if (err) return res.status(500).send('Erreur sauvegarde secret');
+
+        QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
+            // On affiche la page en mode "setup"
+            res.render('admin-2fa', { 
+                pageTitle: 'Configuration 2FA', 
+                activePage: 'admin',
+                step: 'setup', // Mode configuration
+                qrCodeUrl: data_url, 
+                secret: secret.base32 
+            });
+        });
+    });
+});
+app.post('/admin/2fa/enable', isAuthenticated, (req, res) => {
+    const { token } = req.body;
+    const userId = req.session.userId;
+
+    db.get('SELECT two_fa_secret FROM users WHERE id = ?', [userId], (err, user) => {
+        const verified = speakeasy.totp.verify({
+            secret: user.two_fa_secret,
+            encoding: 'base32',
+            token: token
+        });
+
+        if (verified) {
+            // Le code est bon, on active pour de bon
+            db.run('UPDATE users SET two_fa_enabled = 1 WHERE id = ?', [userId], (err) => {
+                req.session.flashMessage = { type: 'success', text: 'Double authentification activée avec succès !' };
+                
+                // --- MODIFICATION ICI ---
+                // On sauvegarde la session et on redirige vers l'ACCUEIL au lieu de /admin/2fa
+                req.session.save(() => res.redirect('/'));
+                // ------------------------
+            });
+        } else {
+            req.session.flashMessage = { type: 'error', text: 'Code incorrect. Recommencez la configuration.' };
+            // En cas d'erreur, on reste sur la page de config pour qu'il puisse réessayer
+            req.session.save(() => res.redirect('/admin/2fa'));
+        }
+    });
+});
+app.post('/admin/2fa/disable', isAuthenticated, (req, res) => {
+    db.run('UPDATE users SET two_fa_enabled = 0, two_fa_secret = NULL WHERE id = ?', [req.session.userId], (err) => {
+        req.session.flashMessage = { type: 'success', text: 'Double authentification désactivée.' };
+        // SAUVEGARDE AVANT REDIRECTION
+        req.session.save(() => res.redirect('/admin/2fa'));
+    });
+});
+
+// --- Gestion du Contenu (Création / Modif / Suppression) ---
+
+// Création
+app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const sqlTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
+    db.all(sqlTags, [], (err, allTags) => {
+        if (err) { allTags = []; console.error("Erreur BDD (GET /journal/nouvelle tags):", err); }
+        res.render('new_entry', {
+            pageTitle: req.t('page_titles.new_entry'), 
+            activePage: 'journal',
+            allTags: allTags, 
+            articleTags: []
+        });
+    });
+});
+app.post('/journal', isAuthenticated, async (req, res) => {
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags } = req.body;
+    let summary_en = req.body.summary_en; // On prend la valeur du formulaire
+    const userId = req.session.userId;
+
+    // --- Gestion des Tags (Tableau d'IDs) ---
+    let tagIds = tags;
+    if (tagIds === undefined) { tagIds = []; }
+    else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
+    tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+
+    if (summary_fr && !summary_en && translator) {
+        try {
+            console.log("Traduction automatique du résumé...");
+            const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
+            if (result && typeof result.text === 'string') {
+                summary_en = result.text;
+            }
+        } catch (error) {
+            console.error("Erreur traduction résumé :", error);
+        }
+    }
+    
+    const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    
+    db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url], async function(err) {
+        if (err) {
+            console.error("Erreur BDD (POST /journal insert):", err);
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Erreur lors de la création de l\'entrée.',
+                detail: err.message
+            };
+            return res.redirect('/journal');
+        }
+        
+        const articleId = this.lastID;
+
+        logAction(req, 'CREATE_ARTICLE', `Titre: ${title_fr} (ID: ${articleId})`);
+
+        try {
+            await processTags(articleId, tagIds);
+            req.session.flashMessage = { type: 'success', text: 'Entrée créée avec succès !' };
+
+            req.session.save(function() {
+                res.redirect('/journal');
+            });
+
+        } catch (tagError) {
+            console.error("Erreur tags:", tagError);
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Entrée créée, mais erreur lors de l\'ajout des tags.',
+                detail: tagError.message
+            };
+            res.redirect('/journal');
+        }
+    });
+});
+
+// Modification
+app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
+    const id = req.params.id;
+    const lang = req.language === 'en' ? 'en' : 'fr';
+    const sqlArticle = "SELECT * FROM articles WHERE id = ?";
+    const sqlArticleTags = `SELECT tag_id FROM article_tags WHERE article_id = ?`;
+    const sqlAllTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
+    Promise.all([
+        new Promise((resolve, reject) => db.get(sqlArticle, id, (err, row) => err ? reject(err) : resolve(row))),
+        new Promise((resolve, reject) => db.all(sqlArticleTags, id, (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.all(sqlAllTags, [], (err, rows) => err ? reject(err) : resolve(rows)))
+    ]).then(([article, articleTagRows, allTags]) => {
+        if (!article) { return res.status(404).send("Entrée non trouvée !"); }
+        const articleTagIds = new Set(articleTagRows.map(row => row.tag_id));
+        res.render('edit_entry', {
+            article: article,
+            pageTitle: `${req.t('page_titles.edit_entry')}: ${article.title_fr}`,
+            activePage: 'journal',
+            allTags: allTags,
+            articleTagIds: articleTagIds
+        });
+    }).catch(err => {
+        console.error(`Erreur BDD (GET /entree/${id}/edit combined):`, err);
+        res.status(500).send("Erreur serveur.");
+    });
+});
+app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
+    const id = req.params.id;
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags } = req.body;
+    let summary_en = req.body.summary_en; // Valeur du formulaire
+
+    // --- Gestion des Tags ---
+    let tagIds = tags;
+    if (tagIds === undefined) { tagIds = []; }
+    else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
+    tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+
+    // --- TRADUCTION AUTOMATIQUE DU RÉSUMÉ ---
+    if (summary_fr && (!summary_en || summary_en.trim() === '') && translator) {
+        try {
+            console.log("Traduction automatique du résumé (edit)...");
+            const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
+            summary_en = result.text;
+        } catch (error) {
+            console.error("Erreur traduction résumé (edit) :", error);
+        }
+    }
+
+    const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
+
+    db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, id], async function(err) {
+        if (err) { 
+            console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); 
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Erreur lors de la modification de l\'entrée.',
+                detail: err.message // <-- AJOUT DU DÉTAIL
+            };
+            return res.redirect('/journal');
+        }
+
+        try  {
+            await processTags(id, tagIds);
+            req.session.flashMessage = { type: 'success', text: 'Entrée mise à jour avec succès !' };
+            req.session.save(function() {
+                res.redirect('/journal')
+            })
+        } catch (tagError) {
+            console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Entrée mise à jour, mais erreur sur les tags.',
+                detail: tagError.message
+            };
+            res.redirect('/journal');
+        }
+    });
+});
+
+// Suppression
+app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
+    const id = req.params.id;
+    const sql = 'DELETE FROM articles WHERE id = ?';
+    db.run(sql, id, function(err) {
+        if (err) {
+            console.error(`Erreur BDD (POST /entree/${id}/delete):`, err);
+            req.session.flashMessage = {
+                type: 'error',
+                text: 'Erreur lors de la suppression de l\'entrée.',
+                detail: err.message // <-- AJOUT DU DÉTAIL
+            };
+            return res.redirect('/journal');
+        }
+        logAction(req, 'DELETE_ARTICLE', `ID supprimé: ${id}`);
+
+        req.session.flashMessage = { type: 'success', text: 'Entrée supprimée avec succès.' };
+        
+        req.session.save(function() {
+            res.redirect('/journal');
+        });
+    });
+});
+
+// Ajout de commentaire (Public)
+app.post('/article/:id/comment', commentLimiter, (req, res) => {
+    const articleId = req.params.id;
+    const { author_name, content } = req.body;
+
+    // 1. Honeypot (Anti-bot)
+    if (req.body.website_field && req.body.website_field !== '') {
+        return res.redirect(`/entree/${articleId}`);
+    }
+
+    // 2. Validation champs vides
+    if (!author_name || !content || author_name.trim() === '' || content.trim() === '') {
+        req.session.flashMessage = { type: 'error', text: 'Veuillez remplir tous les champs.' };
+        
+        return req.session.save(() => {
+            res.redirect(`/entree/${articleId}`);
+        });
+    }
+
+    // 3. Modération Automatique (BAD-WORDS)
+    if (filter.isProfane(content) || filter.isProfane(author_name)) {
+        console.warn(`[Modération Auto] Rejeté : ${author_name}`);
+
+        req.session.flashMessage = {
+            type: 'error',
+            text: 'Votre commentaire a été rejeté car il contient un langage inapproprié.'
+        };
+
+        return req.session.save(() => {
+            res.redirect(`/entree/${articleId}`);
+        });
+    }
+
+    // 4. Insertion BDD
+    const sql = `INSERT INTO comments (article_id, author_name, content, is_approved) VALUES (?, ?, ?, 1)`;
+
+    db.run(sql, [articleId, author_name, content], function(err) {
+        if (err) {
+            console.error("Erreur BDD Commentaire:", err);
+            req.session.flashMessage = { type: 'error', text: 'Erreur technique.' };
+            return req.session.save(() => res.redirect(`/entree/${articleId}`));
+        }
+
+        sendAdminNotification(req, articleId, this.lastID, author_name, content);
+
+        req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
+
+        req.session.save(() => {
+            res.redirect(`/entree/${articleId}`);
+        });
+    });
+});
+
+// --- API (Pour le JavaScript Frontend) ---
+
+// Upload d'image (EasyMDE)
+app.post('/upload-image', isAuthenticated, apiLimiter, upload.single('image'), async (req, res) => {
+    if (!req.file) { return res.status(400).json({ error: 'Aucun fichier reçu.' }); }
+    const originalPath = req.file.path;
+    const originalFilename = req.file.filename;
+    const optimizedFilename = originalFilename.replace(/(\.[\w\d_-]+)$/i, '-opt.webp'); 
+    const optimizedPath = path.join('public', 'uploads', optimizedFilename);
+    console.log(`[Sharp] Traitement de ${originalFilename} vers ${optimizedFilename}`);
+    try {
+        await sharp(originalPath)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toFile(optimizedPath);
+        fs.unlink(originalPath, (err) => { if (err) console.error(`[Sharp] Erreur suppression original ${originalPath}:`, err); });
+        const optimizedImageUrl = '/uploads/' + optimizedFilename;
+        res.json({ imageUrl: optimizedImageUrl });
+    } catch (error) {
+        console.error("[Sharp] Erreur optimisation image:", error);
+        try { fs.unlinkSync(originalPath); } catch (e) {}
+        res.status(500).json({ error: "Erreur traitement image." });
+    }
+});
+
+// Traduction automatique (DeepL)
+app.post('/api/translate', isAuthenticated, async (req, res) => {
+    if (!translator) {
+        return res.status(503).json({ error: 'Service de traduction non disponible.' });
+    }
+
+    const textToTranslate = req.body.text;
+    const targetLanguage = req.body.targetLang || 'en-GB';
+
+
+    if (!textToTranslate || textToTranslate.trim() === '') {
+        return res.json({ translatedText: '' });
+    }
+
+    try {
+        const result = await translator.translateText(textToTranslate, 'fr', targetLanguage);
+        if (result && typeof result.text === 'string') {
+            res.json({ translatedText: result.text });
+        } else {
+            res.status(500).json({ error: 'Réponse invalide de DeepL.' });
+        }
+    } catch (error) {
+        console.error("Erreur DeepL:", error);
+        res.status(500).json({ error: "Erreur lors de la traduction." });
+    }
+});
+
+// Création rapide de tag (Modale)
+app.post('/api/tags/create', isAuthenticated, async (req, res) => {
+    const { name_fr, name_en_auto } = req.body;
+    if (!name_fr) {
+        return res.status(400).json({ error: 'Le nom français est requis.' });
+    }
+    let name_en = req.body.name_en; // Récupère le nom EN manuel
+
+    if (name_en_auto && translator) { // Si auto-traduction demandée ET DeepL dispo
+        try {
+            const result = await translator.translateText(name_fr, 'fr', 'en-GB');
+            if (result && typeof result.text === 'string') { name_en = result.text; }
+            else { name_en = name_fr; } // Fallback
+        } catch (error) { name_en = name_fr; /* Fallback */ }
+    } else if (!name_en) {
+        name_en = name_fr;
+    }
+
+    const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
+    db.run(sql, [name_fr, name_en], function(err) {
+        if (err) {
+            let message = 'Erreur lors de la création du tag.';
+            if (err.message.includes('UNIQUE constraint failed')) {
+                message = 'Un tag avec ce nom (FR ou EN) existe déjà.';
+            }
+            return res.status(409).json({ error: message }); // 409 Conflict 
+        }
+
+        const lang = req.language === 'en' ? 'en' : 'fr';
+        res.status(201).json({
+            id: this.lastID,
+            name: (lang === 'en' ? name_en : name_fr), // Nom dans la langue actuelle
+            name_fr: name_fr,
+            name_en: name_en
+        });
+    });
+});
+
+// Recherche en temps réel (Live Search)
+app.get('/api/search', async (req, res) => {
+    const query = req.query.q;
+    const lang = req.language === 'en' ? 'en' : 'fr'; // Utilise la langue détectée
+
+    // Si la recherche est vide, on renvoie une liste vide
+    if (!query || query.trim() === '') {
+        return res.json([]);
+    }
+
+    const searchTerm = `%${query}%`;
+
+    // Requête simplifiée pour la recherche rapide (Titre ou Contenu)
+    const sql = `
+        SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date
+        FROM articles
+        WHERE title_fr LIKE ? OR title_en LIKE ? OR content_fr LIKE ? OR content_en LIKE ?
+        ORDER BY publication_date DESC
+        LIMIT 10
+    `;
+
+    db.all(sql, [searchTerm, searchTerm, searchTerm, searchTerm], (err, rows) => {
+        if (err) {
+            console.error("Erreur API Search:", err);
+            return res.status(500).json({ error: "Erreur serveur" });
+        }
+
+        // On prépare les données pour le frontend (nettoyage du markdown, formatage date)
+        const results = rows.map(article => {
+            // Nettoyage du contenu pour l'extrait
+            let text = article.content
+                .replace(/!\[.*?\]\(.*?\)/g, '') // Enlève images
+                .replace(/^#\s+.*(\r\n|\n|\r)?/, '') // Enlève titre H1
+                .replace(/[#*`~_]/g, '') // Enlève symboles
+                .trim();
+
+            return {
+                id: article.id,
+                title: article.title,
+                date: new Date(article.publication_date).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR'),
+                excerpt: text.substring(0, 150) + '...',
+                image: article.cover_image_url
+            };
+        });
+
+        res.json(results);
     });
 });
 
