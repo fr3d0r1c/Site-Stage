@@ -24,6 +24,7 @@ const frenchBadWordsList = require('french-badwords-list').array;
 const SQLiteStore = require('connect-sqlite3')(session);
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
+const puppeteer = require('puppeteer');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -2059,6 +2060,79 @@ app.get('/admin/audit', isAuthenticated, (req, res) => {
         });
     });
 });
+
+// --- EXPORT PDF ---
+app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
+    const lang = req.language === 'en' ? 'en' : 'fr';
+
+    // 1. Récupérer TOUS les articles (du plus vieux au plus récent pour lire l'histoire)
+    const sql = `
+        SELECT 
+            a.title_${lang} as title, 
+            a.content_${lang} as content, 
+            a.publication_date, 
+            GROUP_CONCAT(t.name_${lang}) as tags
+        FROM articles a
+        LEFT JOIN article_tags at ON a.id = at.article_id
+        LEFT JOIN tags t ON at.tag_id = t.id
+        GROUP BY a.id
+        ORDER BY a.publication_date ASC
+    `;
+
+    db.all(sql, [], async (err, rows) => {
+        if (err) return res.status(500).send("Erreur BDD");
+
+        try {
+            const articlesProcessed = rows.map(art => {
+                let cleanContent = art.content.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève titre H1
+                return {
+                    ...art,
+                    content: marked.parse(cleanContent)
+                };
+            });
+
+            // On génère le HTML complet
+            const htmlContent = await new Promise((resolve, reject) => {
+                app.render('pdf-export', {
+                    articles: articlesProcessed,
+                    author: req.session.username
+                }, (err, html) => {
+                    if (err) reject(err);
+                    else resolve(html);
+                });
+            });
+
+            // 3. Lancer Puppeteer pour créer le PDF
+            const browser = await puppeteer.launch({
+                headless: 'new',
+                args: ['--no-sandbox'] // Nécessaire pour certains environnements serveurs
+            });
+            const page = await browser.newPage();
+
+            // On définit le contenu et on attend que les images soient chargées
+            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+            const pdfBuffer = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' }
+            });
+
+            await browser.close();
+
+            // 4. Envoyer le fichier
+            res.set({
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': 'attachment; filename="carnet-de-stage.pdf"',
+                'Content-Length': pdfBuffer.length
+            });
+            res.send(pdfBuffer);
+        } catch (pdfError) {
+            console.error("Erreur génération PDF:", pdfError);
+            res.status(500).send("Erreur lors de la génération du PDF.");
+        }
+    })
+})
 
 // =================================================================
 // 7. EXPORT DE L'APPLICATION (pour les tests)

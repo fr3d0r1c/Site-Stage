@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Export PDF</title>
+    <style>
+        /* Styles spécifiques pour l'impression PDF */
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            padding: 40px;
+            color: #000;
+            background: #fff;
+            line-height: 1.5;
+        }
+        
+        h1.main-title {
+            text-align: center;
+            color: #0056b3;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            font-size: 32px;
+        }
+
+        .entry {
+            margin-bottom: 50px;
+            page-break-inside: avoid; /* Évite de couper un article en deux pages */
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 20px;
+        }
+
+        .entry h2 {
+            color: #333;
+            margin-top: 0;
+        }
+
+        .entry-meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        .entry img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+
+        .tags {
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #555;
+        }
+        .tag {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="main-title">Carnet de Stage - <%= author %></h1>
+
+    <% articles.forEach(article => { %>
+        <div class="entry">
+            <h2><%= article.title %></h2>
+            <div class="entry-meta">
+                Publié le <%= new Date(article.publication_date).toLocaleDateString('fr-FR') %>
+            </div>
+
+            <div class="content">
+                <%- article.content %>
+            </div>
+
+            <% if (article.tags) { %>
+                <div class="tags">
+                    <strong>Tags:</strong> 
+                    <% article.tags.split(',').forEach(tag => { %>
+                        <span class="tag"><%= tag.trim() %></span>
+                    <% }); %>
+                </div>
+            <% } %>
+        </div>
+    <% }); %>
+
+</body>
+</html>
