@@ -122,9 +122,9 @@
     "internship_mission_title": "Ma Mission",
     "internship_mission_desc": "[Décrivez ici les objectifs principaux de votre stage.]",
     "school_title": "Mon Parcours Scolaire",
-    "school_item_1_title": "Diplôme d'Ingénieur Informatique et Réseau",
+    "school_item_1_title": "Cycle Ingénieur - ESAIP",
     "school_item_1_date": "2025 - 2028 (Prévu)",
-    "school_item_1_desc": "Cycle Ingénieur à l'ESAIP (Angers), spécialisation Cybersécurité & Réseaux. Cursus en 3 ans après BUT.",
+    "school_item_1_desc": "École d'Ingénieurs de l'Avenir (Angers). Spécialisation en Cybersécurité et Réseaux. Formation axée sur la gestion des risques et la sécurité des systèmes d'information.",
     "school_project_title": "Projet Universitaire : Carnet de Stage Full-Stack",
     "school_project_desc": "Développement de ce carnet de stage en utilisant Node.js, Express, et EJS. Mise en place d'un système d'authentification, BDD SQLite, tests automatisés (Jest), CI/CD (GitHub Actions), et sécurité (CSP, Helmet).",
     "school_item_2_title": "BUT Réseau et Télécommunications",
@@ -135,11 +135,14 @@
     "school_item_3_desc": "Option Systèmes d'Information et Numérique (SIN). Lycée Raphël Elizé, Sablé-sur-Sarthe.",
     "work_title": "Mon Parcours Professionnel",
     "work_item_1_title": "Administrateur Réseau et Télécom (Alternance)",
+    "work_item_1_subtitle": "SDIS 79 (Service Départemental d'Incendie et de Secours)",
     "work_item_1_date": "Décembre 2024 - Juin 2025 (en cours)",
-    "work_item_1_desc": "Alternance au sein du Service Départemental d'Incendie et de Secours des Deux-Sèvres (SDIS 79). Gestion et maintenance de l'infrastructure réseau et des systèmes de télécommunication.",
+    "work_item_1_desc": "Maintien en condition opérationnelle de l'infrastructure réseau critique. Gestion des équipements de sécurité et support technique.",
     "work_item_2_title": "Administrateur Systèmes (Stage)",
+    "work_item_2_subtitle": "Laboratoire LIAS (Université de Poitiers)",
     "work_item_2_date": "Juin 2024 - Juillet 2024",
-    "work_item_2_desc": "Stage au Laboratoire d'Informatique et d'Automatique pour les Systèmes (LIAS). Administration des serveurs et support aux utilisateurs."
+    "work_item_2_desc": "Administration de serveurs Linux, automatisation de tâches et gestion de parc informatique pour les chercheurs.",
+    "internship_company_map": "Localisation de l'entreprise"
   },
   "contact": {
     "title": "Contactez-moi",

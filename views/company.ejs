@@ -1,8 +1,23 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
 <div class="static-page">
-    <h1><%= pageTitle %></h1>
-    <p>Contenu à venir...</p>
+    <h1>Localisation de mon Parcours</h1>
+    <p>Voici les différents lieux où j'ai étudié et travaillé.</p>
+    <hr>
+
+    <div id="map" 
+         style="height: 500px; width: 100%; border-radius: 12px; border: 1px solid var(--c-border); z-index: 1;"
+         data-locations='[
+            {"lat": 47.46420, "lng": -0.49735, "title": "ESAIP", "desc": "École d&apos;Ingénieurs"},
+            {"lat": 48.86020, "lng": 2.30035, "title": "Actimage Paris ", "desc": "Alternance (Dev Web)"},
+            {"lat": 39.75536, "lng": -75.62697, "title": "Actimage Wilmington", "desc": "Stage (Dev Web)"}
+         ]'>
+    </div>
 </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="/js/map.js"></script>
 
 <%- include('partials/footer') %>

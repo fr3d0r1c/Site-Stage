@@ -112,7 +112,8 @@ app.use(
           "https://cdn.jsdelivr.net/npm/marked/marked.min.js", // CDN Marked.js
           "https://unpkg.com/easymde/dist/easymde.min.js", // CDN EasyMDE JS
           "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js", // CDN SweetAlert2 JS
-          "https://cdn.jsdelivr.net/"
+          "https://cdn.jsdelivr.net/",
+          "https://unpkg.com/"
         ],
         styleSrc: [
           "'self'",
@@ -122,14 +123,17 @@ app.use(
           "https://fonts.googleapis.com/",
           "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css",
           "https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css", // <-- AJOUTE CETTE LIGNE
-          "'unsafe-inline'"
+          "'unsafe-inline'",
+          "https://unpkg.com/"
         ],
         imgSrc: [
           "'self'", // Images du même domaine (tes uploads)
           "data:", // Images encodées (ex: data:image/png;...)
           "https://via.placeholder.com", // Images d'exemple
           "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // SVG des drapeaux
-          "https:"
+          "https:",
+          "https://*.tile.openstreetmap.org",
+          "https://unpkg.com"
         ],
         fontSrc: [
             "'self'",
@@ -140,7 +144,8 @@ app.use(
         ],
         connectSrc: [
           "'self'",
-          "https://cdn.jsdelivr.net/"
+          "https://cdn.jsdelivr.net/",
+          "https://unpkg.com"
         ],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
