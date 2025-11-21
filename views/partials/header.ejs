@@ -49,73 +49,77 @@
 
         <nav class="main-nav">
             <ul>
-                <li><a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>"><i class="fas fa-home"></i></a></li>
+                <li>
+                    <a href="/" class="<%= activePage === 'accueil' ? 'active' : '' %>">
+                        <i class="fas fa-home"></i> <%= t('nav.home') %>
+                    </a>
+                </li>
 
-                <li class="dropdown <%= (activePage === 'profil' || activePage === 'stage') ? 'active-parent' : '' %>">
+                <li class="dropdown <%= (activePage === 'profil') ? 'active-parent' : '' %>">
                     <a href="#" class="dropdown-toggle">
-                        <%= t('nav.about') %> <i class="fas fa-caret-down fa-xs"></i>
+                        <i class="fas fa-user"></i> <%= t('nav.profile') %> <i class="fas fa-caret-down fa-xs"></i>
                     </a>
                     <ul class="sous-menu">
-                        <li class="dropdown dropdown-level-2 <%= activePage === 'profil' ? 'active-parent' : '' %>">
-                            <a href="#" class="dropdown-toggle">
-                                <%= t('nav.profile') %> <i class="fas fa-caret-right fa-xs"></i>
-                            </a>
-                            <ul class="sous-menu">
-                                <li><a href="/profil/qui-suis-je"><%= t('subnav.who_am_i') %></a></li>
-                                <li><a href="/profil/parcours-scolaire"><%= t('subnav.school_path') %></a></li>
-                                <li><a href="/profil/parcours-pro"><%= t('subnav.work_path') %></a></li>
-                            </ul>
-                        </li>
-                        <li class="dropdown dropdown-level-2 <%= activePage === 'stage' ? 'active-parent' : '' %>">
-                             <a href="#" class="dropdown-toggle">
-                                <%= t('nav.internship') %> <i class="fas fa-caret-right fa-xs"></i>
-                            </a>
-                            <ul class="sous-menu">
-                                <li><a href="/stage/l-entreprise"><%= t('subnav.company') %></a></li>
-                                <li><a href="/stage/mes-missions"><%= t('subnav.missions') %></a></li>
-                            </ul>
-                        </li>
+                        <li><a href="/profil/qui-suis-je"><i class="fas fa-id-card"></i> <%= t('subnav.who_am_i') %></a></li>
+                        <li><a href="/profil/parcours-scolaire"><i class="fas fa-graduation-cap"></i> <%= t('subnav.school_path') %></a></li>
+                        <li><a href="/profil/parcours-pro"><i class="fas fa-briefcase"></i> <%= t('subnav.work_path') %></a></li>
                     </ul>
                 </li>
 
-                <li class="dropdown <%= (activePage === 'journal') ? 'active-parent' : '' %>">
-                    <a href="/journal" class="dropdown-toggle <%= activePage === 'journal' ? 'active' : '' %>">
-                        <%= t('nav.journal') %> <i class="fas fa-caret-down fa-xs"></i>
+                <li class="dropdown <%= (activePage === 'stage') ? 'active-parent' : '' %>">
+                    <a href="#" class="dropdown-toggle">
+                        <i class="fas fa-building"></i> <%= t('nav.internship') %> <i class="fas fa-caret-down fa-xs"></i>
                     </a>
                     <ul class="sous-menu">
-                        <li><a href="/journal"><%= t('journal.view_all') %></a></li>
-                        <li><a href="/search" class="<%= activePage === 'search' ? 'active' : '' %>"><%= t('journal.advanced_search') %></a></li>
-                        
+                        <li><a href="/stage/l-entreprise"><i class="fas fa-city"></i> <%= t('subnav.company') %></a></li>
+                        <li><a href="/stage/mes-missions"><i class="fas fa-tasks"></i> <%= t('subnav.missions') %></a></li>
+                    </ul>
+                </li>
+
+                <li class="dropdown <%= (activePage === 'journal' || activePage === 'search') ? 'active-parent' : '' %>">
+                    <a href="/journal" class="dropdown-toggle <%= activePage === 'journal' ? 'active' : '' %>">
+                        <i class="fas fa-book-open"></i> <%= t('nav.journal') %> <i class="fas fa-caret-down fa-xs"></i>
+                    </a>
+                    <ul class="sous-menu">
+                        <li><a href="/journal"><i class="fas fa-list"></i> <%= t('journal.view_all') %></a></li>
+                        <li><a href="/search"><i class="fas fa-search"></i> <%= t('journal.advanced_search') %></a></li>
+
                         <% if (locals.username) { %>
                             <li class="dropdown dropdown-level-2">
                                 <a href="#" class="dropdown-toggle">
-                                    <%= t('editor.title') %> <i class="fas fa-caret-right fa-xs"></i>
+                                    <i class="fas fa-pen-nib"></i> <%= t('editor.title') %> <i class="fas fa-caret-right fa-xs"></i>
                                 </a>
                                 <ul class="sous-menu">
-                                    <li><a href="/journal/nouvelle"><%= t('editor.create') %></a></li>
-                                    <li><a href="/journal"><%= t('editor.modify') %></a></li>
-                                    <li><a href="/journal"><%= t('editor.delete') %></a></li>
+                                    <li><a href="/journal/nouvelle"><i class="fas fa-plus"></i> <%= t('editor.create') %></a></li>
+                                    <li><a href="/journal"><i class="fas fa-edit"></i> <%= t('editor.modify') %></a></li>
+                                    <li><a href="/journal"><i class="fas fa-trash"></i> <%= t('editor.delete') %></a></li>
                                 </ul>
                             </li>
                         <% } %>
                     </ul>
                 </li>
-                
-                <li><a href="/contact" class="<%= activePage === 'contact' ? 'active' : '' %>"><%= t('page_titles.contact') %></a></li>
+
+                <li>
+                    <a href="/contact" class="<%= activePage === 'contact' ? 'active' : '' %>">
+                        <i class="fas fa-envelope"></i> <%= t('page_titles.contact') %>
+                    </a>
+                </li>
 
                 <% if (locals.username) { %>
                     <li class="dropdown <%= activePage === 'admin' ? 'active-parent' : '' %>">
                         <a href="/admin" class="dropdown-toggle <%= activePage === 'admin' ? 'active' : '' %>">
-                            <%= t('nav.admin') %> <i class="fas fa-caret-down fa-xs"></i>
+                            <i class="fas fa-user-shield"></i> <%= t('nav.admin') %> <i class="fas fa-caret-down fa-xs"></i>
                         </a>
                         <ul class="sous-menu">
-                            <li><a href="/admin/dashboard" style="font-weight: bold; color: var(--c-primary);">📊 Tableau de Bord</a></li>
-                            <li><a href="/admin/audit">🕵️‍♂️ Journal d'Audit</a></li>
-                            <li><a href="/admin/backup">💾 Sauvegarder BDD</a></li>                            <li><a href="/admin/tags"><%= t('admin_page.manage_tags_title') %></a></li>
-                            <li><a href="/admin/comments">💬 <%= t('admin_page.action_manage_comments') %></a></li>
-                            <li><a href="/admin/export/pdf" target="_blank">📄 Télécharger en PDF</a></li>
-                            <li><a href="/change-password"><%= t('admin_page.action_change_password') %></a></li>
-                            <li><a href="/deconnexion" data-confirm="<%= t('nav.logout') %> ?"><%= t('admin_page.action_logout') %></a></li>
+                            <li><a href="/admin/dashboard"><i class="fas fa-chart-line"></i> Tableau de Bord</a></li>
+                            <li><a href="/admin/tags"><i class="fas fa-tags"></i> <%= t('admin_page.manage_tags_title') %></a></li>
+                            <li><a href="/admin/comments"><i class="fas fa-comments"></i> <%= t('admin_page.action_manage_comments') %></a></li>
+                            <li><a href="/admin/2fa"><i class="fas fa-shield-alt"></i> Sécurité 2FA</a></li>
+                            <li><a href="/admin/export/pdf" target="_blank"><i class="fas fa-file-pdf"></i> Export PDF</a></li>
+                            <li><a href="/admin/backup"><i class="fas fa-database"></i> Sauvegarde BDD</a></li>
+
+                            <li><a href="/change-password"><i class="fas fa-key"></i> <%= t('admin_page.action_change_password') %></a></li>
+                            <li><a href="/deconnexion" data-confirm="<%= t('nav.logout') %> ?"><i class="fas fa-sign-out-alt"></i> <%= t('admin_page.action_logout') %></a></li>
                         </ul>
                     </li>
                 <% } %>

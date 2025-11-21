@@ -1,10 +1,39 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
 <div class="static-page">
     <h1><%= t('static_pages.school_title') %></h1>
 
+    <p>Voici les lieux où j'ai effectué mes études.</p>
+
+    <div id="map"
+         style="height: 400px; width: 100%; border-radius: 12px; border: 1px solid var(--c-border); z-index: 1; margin-bottom: 2rem;"
+         data-locations='[
+            {
+                "lat": 47.83868, "lng": -0.34100,
+                "title": "Lycée Raphaël Elizé (Sablé-sur-Sarthe)",
+                "desc": "Bac STI2D",
+                "icon": "fa-school"
+            },
+            {
+                "lat": 46.83566, "lng": 0.53579,
+                "title": "IUT (Châtellerault)",
+                "desc": "BUT R&T",
+                "icon": "fa-network-wired"
+            },
+            {
+                "lat": 47.46438, "lng": -0.49524,
+                "title": "ESAIP (Angers)",
+                "desc": "Cycle Ingénieur (Actuel)",
+                "icon": "fa-graduation-cap"
+            }
+        ]'>
+    </div>
+
+    <hr>
+
     <div class="timeline">
-        
         <div class="timeline-item">
             <div class="timeline-icon"><i class="fas fa-graduation-cap"></i></div>
             <div class="timeline-content">
@@ -24,13 +53,14 @@
         </div>
 
         <div class="timeline-item">
-            <div class="timeline-icon"><i class="fas fa-network-wired"></i></div> <div class="timeline-content">
+            <div class="timeline-icon"><i class="fas fa-network-wired"></i></div>
+            <div class="timeline-content">
                 <h2><%= t('static_pages.school_item_2_title') %></h2>
                 <span class="timeline-date"><%= t('static_pages.school_item_2_date') %></span>
                 <p><%= t('static_pages.school_item_2_desc') %></p>
             </div>
         </div>
-        
+
         <div class="timeline-item">
             <div class="timeline-icon"><i class="fas fa-school"></i></div>
             <div class="timeline-content">
@@ -39,8 +69,10 @@
                 <p><%= t('static_pages.school_item_3_desc') %></p>
             </div>
         </div>
-        
     </div>
-    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="/js/map.js"></script>
 
 <%- include('partials/footer') %>

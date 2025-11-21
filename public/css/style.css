@@ -28,12 +28,12 @@ body.theme-dark {
     --c-primary-rgb: 0, 224, 235; /* RGB de #00e0eb */
     --c-text: #eeeeee;
     --c-button-text: #222831;
-    --c-text-light: #bbbbbb; /* Éclairci (pour contraste accessibilité) */
+    --c-text-light: #d1d1d1; /* Éclairci (pour contraste accessibilité) */
     --c-background: #222831;
     --c-surface: #393e46;
     --c-border: #4a4a4a;
     --c-danger: #e74c3c;
-    --c-gray: #aaaaaa; /* Éclairci (pour contraste accessibilité) */
+    --c-gray: #d0d0d0; /* Éclairci (pour contraste accessibilité) */
 }
 
 /* --- THÈME SEPIA --- */
@@ -452,7 +452,6 @@ button[type="submit"] {
 .site-footer p {
     margin-bottom: 1.5rem;
     font-size: 0.9rem;
-    opacity: 0.8;
 }
 
 /* --- Nouveaux liens du footer --- */
@@ -1062,17 +1061,6 @@ button[type="submit"] {
     }
 }
 
-.visually-hidden {
-    position: absolute !important;
-    height: 1px; 
-    width: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    border: 0;
-}
-
 /*
 =========================================
 --- 24. Frise Chronologique (Alternée) ---
@@ -1430,4 +1418,70 @@ body.zen-mode #zen-mode-btn {
     background-color: var(--c-border); /* Fond gris léger au survol */
     color: var(--c-text);
     text-decoration: none;
+}
+
+/* Espacement pour les icônes de navigation */
+.main-nav i {
+    margin-right: 8px; /* Espace entre l'icône et le texte */
+    opacity: 0.9; /* Légèrement plus discret que le texte */
+}
+
+/* Optionnel : Petit effet au survol */
+.main-nav li:hover > a > i {
+    transform: scale(1.1); /* L'icône grandit un peu */
+    transition: transform 0.2s ease;
+}
+
+/*
+=========================================
+--- 26. Marqueurs de Carte Personnalisés ---
+=========================================
+*/
+/* Supprime le fond par défaut de Leaflet */
+.custom-map-marker {
+    background: none;
+    border: none;
+}
+
+/* Le style du "Pin" (ressemble à .timeline-icon) */
+.marker-pin {
+    width: 40px;
+    height: 40px;
+    background-color: var(--c-primary); /* Couleur du thème */
+    border: 3px solid var(--c-surface); /* Bordure blanche/sombre */
+    border-radius: 50%; /* Cercle parfait */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--c-white); /* Icône blanche */
+    font-size: 1.1rem;
+    
+    /* Ombre pour bien détacher le marqueur de la carte */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    transition: transform 0.2s ease;
+}
+
+/* Petit effet au survol du marqueur */
+.marker-pin:hover {
+    transform: scale(1.1);
+    cursor: pointer;
+}
+
+/*
+=========================================
+--- 23. Accessibilité (Classes "sr-only") ---
+=========================================
+*/
+
+/* Cache visuellement un élément, mais le garde accessible pour les lecteurs d'écran */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
