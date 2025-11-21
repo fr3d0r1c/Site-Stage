@@ -372,6 +372,22 @@ db.run(createCommentsTable, (err) => {
     if (err) console.error("Erreur création table comments:", err);
 });
 
+// Création de la table 'audit_logs'
+const createAuditTable = `
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  username TEXT,
+  action TEXT NOT NULL,      
+  details TEXT,              
+  ip_address TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`;
+db.run(createAuditTable, (err) => {
+    if (err) console.error("Erreur création table audit_logs:", err);
+});
+
 
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
@@ -452,6 +468,24 @@ async function sendAdminNotification(req, articleId, commentId, authorName, comm
         // L'utilisateur, lui, ne doit pas être bloqué pour ça.
         console.error(`Erreur lors de l'envoi de l'email de notification admin (Commentaire ${commentId}):`, emailError);
     }
+}
+
+/**
+ * Enregistre une action dans le journal d'audit.
+ * @param {object} req - L'objet requête (pour l'IP et la session)
+ * @param {string} action - Le nom de l'action (ex: 'LOGIN_SUCCESS')
+ * @param {string} details - Détails optionnels (ex: 'Article ID 5')
+ */
+function logAction(req, action, details = '') {
+    const userId = req.session ? req.session.userId : null;
+    const username = req.session ? req.session.username : 'Anonyme/Système';
+    const ip = req.ip || req.connection.remoteAddress;
+
+    const sql = `INSERT INTO audit_logs (user_id, username, action, details, ip_address) VALUES (?, ?, ?, ?, ?)`;
+
+    db.run(sql, [userId, username, action, details, ip], (err) => {
+        if (err) console.error("Erreur écriture audit log:", err);
+    });
 }
 
 // =================================================================
@@ -1089,6 +1123,8 @@ app.post('/connexion', authLimiter, (req, res) => {
                 req.session.userId = user.id;
                 req.session.username = user.username;
 
+                logAction(req, 'LOGIN', 'Connexion réussie');
+
                 // ============================================================
                 // CAS 2 : ONBOARDING (Jamais demandé d'activer la 2FA)
                 // ============================================================
@@ -1115,6 +1151,7 @@ app.post('/connexion', authLimiter, (req, res) => {
                 });
             } else {
                 // --- ÉCHEC : MOT DE PASSE INCORRECT ---
+                logAction(req, 'LOGIN_FAILED', `Tentative échouée pour: ${username}`);
                 res.render('login', { 
                     pageTitle: req.t('page_titles.login'), 
                     error: "Nom d'utilisateur ou mot de passe incorrect.", 
@@ -1551,6 +1588,9 @@ app.post('/journal', isAuthenticated, async (req, res) => {
         }
         
         const articleId = this.lastID;
+
+        logAction(req, 'CREATE_ARTICLE', `Titre: ${title_fr} (ID: ${articleId})`);
+
         try {
             await processTags(articleId, tagIds);
             req.session.flashMessage = { type: 'success', text: 'Entrée créée avec succès !' };
@@ -1666,6 +1706,8 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
             };
             return res.redirect('/journal');
         }
+        logAction(req, 'DELETE_ARTICLE', `ID supprimé: ${id}`);
+
         req.session.flashMessage = { type: 'success', text: 'Entrée supprimée avec succès.' };
         
         req.session.save(function() {
@@ -1999,6 +2041,22 @@ app.get('/admin/dashboard', isAuthenticated, (req, res) => {
     }).catch(err => {
         console.error("Erreur Dashboard:", err);
         res.status(500).send("Erreur lors de la génération du tableau de bord.");
+    });
+});
+
+// --- JOURNAL D'AUDIT (Logs de sécurité) ---
+app.get('/admin/audit', isAuthenticated, (req, res) => {
+    // On récupère les 100 derniers logs
+    const sql = `SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100`;
+    
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).send("Erreur BDD");
+        
+        res.render('admin-audit', {
+            pageTitle: "Journal d'Audit",
+            activePage: 'admin',
+            logs: rows
+        });
     });
 });
 

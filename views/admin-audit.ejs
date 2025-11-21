@@ -1,0 +1,43 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <h1>🕵️‍♂️ Journal d'Audit (Sécurité)</h1>
+    <p>Historique des 100 dernières actions critiques sur le site.</p>
+    <hr>
+
+    <div style="overflow-x: auto;">
+        <table class="tags-table" style="width: 100%; font-size: 0.9rem;">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Utilisateur</th>
+                    <th>Action</th>
+                    <th>Détails</th>
+                    <th>IP</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (logs && logs.length > 0) { %>
+                    <% logs.forEach(log => { %>
+                        <tr style="<%= (log.action.includes('DELETE') || log.action.includes('FAILED')) ? 'background-color: rgba(220, 53, 69, 0.1);' : '' %>">
+                            <td><%= new Date(log.created_at).toLocaleString('fr-FR') %></td>
+                            <td><strong><%= log.username %></strong></td>
+                            <td>
+                                <span style="font-weight: bold; color: var(--c-primary);"><%= log.action %></span>
+                            </td>
+                            <td><%= log.details %></td>
+                            <td><code style="font-size: 0.8em;"><%= log.ip_address %></code></td>
+                        </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="5" style="text-align: center;">Aucun log enregistré.</td></tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+
+    <hr>
+    <nav><a href="/admin">Retour au Tableau de Bord</a></nav>
+</div>
+
+<%- include('partials/footer') %>
