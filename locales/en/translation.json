@@ -28,6 +28,8 @@
   "forms": {
     "title_fr": "Title (FR)",
     "title_en": "Title (EN)",
+    "summary_fr": "Summary (FR)",
+    "summary_en": "Summary (EN)",
     "content_fr": "Content (FR - Markdown)",
     "content_en": "Content (EN - Markdown)",
     "cover_image_url": "Cover image URL (optional)",
@@ -37,9 +39,7 @@
     "username": "Username",
     "password": "Password",
     "login_button": "Login",
-    "create_account_button": "Create Account",
-    "summary_fr": "Summary (FR)",
-    "summary_en": "Summary (EN)"
+    "create_account_button": "Create Account"
   },
   "journal": {
     "add_entry": "Add Entry",
@@ -62,7 +62,8 @@
     "latest_entries": "Latest Entries",
     "search_placeholder": "Search...",
     "search_button": "🔍",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "cancel_confirm": "Are you sure you want to cancel? Any unsaved changes will be lost."
   },
   "homepage": {
     "title": "My Internship Log",
@@ -119,6 +120,7 @@
     "internship_company_name": "Name",
     "internship_company_location": "Location",
     "internship_company_sector": "Industry",
+    "internship_company_map": "Company Location",
     "internship_mission_title": "My Mission",
     "internship_mission_desc": "[Describe the main objectives of your internship here.]",
     "school_title": "My School Career",
@@ -132,15 +134,14 @@
     "school_item_2_desc": "Operator and Multimedia Networks specialization. IUT Poitiers-Niort-Châtellerault, Châtellerault.",
     "school_item_3_title": "Baccalauréat STI2D (Technical Diploma)",
     "school_item_3_date": "2022",
-    "school_item_3_desc": "Information Systems and Digital (SIN) specialization. Raphël Elizé High School, Sablé-sur-Sarthe.",
+    "school_item_3_desc": "Information Systems and Digital (SIN) specialization. Raphaël Elizé, Sablé-sur-Sarthe.",
     "work_title": "My Professional Career",
     "work_item_1_title": "Network & Telecom Administrator (Apprenticeship)",
     "work_item_1_date": "December 2024 - June 2025 (Ongoing)",
     "work_item_1_desc": "Apprenticeship at the Departmental Fire and Rescue Service (SDIS 79). Managing and maintaining network infrastructure and telecommunication systems.",
     "work_item_2_title": "Systems Administrator (Internship)",
     "work_item_2_date": "June 2024 - July 2024",
-    "work_item_2_desc": "Internship at the LIAS Laboratory (Computer Science and Automation for Systems). Server administration and user support.",
-    "internship_company_map": "Company Location"
+    "work_item_2_desc": "Internship at the LIAS Laboratory (Computer Science and Automation for Systems). Server administration and user support."
   },
   "contact": {
     "title": "Contact Me",
@@ -184,7 +185,7 @@
     "save_button": "Save",
     "no_tags": "No tags found.",
     "back_to_admin": "Back to Administration Panel",
-    "delete_confirm": "Are you sure you want to delete this tag? It will be removed from all associated entries."
+    "delete_confirm": "Are you sure you want to delete? This action is irreversible."
   },
   "comments": {
     "title": "Comments",
