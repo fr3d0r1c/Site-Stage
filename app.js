@@ -694,13 +694,24 @@ app.get('/entree/:id', (req, res) => {
         const sqlPrev = `SELECT id, title_${lang} as title FROM articles WHERE publication_date < ? ORDER BY publication_date DESC LIMIT 1`;
         const sqlNext = `SELECT id, title_${lang} as title FROM articles WHERE publication_date > ? ORDER BY publication_date ASC LIMIT 1`;
 
+        const sqlSimilar = `
+            SELECT DISTINCT a.id, a.title_${lang} as title, a.cover_image_url, a.publication_date
+            FROM articles a
+            JOIN article_tags at ON a.id = at.article_id
+            WHERE at.tag_id IN (SELECT tag_id FROM article_tags WHERE article_id = ?) -- Mêmes tags que l'article actuel
+            AND a.id != ? -- Exclure l'article actuel
+            ORDER BY RANDOM() -- Mélanger pour varier les suggestions
+            LIMIT 3
+        `;
+
         // On exécute les 4 requêtes restantes en parallèle
         Promise.all([
             new Promise((resolve, reject) => db.all(sqlTags, id, (err, rows) => err ? reject(err) : resolve(rows))),
             new Promise((resolve, reject) => db.get(sqlPrev, [currentPublicationDate], (err, row) => err ? reject(err) : resolve(row))),
             new Promise((resolve, reject) => db.get(sqlNext, [currentPublicationDate], (err, row) => err ? reject(err) : resolve(row))),
-            new Promise((resolve, reject) => db.all(sqlComments, id, (err, rows) => err ? reject(err) : resolve(rows)))
-        ]).then(([tagRows, prevEntry, nextEntry, comments]) => {
+            new Promise((resolve, reject) => db.all(sqlComments, id, (err, rows) => err ? reject(err) : resolve(rows))),
+            new Promise((resolve, reject) => db.all(sqlSimilar, [id, id], (err, rows) => err ? reject(err) : resolve(rows)))
+        ]).then(([tagRows, prevEntry, nextEntry, comments, similarArticles]) => {
 
             article.tags = tagRows.map(tag => tag.name);
 
@@ -749,10 +760,8 @@ app.get('/entree/:id', (req, res) => {
                 prevEntry: prevEntry || null,
                 nextEntry: nextEntry || null,
                 comments: comments || [],
-                // Pour le feedback du formulaire de commentaire
+                similarArticles: similarArticles || [],
                 messageSent: req.query.comment === 'success' ? true : (req.query.comment === 'error' ? false : null),
-                
-                // Variables OG pour le header
                 ogTitle: article.title,
                 ogDescription: ogDescription,
                 ogImage: absoluteOgImage,

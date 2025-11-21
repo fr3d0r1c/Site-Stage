@@ -64,6 +64,31 @@
 
 <hr>
 
+<% if (similarArticles && similarArticles.length > 0) { %>
+    <section class="similar-posts">
+        <h2><%= t('journal.similar_posts') %></h2>
+
+        <div class="entries-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-top: 1.5rem;">
+            <% similarArticles.forEach(entry => { %>
+                <article class="entry-card" style="font-size: 0.9em;">
+                    <% if (entry.cover_image_url) { %>
+                        <a href="/entree/<%= entry.id %>" class="card-image-link" style="height: 150px;">
+                            <img src="<%= entry.cover_image_url %>" alt="<%= entry.title %>" class="cover-image">
+                        </a>
+                    <% } %>
+                    <div class="card-body" style="padding: 1rem;">
+                        <h3 style="font-size: 1.1rem; margin-top: 0;">
+                            <a href="/entree/<%= entry.id %>"><%= entry.title %></a>
+                        </h3>
+                        <small><%= new Date(entry.publication_date).toLocaleDateString(i18n.language) %></small>
+                    </div>
+                </article>
+            <% }); %>
+        </div>
+    </section>
+    <hr>
+<% } %>
+
 <section class="comments-section">
     <h2><%= t('comments.title') %> (<%= comments.length %>)</h2>
 
