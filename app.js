@@ -168,16 +168,7 @@ filter.addWords('testbad');
 // Servir les fichiers statiques (CSS, JS, images) depuis le dossier 'public'
 app.use(express.static('public'));
 
-// --- MIDDLEWARE DE MAINTENANCE ---
-app.use((req, res, next) => {
-    const isMaintenance = process.env.MAINTENANCE_MODE === 'true';
 
-    if (isMaintenance) {
-        return res.status(503).render('maintenance');
-    }
-
-    next();
-});
 
 // Middleware pour lire les données de formulaire (ex: <form method="POST">)
 app.use(express.urlencoded({ extended: true }));
@@ -216,6 +207,20 @@ app.use((req, res, next) => {
 
 // Middleware pour i18next (traduction)
 app.use(i18nextMiddleware.handle(i18next));
+
+// --- MIDDLEWARE DE MAINTENANCE ---
+app.use((req, res, next) => {
+    const isMaintenance = process.env.MAINTENANCE_MODE === 'true';
+
+    if (isMaintenance) {
+        // On rend la vue avec le titre traduit
+        return res.status(503).render('maintenance', {
+            pageTitle: req.t('maintenance.title')
+        });
+    }
+
+    next();
+});
 
 // Middleware "maison" (garde) pour vérifier si l'utilisateur est authentifié
 function isAuthenticated(req, res, next) {

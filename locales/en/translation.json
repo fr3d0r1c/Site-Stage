@@ -273,5 +273,11 @@
     "title_404": "Page Not Found",
     "message_404": "Oops! The page you are looking for does not exist or has been moved.",
     "back_home": "Back to Home"
+  },
+  "maintenance": {
+    "title": "Site Under Maintenance",
+    "desc_1": "We are currently performing an important update to improve your experience.",
+    "desc_2": "The site will be back online in a few moments.",
+    "thanks": "Thank you for your patience!"
   }
 }

@@ -275,5 +275,11 @@
     "title_404": "Page non trouvée",
     "message_404": "Oups ! La page que vous recherchez n'existe pas ou a été déplacée.",
     "back_home": "Retour à l'accueil"
+  },
+  "maintenance": {
+    "title": "Site en Maintenance",
+    "desc_1": "Nous effectuons actuellement une mise à jour importante pour améliorer votre expérience.",
+    "desc_2": "Le site sera de nouveau accessible dans quelques instants.",
+    "thanks": "Merci de votre patience !"
   }
 }

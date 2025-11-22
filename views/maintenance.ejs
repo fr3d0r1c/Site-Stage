@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maintenance en cours | Carnet de Stage</title>
+    <title><%= t('maintenance.title') %></title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/7.2.1/css/flag-icons.min.css">
     <style>
         body {
             display: flex;
@@ -31,12 +32,20 @@
 <body>
     <div class="maintenance-container">
         <i class="fas fa-tools"></i>
-        <h1>Site en Maintenance</h1>
-        <p>Nous effectuons actuellement une mise à jour importante pour améliorer votre expérience.</p>
-        <p>Le site sera de nouveau accessible dans quelques instants.</p>
-        <p style="margin-top: 2rem; font-size: 0.9rem; color: #888;">Merci de votre patience !</p>
-        
-        <a href="/connexion" style="opacity: 0; pointer-events: none;">Admin</a> 
+        <h1><%= t('maintenance.title') %></h1>
+
+        <p><%= t('maintenance.desc_1') %></p>
+        <p><%= t('maintenance.desc_2') %></p>
+
+        <hr>
+
+        <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--c-text-light);">
+            <%= t('maintenance.thanks') %>
+        </p>
+
+        <div class="lang-links" style="margin-top: 2rem;">
+            <a href="?lng=fr"><span class="fi fi-fr"></span></a> | <a href="?lng=en"><span class="fi fi-gb"></a>
+        </div>
     </div>
 </body>
 </html>
