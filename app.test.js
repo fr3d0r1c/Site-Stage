@@ -358,6 +358,7 @@ describe('Tests fonctionnels des Commentaires', () => {
   test('POST /article/:id/comment - Accepte un commentaire valide', async () => {
     const validComment = {
       author_name: 'Testeur',
+      author_email: 'test@example.com', // <-- AJOUTE CETTE LIGNE (Obligatoire maintenant)
       content: 'Ceci est un message très constructif et poli.'
     };
 
@@ -367,11 +368,13 @@ describe('Tests fonctionnels des Commentaires', () => {
 
     expect(response.statusCode).toBe(302);
 
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     const savedComment = await new Promise((resolve, reject) => {
       db.get('SELECT * FROM comments WHERE content = ?', [validComment.content], (err, row) => err ? reject(err) : resolve(row));
     });
     expect(savedComment).toBeDefined();
-    expect(savedComment.is_approved).toBe(1); // Doit être auto-approuvé
+    expect(savedComment.is_approved).toBe(1);
   });
 
   test('POST /article/:id/comment - Rejette un commentaire vulgaire', async () => {
