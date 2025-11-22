@@ -268,5 +268,10 @@
     "main_title": "Internship Log -",
     "published": "Published on",
     "tags": "Tags:"
+  },
+  "error_page": {
+    "title_404": "Page Not Found",
+    "message_404": "Oops! The page you are looking for does not exist or has been moved.",
+    "back_home": "Back to Home"
   }
 }

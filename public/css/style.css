@@ -1803,3 +1803,42 @@ body.zen-mode #zen-mode-btn {
     color: white;
     border-color: var(--c-primary);
 }
+
+/*
+=========================================
+--- 28. Page d'Erreur 404 ---
+=========================================
+*/
+.error-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 50vh; /* Prend au moins la moitié de la hauteur d'écran */
+    text-align: center;
+}
+
+.error-content {
+    max-width: 600px;
+}
+
+.error-code {
+    font-size: 6rem;
+    font-weight: 900;
+    color: var(--c-primary);
+    margin: 0;
+    line-height: 1;
+    opacity: 0.8;
+}
+
+.error-title {
+    font-size: 2rem;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    border-bottom: none; /* Enlève la ligne sous le titre par défaut */
+}
+
+.error-message {
+    font-size: 1.2rem;
+    color: var(--c-text-light);
+    margin-bottom: 2rem;
+}

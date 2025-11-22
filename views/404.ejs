@@ -1,0 +1,15 @@
+<%- include('partials/header', { pageTitle: '404 - ' + t('error_page.title_404') }) %>
+
+<div class="static-page error-container">
+    <div class="error-content">
+        <h1 class="error-code">404</h1>
+        <h2 class="error-title"><%= t('error_page.title_404') %></h2>
+        <p class="error-message"><%= t('error_page.message_404') %></p>
+
+        <a href="/" class="btn btn-primary">
+            <i class="fas fa-home"></i> <%= t('error_page.back_home') %>
+        </a>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

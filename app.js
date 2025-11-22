@@ -2219,6 +2219,13 @@ app.get('/api/search', async (req, res) => {
     });
 });
 
+// --- GESTION ERREUR 404 (Doit être la DERNIÈRE route) ---
+app.use((req, res, next) => {
+    res.status(404).render('404', {
+        pageTitle: '404 - Page Introuvable',
+        activePage: ''
+    });
+});
 
 // =================================================================
 // 7. EXPORT DE L'APPLICATION (pour les tests)
