@@ -144,7 +144,21 @@
     "work_item_2_title": "Administrateur Systèmes (Stage)",
     "work_item_2_subtitle": "Laboratoire LIAS (Université de Poitiers)",
     "work_item_2_date": "Juin 2024 - Juillet 2024",
-    "work_item_2_desc": "Stage au Laboratoire d'Informatique et d'Automatique pour les Systèmes (LIAS). Administration des serveurs et support aux utilisateurs."
+    "work_item_2_desc": "Stage au Laboratoire d'Informatique et d'Automatique pour les Systèmes (LIAS). Administration des serveurs et support aux utilisateurs.",
+    "whoami_hello": "Bonjour, je suis Frederic !",
+    "whoami_role": "Futur Ingénieur Cybersécurité & Réseaux",
+    "whoami_bio": "Passionné par l'informatique depuis mon plus jeune âge, je me spécialise aujourd'hui dans la sécurité des systèmes d'information. Curieux et rigoureux, j'aime relever des défis techniques, que ce soit en administration système ou en développement.",
+    "whoami_skills_tech": "Stack Technique",
+    "whoami_skills_soft": "Savoir-être",
+    "whoami_hobbies": "Centres d'intérêt",
+    "whoami_download_cv": "Télécharger mon CV",
+    "soft_skill_1": "Travail d'équipe",
+    "soft_skill_2": "Résolution de problèmes",
+    "soft_skill_3": "Curiosité",
+    "soft_skill_4": "Autonomie",
+    "hobby_1": "Veille Techno",
+    "hobby_2": "CTF / Hacking Éthique",
+    "hobby_3": "Sport / Voyage"
   },
   "contact": {
     "title": "Contactez-moi",

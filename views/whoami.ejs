@@ -1,8 +1,70 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<div class="static-page">
-    <h1><%= pageTitle %></h1>
-    <p>Contenu à venir...</p>
+<div class="static-page profile-page">
+
+    <div class="profile-grid">
+
+        <div class="profile-sidebar">
+            <div class="profile-photo-container">
+                <img src="/images/profile.jpg" onerror="this.src='https://via.placeholder.com/300x300?text=Photo'" alt="Frederic Alleron" class="profile-photo">
+            </div>
+
+            <div class="profile-info">
+                <h2>Frederic Alleron</h2>
+                <p class="role"><i class="fas fa-user-graduate"></i> <%= t('static_pages.whoami_role') %></p>
+                <hr class="small-hr">
+                <ul class="info-list">
+                    <li><i class="fas fa-map-marker-alt"></i> Angers / Niort, France</li>
+                    <li><i class="fas fa-envelope"></i> falleron.ira2028@esaip.org</li>
+                    <li><i class="fab fa-linkedin"></i> <a href="https://www.linkedin.com/in/falleron/" target="_blank">LinkedIn</a></li>
+                    <li><i class="fab fa-github"></i> <a href="https://github.com/fr3d0r1c" target="_blank">GitHub</a></li>
+                </ul>
+
+                <% 
+                    // Si la langue est 'en', on prend le CV anglais, sinon le français par défaut
+                    const cvFilename = (i18n.language === 'en') ? 'cv-en.pdf' : 'cv-fr.pdf'; 
+                %>
+
+                <a href="/uploads/<%= cvFilename %>" class="btn btn-primary" style="width: 100%; margin-top: 1rem;" download>
+                    <i class="fas fa-download"></i> <%= t('static_pages.whoami_download_cv') %>
+                </a>
+            </div>
+        </div>
+
+        <div class="profile-content">
+            <h1><%= t('static_pages.whoami_hello') %></h1>
+            <p class="bio-text">
+                <%= t('static_pages.whoami_bio') %>
+            </p>
+
+            <h3><i class="fas fa-laptop-code"></i> <%= t('static_pages.whoami_skills_tech') %></h3>
+            <div class="skills-grid">
+                <div class="skill-box"><i class="fab fa-js"></i> JavaScript</div>
+                <div class="skill-box"><i class="fab fa-node"></i> Node.js</div>
+                <div class="skill-box"><i class="fas fa-database"></i> SQL / SQLite</div>
+                <div class="skill-box"><i class="fab fa-python"></i> Python</div>
+                <div class="skill-box"><i class="fab fa-linux"></i> Linux</div>
+                <div class="skill-box"><i class="fas fa-network-wired"></i> Réseaux</div>
+                <div class="skill-box"><i class="fas fa-shield-alt"></i> Cybersécurité</div>
+                <div class="skill-box"><i class="fab fa-git-alt"></i> Git</div>
+            </div>
+
+            <h3><i class="fas fa-users"></i> <%= t('static_pages.whoami_skills_soft') %></h3>
+            <div class="tags-list">
+                <span class="tag-item"><%= t('static_pages.soft_skill_1') %></span>
+                <span class="tag-item"><%= t('static_pages.soft_skill_2') %></span>
+                <span class="tag-item"><%= t('static_pages.soft_skill_3') %></span>
+                <span class="tag-item"><%= t('static_pages.soft_skill_4') %></span>
+            </div>
+
+            <h3><i class="fas fa-heart"></i> <%= t('static_pages.whoami_hobbies') %></h3>
+            <ul class="hobbies-list">
+                <li><%= t('static_pages.hobby_1') %></li>
+                <li><%= t('static_pages.hobby_2') %></li>
+                <li><%= t('static_pages.hobby_3') %></li>
+            </ul>
+        </div>
+    </div>
 </div>
 
 <%- include('partials/footer') %>
