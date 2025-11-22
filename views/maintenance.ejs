@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance en cours | Carnet de Stage</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+            background-color: var(--c-background);
+            color: var(--c-text);
+        }
+        .maintenance-container {
+            max-width: 600px;
+            padding: 2rem;
+            background: var(--c-surface);
+            border-radius: 12px;
+            border: 1px solid var(--c-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 { margin-top: 0; color: var(--c-primary); }
+        i { font-size: 4rem; color: var(--c-text-light); margin-bottom: 1rem; }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+    <div class="maintenance-container">
+        <i class="fas fa-tools"></i>
+        <h1>Site en Maintenance</h1>
+        <p>Nous effectuons actuellement une mise à jour importante pour améliorer votre expérience.</p>
+        <p>Le site sera de nouveau accessible dans quelques instants.</p>
+        <p style="margin-top: 2rem; font-size: 0.9rem; color: #888;">Merci de votre patience !</p>
+        
+        <a href="/connexion" style="opacity: 0; pointer-events: none;">Admin</a> 
+    </div>
+</body>
+</html>

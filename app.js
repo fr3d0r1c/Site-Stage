@@ -168,6 +168,17 @@ filter.addWords('testbad');
 // Servir les fichiers statiques (CSS, JS, images) depuis le dossier 'public'
 app.use(express.static('public'));
 
+// --- MIDDLEWARE DE MAINTENANCE ---
+app.use((req, res, next) => {
+    const isMaintenance = process.env.MAINTENANCE_MODE === 'true';
+
+    if (isMaintenance) {
+        return res.status(503).render('maintenance');
+    }
+
+    next();
+});
+
 // Middleware pour lire les données de formulaire (ex: <form method="POST">)
 app.use(express.urlencoded({ extended: true }));
 
