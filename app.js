@@ -365,13 +365,17 @@ db.run(createArticleTagsTable, (err) => {
 // Création de la table 'comments'
 const createCommentsTable = `
 CREATE TABLE IF NOT EXISTS comments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  article_id INTEGER NOT NULL,
-  author_name TEXT NOT NULL,
-  content TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  is_approved INTEGER DEFAULT 0,          -- 0 = En attente, 1 = Approuvé
-  FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id INTEGER NOT NULL,
+    parent_id INTEGER DEFAULT NULL,
+    author_name TEXT NOT NULL,
+    author_email TEXT,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    is_approved INTEGER DEFAULT 1,
+    is_admin INTEGER DEFAULT 0,
+    FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES comments (id) ON DELETE CASCADE
 );
 `;
 db.run(createCommentsTable, (err) => {
@@ -491,6 +495,57 @@ function logAction(req, action, details = '') {
 
     db.run(sql, [userId, username, action, details, ip], (err) => {
         if (err) console.error("Erreur écriture audit log:", err);
+    });
+}
+
+// Fonction pour transformer une liste plate de commentaires en arbre (Parents -> Enfants)
+function nestComments(comments) {
+    const commentMap = {};
+    const roots = [];
+
+    // 1. On initialise tous les commentaires avec un tableau 'replies' vide
+    comments.forEach(c => {
+        c.replies = [];
+        commentMap[c.id] = c;
+    });
+
+    // 2. On les range
+    comments.forEach(c => {
+        if (c.parent_id && commentMap[c.parent_id]) {
+            // C'est une réponse, on la met dans le tableau du parent
+            commentMap[c.parent_id].replies.push(c);
+        } else {
+            // C'est un commentaire principal
+            roots.push(c);
+        }
+    });
+
+    return roots;
+}
+
+// Fonction Helper pour éviter de répéter le code d'insertion
+function insertComment(req, res, articleId, parentId, author_name, author_email, content, isApproved, isAdmin) {
+    const sql = `INSERT INTO comments (article_id, parent_id, author_name, author_email, content, is_approved, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+    const parentIdValue = parentId ? parseInt(parentId) : null;
+
+    db.run(sql, [articleId, parentIdValue, author_name, author_email, content, isApproved, isAdmin], function(err) {
+        if (err) {
+            console.error("Erreur BDD Commentaire:", err);
+            req.session.flashMessage = { type: 'error', text: 'Erreur technique lors de l\'enregistrement.' };
+            return req.session.save(() => res.redirect(`/entree/${articleId}`));
+        }
+
+        if (!isAdmin) {
+            sendAdminNotification(req, articleId, this.lastID, author_name, content);
+        }
+
+        // Si le message flash n'a pas été défini par la logique de déduplication
+        if (!req.session.flashMessage) {
+            req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
+        }
+
+        req.session.save(() => res.redirect(`/entree/${articleId}`));
     });
 }
 
@@ -683,7 +738,7 @@ app.get('/entree/:id', (req, res) => {
     // Requête pour les tags
     const sqlTags = `SELECT t.name_${lang} as name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
     // Requête pour les commentaires approuvés
-    const sqlComments = `SELECT author_name, content, created_at FROM comments WHERE article_id = ? AND is_approved = 1 ORDER BY created_at ASC`;
+    const sqlComments = `SELECT id, parent_id, author_name, content, created_at FROM comments WHERE article_id = ? AND is_approved = 1 ORDER BY created_at ASC`;
 
     db.get(sqlArticle, id, (err, article) => {
         if (err) { console.error(`Erreur BDD (GET /entree/${id} article):`, err); return res.status(500).send("Erreur serveur."); }
@@ -711,9 +766,12 @@ app.get('/entree/:id', (req, res) => {
             new Promise((resolve, reject) => db.get(sqlNext, [currentPublicationDate], (err, row) => err ? reject(err) : resolve(row))),
             new Promise((resolve, reject) => db.all(sqlComments, id, (err, rows) => err ? reject(err) : resolve(rows))),
             new Promise((resolve, reject) => db.all(sqlSimilar, [id, id], (err, rows) => err ? reject(err) : resolve(rows)))
-        ]).then(([tagRows, prevEntry, nextEntry, comments, similarArticles]) => {
+        ]).then(([tagRows, prevEntry, nextEntry, flatComments, similarArticles]) => {
 
             article.tags = tagRows.map(tag => tag.name);
+
+            // ORGANISATION DES COMMENTAIRES
+            const commentsTree = nestComments(flatComments);
 
             // --- LOGIQUE SEO & OPEN GRAPH ---
             // Crée une description courte (extrait) pour les réseaux sociaux
@@ -759,7 +817,7 @@ app.get('/entree/:id', (req, res) => {
                 activePage: 'journal',
                 prevEntry: prevEntry || null,
                 nextEntry: nextEntry || null,
-                comments: comments || [],
+                comments: commentsTree || [],
                 similarArticles: similarArticles || [],
                 messageSent: req.query.comment === 'success' ? true : (req.query.comment === 'error' ? false : null),
                 ogTitle: article.title,
@@ -1016,6 +1074,14 @@ app.get('/sitemap.xml', async (req, res) => {
         console.error("Erreur génération sitemap:", error);
         res.status(500).send("Erreur génération sitemap.");
     }
+});
+
+// Page de gestion du Compte Invité (Login/Logout client-side)
+app.get('/espace-invite', (req, res) => {
+    res.render('guest-login', {
+        pageTitle: 'Espace Invité',
+        activePage: 'guest' // Pour le menu (optionnel)
+    });
 });
 
 // --- Authentification & Sécurité ---
@@ -1461,17 +1527,26 @@ app.get('/admin/comments', isAuthenticated, (req, res) => {
         });
     });
 });
+
 app.post('/admin/comments/delete/:id', isAuthenticated, (req, res) => {
     const commentId = req.params.id;
+    const returnTo = req.query.returnTo;
+
     const sql = 'DELETE FROM comments WHERE id = ?';
+
     db.run(sql, [commentId], function(err) {
-        if (err) { 
-            req.session.flashMessage = { 
-                type: 'error', 
-                text: 'Erreur suppression.',
-                detail: err.message};
-            } else { req.session.flashMessage = { type: 'success', text: `Commentaire #${commentId} supprimé.` }; }
-            res.redirect('/admin/comments');
+        if (err) {
+            req.session.flashMessage = { type: 'error', text: 'Erreur lors de la suppression.' };
+        } else {
+            req.session.flashMessage = { type: 'success', text: 'Commentaire supprimé.' };
+        }
+
+        // --- LOGIQUE INTELLIGENTE ---
+        if (returnTo) {
+            res.redirect(returnTo); // Retourne à l'article
+        } else {
+            res.redirect('/admin/comments'); // Comportement par défaut (Dashboard)
+        }
     });
 });
 
@@ -1950,55 +2025,58 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
 });
 
 // Ajout de commentaire (Public)
-app.post('/article/:id/comment', commentLimiter, (req, res) => {
+app.post('/article/:id/comment', commentLimiter, async (req, res) => {
     const articleId = req.params.id;
-    const { author_name, content } = req.body;
+    let { author_name, author_email, content, parent_id } = req.body;
 
-    // 1. Honeypot (Anti-bot)
-    if (req.body.website_field && req.body.website_field !== '') {
-        return res.redirect(`/entree/${articleId}`);
-    }
-
-    // 2. Validation champs vides
-    if (!author_name || !content || author_name.trim() === '' || content.trim() === '') {
+    if (req.body.website_field && req.body.website_field !== '') return res.redirect(`/entree/${articleId}`);
+    if (!author_name || !content || !author_name.trim() || !content.trim()) {
         req.session.flashMessage = { type: 'error', text: 'Veuillez remplir tous les champs.' };
-        
-        return req.session.save(() => {
-            res.redirect(`/entree/${articleId}`);
-        });
+        return req.session.save(() => res.redirect(`/entree/${articleId}`));
     }
 
-    // 3. Modération Automatique (BAD-WORDS)
+    // Validation : Nom ET Email requis (sauf si Admin)
+    if (!req.session.userId && (!author_name || !author_email || !content)) {
+        req.session.flashMessage = { type: 'error', text: 'Nom, Email et Message sont requis.' };
+        return req.session.save(() => res.redirect(`/entree/${articleId}`));
+    }
+
+    // 2. SÉCURITÉ ADMIN (Inchangé)
+    // Si c'est l'admin connecté, on force son nom et on ne le renomme pas
+    if (req.session.userId && req.session.username) {
+        return insertComment(req, res, articleId, parent_id, req.session.username, 'admin@internal', content, 1, 1);
+    }
+
+    // 3. Modération Automatique (Bad-words) (Inchangé)
     if (filter.isProfane(content) || filter.isProfane(author_name)) {
-        console.warn(`[Modération Auto] Rejeté : ${author_name}`);
-
-        req.session.flashMessage = {
-            type: 'error',
-            text: 'Votre commentaire a été rejeté car il contient un langage inapproprié.'
-        };
-
-        return req.session.save(() => {
-            res.redirect(`/entree/${articleId}`);
-        });
+        req.session.flashMessage = { type: 'error', text: 'Commentaire rejeté (langage inapproprié).' };
+        return req.session.save(() => res.redirect(`/entree/${articleId}`));
     }
 
-    // 4. Insertion BDD
-    const sql = `INSERT INTO comments (article_id, author_name, content, is_approved) VALUES (?, ?, ?, 1)`;
+    // 4. --- GESTION DES DOUBLONS DE PSEUDO ---
+    const sqlCheck = `SELECT author_name FROM comments WHERE author_name = ? OR author_name LIKE ?`;
 
-    db.run(sql, [articleId, author_name, content], function(err) {
-        if (err) {
-            console.error("Erreur BDD Commentaire:", err);
-            req.session.flashMessage = { type: 'error', text: 'Erreur technique.' };
-            return req.session.save(() => res.redirect(`/entree/${articleId}`));
+    db.all(sqlCheck, [author_name, `${author_name} %`], (err, rows) => {
+        if (!err) {
+            const nameExists = rows.some(row => row.author_name.toLowerCase() === author_name.toLowerCase());
+
+            if (nameExists) {
+                let counter = 1;
+                let newName = `${author_name} ${counter}`;
+                while (rows.some(row => row.author_name.toLowerCase() === newName.toLowerCase())) {
+                    counter++;
+                    newName = `${author_name} ${counter}`;
+                }
+                author_name = newName; // On change le nom
+
+                req.session.flashMessage = {
+                    type: 'info',
+                    text: `Votre commentaire est publié sous le nom "${author_name}" car le pseudo d'origine était déjà pris.`
+                };
+            }
         }
 
-        sendAdminNotification(req, articleId, this.lastID, author_name, content);
-
-        req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
-
-        req.session.save(() => {
-            res.redirect(`/entree/${articleId}`);
-        });
+        insertComment(req, res, articleId, parent_id, author_name, author_email, content, 1, 0);
     });
 });
 

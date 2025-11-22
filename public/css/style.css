@@ -1619,3 +1619,187 @@ body.zen-mode #zen-mode-btn {
         text-align: left;
     }
 }
+
+/* Styles Commentaires Imbriqués */
+.replies-container {
+    margin-left: 2rem; /* Décalage vers la droite */
+    border-left: 2px solid var(--c-border);
+    padding-left: 1rem;
+}
+.comment-reply {
+    background-color: rgba(0,0,0,0.02); /* Légèrement plus foncé */
+}
+.btn-text {
+    background: none;
+    border: none;
+    color: var(--c-primary);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+    margin-top: 5px;
+    text-decoration: underline;
+}
+.btn-text:hover {
+    color: var(--c-text);
+}
+
+/*
+=========================================
+--- 27. Commentaires (Design Amélioré) ---
+=========================================
+*/
+
+.comments-section {
+    margin-top: 3rem;
+    max-width: 800px; /* Pour ne pas que ce soit trop large */
+}
+
+.comment-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.5s ease;
+}
+
+/* --- L'Avatar --- */
+.comment-avatar {
+    width: 45px;
+    height: 45px;
+    min-width: 45px; /* Empêche l'écrasement */
+    background-color: var(--c-border); /* Gris par défaut */
+    color: var(--c-text-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    border: 2px solid var(--c-surface); /* Petit contour */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Petite touche de couleur aléatoire (simulée) via nth-child */
+.comment-container:nth-child(odd) .comment-avatar { background-color: #e0f7fa; color: #006064; }
+.comment-container:nth-child(even) .comment-avatar { background-color: #f3e5f5; color: #4a148c; }
+.comment-container:nth-child(3n) .comment-avatar { background-color: #e8f5e9; color: #1b5e20; }
+
+
+/* --- La Boîte de Contenu --- */
+.comment-content-box {
+    flex-grow: 1;
+    background-color: var(--c-background);
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--c-border);
+}
+
+.comment-header {
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.comment-author {
+    font-weight: 700;
+    color: var(--c-text);
+    font-size: 1rem;
+}
+
+.comment-date {
+    font-size: 0.8rem;
+    color: var(--c-text-light);
+}
+
+.comment-text {
+    color: var(--c-text);
+    line-height: 1.5;
+    font-size: 0.95rem;
+    white-space: pre-wrap; /* Conserve les sauts de ligne */
+}
+
+.comment-actions {
+    margin-top: 0.8rem;
+    display: flex;
+    align-items: center;
+}
+
+
+/* --- Boutons Textuels (Répondre / Supprimer) --- */
+.btn-text {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--c-text-light);
+    padding: 0;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn-text:hover {
+    color: var(--c-primary);
+    text-decoration: none;
+}
+.btn-text-danger:hover {
+    color: var(--c-danger);
+}
+
+
+/* --- Réponses (Hiérarchie) --- */
+.replies-wrapper {
+    margin-left: 22px; /* Centre la ligne sous l'avatar (45px / 2) */
+    padding-left: 30px; /* Espace pour décaler la réponse */
+    border-left: 2px solid var(--c-border); /* La ligne verticale */
+    margin-bottom: 1.5rem;
+}
+
+/* Ajustement pour les avatars des réponses (plus petits) */
+.comment-container.is-reply .comment-avatar {
+    width: 35px;
+    height: 35px;
+    min-width: 35px;
+    font-size: 1rem;
+}
+
+.no-comments {
+    text-align: center;
+    padding: 2rem;
+    color: var(--c-text-light);
+    opacity: 0.7;
+}
+
+/* Petit effet d'apparition */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Badge Admin */
+.admin-badge {
+    background-color: var(--c-primary);
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Style spécifique pour les commentaires Admin */
+.comment-container.is-admin-comment .comment-content-box {
+    border-color: var(--c-primary); /* Bordure colorée */
+    background-color: color-mix(in srgb, var(--c-primary) 5%, var(--c-surface)); /* Fond très légèrement teinté */
+}
+
+.comment-container.is-admin-comment .comment-avatar {
+    background-color: var(--c-primary); /* Avatar coloré */
+    color: white;
+    border-color: var(--c-primary);
+}
