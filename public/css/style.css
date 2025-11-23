@@ -24,7 +24,7 @@
 
 /* --- THÈME DARK --- */
 body.theme-dark {
-    --c-primary: #00e0eb; /* Cyan éclairci (pour contraste accessibilité) */
+    --c-primary: #4dd0e1; /* Cyan éclairci (pour contraste accessibilité) */
     --c-primary-rgb: 0, 224, 235; /* RGB de #00e0eb */
     --c-text: #eeeeee;
     --c-button-text: #222831;
@@ -1841,4 +1841,128 @@ body.zen-mode #zen-mode-btn {
     font-size: 1.2rem;
     color: var(--c-text-light);
     margin-bottom: 2rem;
+}
+
+/*
+=========================================
+--- 29. Lightbox (Zoom Images) ---
+=========================================
+*/
+
+/* L'arrière-plan sombre (caché par défaut) */
+.lightbox {
+    display: none; /* Caché */
+    position: fixed;
+    z-index: 10000; /* Au-dessus de TOUT (même le menu) */
+    padding-top: 50px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.9); /* Noir presque opaque */
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+/* L'image agrandie */
+.lightbox-content {
+    margin: auto;
+    display: block;
+    max-width: 90%;
+    max-height: 80vh;
+    border-radius: 4px;
+    box-shadow: 0 0 20px rgba(255,255,255,0.1);
+    animation: zoomIn 0.3s;
+}
+
+/* Le texte de légende (alt) */
+#lightbox-caption {
+    margin: auto;
+    display: block;
+    width: 80%;
+    max-width: 700px;
+    text-align: center;
+    color: #ccc;
+    padding: 10px 0;
+    height: 150px;
+}
+
+/* Le bouton fermer (X) */
+.lightbox-close {
+    position: absolute;
+    top: 15px;
+    right: 35px;
+    color: #f1f1f1;
+    font-size: 40px;
+    font-weight: bold;
+    transition: 0.3s;
+    cursor: pointer;
+    z-index: 10001;
+}
+
+.lightbox-close:hover,
+.lightbox-close:focus {
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Indiquer que les images sont cliquables */
+.article-content img {
+    cursor: zoom-in;
+    transition: opacity 0.3s;
+}
+.article-content img:hover {
+    opacity: 0.9;
+}
+
+/* Animation d'ouverture */
+@keyframes zoomIn {
+    from {transform:scale(0)} 
+    to {transform:scale(1)}
+}
+
+/* Responsive : 100% largeur sur mobile */
+@media only screen and (max-width: 700px){
+    .lightbox-content {
+        width: 100%;
+    }
+}
+
+/*
+=========================================
+--- Style du bouton Poubelle (Commentaires) ---
+=========================================
+*/
+
+.btn-icon-danger {
+    background: transparent;
+    border: 1px solid transparent; /* Bordure invisible par défaut */
+    color: var(--c-text-light); /* Gris discret par défaut */
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%; /* Cercle parfait */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding: 0;
+    font-size: 0.9rem;
+}
+
+/* Au survol : Devient Rouge avec un fond léger */
+.btn-icon-danger:hover {
+    color: var(--c-danger); /* Icône rouge */
+    background-color: color-mix(in srgb, var(--c-danger) 10%, transparent); /* Fond rouge très pâle */
+    border-color: color-mix(in srgb, var(--c-danger) 30%, transparent); /* Bordure rouge pâle */
+    transform: scale(1.1); /* Petit effet de zoom */
+}
+
+/* Ajustement de l'alignement dans la barre d'actions */
+.comment-actions form {
+    display: flex;
+    align-items: center;
 }

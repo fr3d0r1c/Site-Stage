@@ -12,8 +12,8 @@
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <h1 style="margin: 0;"><%= article.title %></h1>
 
-        <button id="zen-mode-btn" class="btn btn-secondary" title="Mode Lecture Zen" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;">
-            <i class="fas fa-book-open"></i>
+        <button id="zen-mode-btn" class="btn btn-secondary" title="Mode Lecture Zen" aria-label="Activer le mode lecture zen" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-book-open" aria-hidden="true"></i>
         </button>
     </div>
 
@@ -25,7 +25,7 @@
         <div class="tags-list entry-tags" style="margin-top: 1rem;">
             <% article.tags.forEach(tag => { %>
                 <a href="/tags/<%= tag %>" class="tag-item"><%= tag %></a>
-            <% }) %>
+            <% }); %>
         </div>
     <% } %>
 
@@ -33,23 +33,23 @@
 
     <div class="article-content"><%- article.content %></div>
 
+    <%# Actions Admin (Modifier / Supprimer l'article) %>
     <% if (locals.username) { %>
         <div class="actions" style="margin-top: 2rem; border-top: 1px solid var(--c-border); padding-top: 1.5rem;">
             <a href="/entree/<%= article.id %>/edit" class="btn"><%= t('journal.edit') %></a>
-
-            <form action="/entree/<%= article.id %>/delete" method="POST"
-                data-confirm="<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>"
-                style="display: inline;">
+            <form action="/entree/<%= article.id %>/delete" method="POST" 
+                   data-confirm="<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>" 
+                   style="display: inline;">
                 <button type="submit" class="btn btn-danger"><%= t('journal.delete') %></button>
             </form>
         </div>
     <% } %>
 </article>
 
-<nav class="prev-next-nav">
+<nav class="prev-next-nav" aria-label="Navigation entre les articles">
     <div class="prev-link">
         <% if (prevEntry) { %>
-            <a href="/entree/<%= prevEntry.id %>" title="<%= prevEntry.title %>">
+            <a href="/entree/<%= prevEntry.id %>" title="<%= prevEntry.title %>" aria-label="<%= t('journal.prev_entry') %>: <%= prevEntry.title %>">
                 <small>&larr; <%= t('journal.prev_entry') %></small>
                 <span class="prev-next-title"><%= prevEntry.title %></span>
             </a>
@@ -57,7 +57,7 @@
     </div>
     <div class="next-link">
         <% if (nextEntry) { %>
-            <a href="/entree/<%= nextEntry.id %>" title="<%= nextEntry.title %>">
+            <a href="/entree/<%= nextEntry.id %>" title="<%= nextEntry.title %>" aria-label="<%= t('journal.next_entry') %>: <%= nextEntry.title %>">
                 <small><%= t('journal.next_entry') %> &rarr;</small>
                 <span class="prev-next-title"><%= nextEntry.title %></span>
             </a>
@@ -68,15 +68,15 @@
 <hr>
 
 <% if (typeof similarArticles !== 'undefined' && similarArticles.length > 0) { %>
-    <section class="similar-posts">
-        <h2><%= t('journal.similar_posts') %></h2>
+    <section class="similar-posts" aria-labelledby="similar-posts-title">
+        <h2 id="similar-posts-title"><%= t('journal.similar_posts') %></h2>
 
         <div class="entries-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-top: 1.5rem;">
             <% similarArticles.forEach(entry => { %>
                 <article class="entry-card" style="font-size: 0.9em;">
                     <% if (entry.cover_image_url) { %>
-                        <a href="/entree/<%= entry.id %>" class="card-image-link" style="height: 150px;">
-                            <img src="<%= entry.cover_image_url %>" alt="<%= entry.title %>" class="cover-image">
+                        <a href="/entree/<%= entry.id %>" class="card-image-link" style="height: 150px;" aria-label="Lire l'article <%= entry.title %>">
+                            <img src="<%= entry.cover_image_url %>" alt="" class="cover-image">
                         </a>
                     <% } %>
                     <div class="card-body" style="padding: 1rem;">
@@ -86,14 +86,14 @@
                         <small><%= new Date(entry.publication_date).toLocaleDateString(i18n.language) %></small>
                     </div>
                 </article>
-            <% }) %>
+            <% }); %>
         </div>
     </section>
     <hr>
 <% } %>
 
-<section class="comments-section">
-    <h2><%= t('comments.title') %></h2>
+<section class="comments-section" aria-labelledby="comments-title">
+    <h2 id="comments-title"><%= t('comments.title') %></h2>
 
     <div class="comments-list">
         <% if (comments && comments.length > 0) { %>
@@ -104,8 +104,12 @@
 
                 <div class="comment-container <%= isReply ? 'is-reply' : '' %> <%= comment.is_admin ? 'is-admin-comment' : '' %>" id="comment-<%= comment.id %>">
 
-                    <div class="comment-avatar">
-                        <%= initial %>
+                    <div class="comment-avatar" aria-hidden="true">
+                        <% if (comment.author_avatar) { %>
+                            <img src="<%= comment.author_avatar %>" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                        <% } else { %>
+                            <%= initial %>
+                        <% } %>
                     </div>
 
                     <div class="comment-content-box">
@@ -114,7 +118,7 @@
                                 <%= comment.author_name %>
                                 <% if (comment.is_admin) { %>
                                     <span class="admin-badge" title="Administrateur">
-                                        <i class="fas fa-shield-alt"></i> Admin
+                                        <i class="fas fa-shield-alt" aria-hidden="true"></i> Admin
                                     </span>
                                 <% } %>
                             </span>
@@ -126,16 +130,24 @@
                         <div class="comment-text"><%= comment.content %></div>
 
                         <div class="comment-actions">
-                            <button class="btn-text reply-btn" data-id="<%= comment.id %>" data-author="<%= comment.author_name %>">
-                                <i class="fas fa-reply"></i> <%= t('comments.reply') || 'Répondre' %>
+                            <button class="btn-text reply-btn" data-id="<%= comment.id %>" data-author="<%= comment.author_name %>" aria-label="Répondre au commentaire de <%= comment.author_name %>">
+                                <i class="fas fa-reply" aria-hidden="true"></i>
                             </button>
 
                             <% if (locals.username) { %>
-                                <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST"
-                                      data-confirm="<%= t('admin_page.delete_confirm') %>"
+                                <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST" 
+                                      data-confirm="<%= t('admin_page.delete_confirm') %>" 
                                       style="display: inline; margin-left: 10px;">
-                                    <button type="submit" class="btn-text btn-text-danger">
-                                        <i class="fas fa-trash"></i>
+                                    <button type="submit" class="btn-icon-danger" title="<%= t('journal.delete') %>" aria-label="Supprimer ce commentaire">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            <% } else if (locals.cookies && locals.cookies['can_delete_' + comment.id]) { %>
+                                <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST" 
+                                      data-confirm="<%= t('admin_page.delete_confirm') %>" 
+                                      style="display: inline; margin-left: 10px;">
+                                    <button type="submit" class="btn-text btn-text-danger" aria-label="Supprimer mon commentaire">
+                                        <i class="fas fa-trash" aria-hidden="true"></i>
                                     </button>
                                 </form>
                             <% } %>
@@ -154,11 +166,11 @@
 
             <% comments.forEach(comment => { renderComment(comment, false); }); %>
 
-            <% } else { %>
-                <div class="no-comments">
-                    <i class="far fa-comments fa-2x"></i>
-                    <p><i><%= t('comments.no_comments') %></i></p>
-                </div>
+        <% } else { %>
+            <div class="no-comments">
+                <i class="far fa-comments fa-2x" aria-hidden="true"></i>
+                <p><i><%= t('comments.no_comments') %></i></p>
+            </div>
         <% } %>
     </div>
 
@@ -167,36 +179,34 @@
 
         <div id="reply-indicator" style="display:none; background: var(--c-background); padding: 10px; border-left: 4px solid var(--c-primary); margin-bottom: 15px; border-radius: 4px;">
             Réponse à <strong id="reply-author"></strong>
-            <button type="button" id="cancel-reply" style="float:right; background:none; border:none; cursor:pointer; color:var(--c-text-light);">&times; Annuler</button>
+            <button type="button" id="cancel-reply" aria-label="Annuler la réponse" style="float:right; background:none; border:none; cursor:pointer; color:var(--c-text-light);">&times; Annuler</button>
         </div>
 
         <form action="/article/<%= article.id %>/comment" method="POST">
             <input type="hidden" name="parent_id" id="parent_id_input" value="">
 
             <div class="form-group">
-                <label><%= t('comments.form_name') %> :</label>
+                <label for="author_name"><%= t('comments.form_name') %> :</label>
 
                 <% if (locals.username) { %>
                     <div style="position: relative; margin-bottom: 1rem;">
-                        <input type="text" name="author_name" value="<%= locals.username %>" readonly
-                            style="background-color: var(--c-background); font-weight: bold; padding-left: 35px; width: 100%; box-sizing: border-box;">
-                        <i class="fas fa-user-shield" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--c-primary);"></i>
+                        <input type="text" id="author_name" name="author_name" value="<%= locals.username %>" readonly 
+                               style="background-color: var(--c-background); font-weight: bold; padding-left: 45px; width: 100%; box-sizing: border-box;">
+                        <i class="fas fa-user-shield" aria-hidden="true" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--c-primary); font-size: 1.1rem;"></i>
                     </div>
-                    <small style="color: var(--c-primary); display:block; margin-top:-10px; margin-bottom:15px;"><i class="fas fa-check-circle"></i> Connecté en tant qu'Administrateur</small>
+                    <small style="color: var(--c-primary); display:block; margin-top:-10px; margin-bottom:15px;"><i class="fas fa-check-circle" aria-hidden="true"></i> Connecté en tant qu'Administrateur</small>
 
                 <% } else { %>
-
                     <input type="hidden" id="author_name" name="author_name">
                     <input type="hidden" id="author_email" name="author_email">
+                    <input type="hidden" id="author_avatar_style" name="author_avatar_style">
 
                     <div id="guest-ui-container" style="margin-bottom: 1rem;">
-
                         <div id="guest-login-view">
                             <button type="button" id="guest-login-btn" class="btn btn-secondary" style="width: 100%; text-align: left; padding: 10px 15px;">
-                                <i class="fas fa-sign-in-alt"></i> S'identifier pour commenter (Compte Invité)
+                                <i class="fas fa-sign-in-alt" aria-hidden="true"></i> S'identifier pour commenter (Compte Invité)
                             </button>
                         </div>
-
                         <div id="guest-profile-view" style="display: none; background: #f0f9ff; border: 1px solid #bae6fd; padding: 10px 15px; border-radius: 8px; align-items: center; justify-content: space-between;">
                             <div>
                                 <span style="color: green;">●</span>
@@ -204,11 +214,11 @@
                                 <br>
                                 <small style="color: #666;" id="display-guest-email"></small>
                             </div>
-                            <button type="button" id="guest-edit-btn" class="btn-text" title="Modifier mes infos">
-                                <i class="fas fa-pen"></i>
-                            </button>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" id="guest-edit-btn" class="btn-text" title="Modifier" aria-label="Modifier mes informations"><i class="fas fa-pen" aria-hidden="true"></i></button>
+                                <button type="button" id="guest-logout-btn" class="btn-text btn-text-danger" title="Me déconnecter" aria-label="Se déconnecter du compte invité"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
+                            </div>
                         </div>
-
                     </div>
                 <% } %>
             </div>
@@ -219,7 +229,7 @@
             </div>
 
             <div class="form-group honeypot">
-                <label for="website-field">Ne pas remplir ce champ</label>
+                <label for="website-field-comment">Ne pas remplir ce champ</label>
                 <input type="text" id="website-field-comment" name="website_field" autocomplete="off" tabindex="-1">
             </div>
 
@@ -236,6 +246,5 @@
 
 <script src="/js/comment-reply.js"></script>
 <script src="/js/guest-memory.js"></script>
-<script src="/js/zen-mode.js"></script>
 
 <%- include('partials/footer') %>

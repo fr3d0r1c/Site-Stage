@@ -25,6 +25,8 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const puppeteer = require('puppeteer');
+const cookieParser = require('cookie-parser');
+const { randomUUID } = require('crypto');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -38,7 +40,19 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views')); // Chemin vers le dossier views
 
 // Configuration du stockage pour Multer (upload d'images)
-const storage = multer.diskStorage({ /* ... (ton code multer) ... */ });
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        // On définit le dossier de destination
+        cb(null, 'public/uploads/');
+    },
+    filename: function (req, file, cb) {
+        // On génère un nom unique MAIS on garde l'extension d'origine (ex: .jpg)
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+// Initialisation de l'upload avec cette configuration
 const upload = multer({ storage: storage });
 
 // --- CONFIGURATION i18n (TRADUCTION INTERFACE + DÉTECTION) ---
@@ -168,7 +182,9 @@ filter.addWords('testbad');
 // Servir les fichiers statiques (CSS, JS, images) depuis le dossier 'public'
 app.use(express.static('public'));
 
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
+app.use(cookieParser());
 
 // Middleware pour lire les données de formulaire (ex: <form method="POST">)
 app.use(express.urlencoded({ extended: true }));
@@ -296,6 +312,18 @@ const commentLimiter = rateLimit({
      }
 });
 
+app.use((req, res, next) => {
+    res.locals.username = req.session.username;
+    res.locals.userId = req.session.userId;
+    res.locals.message = req.session.flashMessage;
+    delete req.session.flashMessage;
+
+    // AJOUT : On rend les cookies accessibles dans les vues EJS
+    res.locals.cookies = req.cookies;
+
+    next();
+});
+
 // =================================================================
 // 4. CONNEXION À LA BASE DE DONNÉES ET CRÉATION DES TABLES
 // =================================================================
@@ -330,7 +358,6 @@ CREATE TABLE IF NOT EXISTS articles (
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
 );
 `;
-
 db.run(createArticleTable, (err) => {
     if (err) console.error("Erreur création table articles:", err);
 });
@@ -342,6 +369,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
   email TEXT UNIQUE,
+  avatar_url TEXT,
   reset_token TEXT,
   reset_token_expires INTEGER,
   two_fa_secret TEXT,
@@ -386,10 +414,12 @@ CREATE TABLE IF NOT EXISTS comments (
     parent_id INTEGER DEFAULT NULL,
     author_name TEXT NOT NULL,
     author_email TEXT,
+    author_avatar TEXT,
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     is_approved INTEGER DEFAULT 1,
     is_admin INTEGER DEFAULT 0,
+    delete_token TEXT,
     FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
     FOREIGN KEY (parent_id) REFERENCES comments (id) ON DELETE CASCADE
 );
@@ -539,28 +569,44 @@ function nestComments(comments) {
     return roots;
 }
 
-// Fonction Helper pour éviter de répéter le code d'insertion
-function insertComment(req, res, articleId, parentId, author_name, author_email, content, isApproved, isAdmin) {
-    const sql = `INSERT INTO comments (article_id, parent_id, author_name, author_email, content, is_approved, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+/**
+ * Fonction Helper pour insérer un commentaire en base de données.
+ * Gère l'insertion SQL, les notifications et la redirection.
+ */
+function insertComment(req, res, articleId, parentId, author_name, author_email, author_avatar, content, isApproved, isAdmin) {
+
+    const sql = `INSERT INTO comments (article_id, parent_id, author_name, author_email, author_avatar, content, is_approved, is_admin, delete_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     const parentIdValue = parentId ? parseInt(parentId) : null;
+    const isAdminValue = req.session.userId ? 1 : 0;
 
-    db.run(sql, [articleId, parentIdValue, author_name, author_email, content, isApproved, isAdmin], function(err) {
-        if (err) {
+    const deleteToken = isAdmin ? null : crypto.randomUUID();
+
+    db.run(sql, [articleId, parentIdValue, author_name, author_email, author_avatar, content, isApproved, isAdmin, deleteToken], function(err) {
+        if (err) { 
             console.error("Erreur BDD Commentaire:", err);
             req.session.flashMessage = { type: 'error', text: 'Erreur technique lors de l\'enregistrement.' };
             return req.session.save(() => res.redirect(`/entree/${articleId}`));
         }
 
+        // Notification Admin (si ce n'est pas l'admin lui-même qui poste)
         if (!isAdmin) {
-            sendAdminNotification(req, articleId, this.lastID, author_name, content);
+             sendAdminNotification(req, articleId, this.lastID, author_name, content);
         }
 
-        // Si le message flash n'a pas été défini par la logique de déduplication
+        // Si le message flash n'a pas déjà été défini par la logique de déduplication (Toto 1...)
         if (!req.session.flashMessage) {
-            req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
+             req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
         }
 
+        if (deleteToken) {
+            res.cookie(`can_delete_${this.lastID}`, deleteToken, { 
+                maxAge: 365 * 24 * 60 * 60 * 1000, // 1 an
+                httpOnly: true 
+            });
+        }
+
+        // Sauvegarde la session et redirige
         req.session.save(() => res.redirect(`/entree/${articleId}`));
     });
 }
@@ -754,7 +800,12 @@ app.get('/entree/:id', (req, res) => {
     // Requête pour les tags
     const sqlTags = `SELECT t.name_${lang} as name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
     // Requête pour les commentaires approuvés
-    const sqlComments = `SELECT id, parent_id, author_name, content, created_at FROM comments WHERE article_id = ? AND is_approved = 1 ORDER BY created_at ASC`;
+    const sqlComments = `
+        SELECT id, parent_id, author_name, author_email, author_avatar, content, created_at, is_admin 
+        FROM comments 
+        WHERE article_id = ? AND is_approved = 1 
+        ORDER BY created_at ASC
+    `;
 
     db.get(sqlArticle, id, (err, article) => {
         if (err) { console.error(`Erreur BDD (GET /entree/${id} article):`, err); return res.status(500).send("Erreur serveur."); }
@@ -1221,20 +1272,46 @@ app.post('/connexion', authLimiter, (req, res) => {
 
 // Inscription (Admin unique)
 app.get('/inscription', checkAdminExists, (req, res) => { res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); });
-app.post('/inscription', checkAdminExists, authLimiter, (req, res) => {
+app.post('/inscription', checkAdminExists, authLimiter, upload.single('avatar'), (req, res) => {
     const { username, password, email } = req.body;
-    if (!email || !email.includes('@')) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Adresse email invalide.' }); }
-    if (!password || password.length < 8) { return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Le mot de passe doit faire au moins 8 caractères.' }); }
+
+    // Validation basique
+    if (!email || !email.includes('@')) {
+        return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Adresse email invalide.' });
+    }
+    if (!password || password.length < 8) {
+        return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: 'Le mot de passe doit faire au moins 8 caractères.' });
+    }
+
+    let avatarUrl = null;
+    if (req.file) {
+        avatarUrl = '/uploads/' + req.file.filename;
+    } else {
+        const style = req.body.avatar_style || 'bottts'; // Récupère le choix ou met 'bottts' par défaut
+        const seed = encodeURIComponent(username);
+        avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+    }
+
     const saltRounds = 10;
     bcrypt.hash(password, saltRounds, (errHash, hash) => {
-        if (errHash) { console.error("Erreur hachage (inscription):", errHash); return res.status(500).send("Erreur serveur."); }
-        const sql = 'INSERT INTO users (username, password, email) VALUES (?, ?, ?)';
-        db.run(sql, [username, hash, email], function(errInsert) {
+        if (errHash) {
+            console.error("Erreur hachage:", errHash);
+            return res.status(500).send("Erreur serveur.");
+        }
+
+        const sql = 'INSERT INTO users (username, password, email, avatar_url) VALUES (?, ?, ?, ?)';
+
+        db.run(sql, [username, hash, email, avatarUrl], function(errInsert) {
             if (errInsert) {
                 let errorMessage = "Erreur création compte.";
-                return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: errorMessage + (errInsert.message ? ` (${errInsert.message})` : '') });
+                if (errInsert.message.includes('UNIQUE constraint failed')) {
+                    errorMessage = "Ce nom d'utilisateur ou cet email est déjà pris.";
+                }
+                console.error("Erreur BDD:", errInsert);
+                return res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: errorMessage });
             }
-            req.session.flashMessage = { type: 'success', text: 'Compte administrateur créé ! Vous pouvez vous connecter.' }; // Message de succès
+
+            req.session.flashMessage = { type: 'success', text: 'Compte administrateur créé ! Vous pouvez vous connecter.' };
             res.redirect('/connexion');
         });
     });
@@ -1543,25 +1620,38 @@ app.get('/admin/comments', isAuthenticated, (req, res) => {
         });
     });
 });
-
-app.post('/admin/comments/delete/:id', isAuthenticated, (req, res) => {
+app.post('/admin/comments/delete/:id', async (req, res) => {
     const commentId = req.params.id;
-    const returnTo = req.query.returnTo;
+    const returnTo = req.query.returnTo || '/admin/comments';
 
-    const sql = 'DELETE FROM comments WHERE id = ?';
-
-    db.run(sql, [commentId], function(err) {
-        if (err) {
-            req.session.flashMessage = { type: 'error', text: 'Erreur lors de la suppression.' };
-        } else {
-            req.session.flashMessage = { type: 'success', text: 'Commentaire supprimé.' };
+    // 1. Récupérer le commentaire pour vérifier le token
+    db.get('SELECT delete_token FROM comments WHERE id = ?', [commentId], (err, comment) => {
+        if (err || !comment) {
+            req.session.flashMessage = { type: 'error', text: 'Commentaire introuvable.' };
+            return res.redirect(returnTo);
         }
 
-        // --- LOGIQUE INTELLIGENTE ---
-        if (returnTo) {
-            res.redirect(returnTo); // Retourne à l'article
+        // 2. VÉRIFICATION DES DROITS
+        const isAdmin = req.session.userId; // Est-ce l'admin connecté ?
+        const userToken = req.cookies[`can_delete_${commentId}`]; // Le visiteur a-t-il le cookie ?
+        const isOwner = userToken && userToken === comment.delete_token; // Le cookie correspond-il à la BDD ?
+
+        if (isAdmin || isOwner) {
+            // 3. Suppression autorisée
+            db.run('DELETE FROM comments WHERE id = ?', [commentId], (errDel) => {
+                if (errDel) {
+                    req.session.flashMessage = { type: 'error', text: 'Erreur technique.' };
+                } else {
+                    req.session.flashMessage = { type: 'success', text: 'Commentaire supprimé.' };
+                    // Si c'était le propriétaire, on nettoie son cookie
+                    if (isOwner) res.clearCookie(`can_delete_${commentId}`);
+                }
+                req.session.save(() => res.redirect(returnTo));
+            });
         } else {
-            res.redirect('/admin/comments'); // Comportement par défaut (Dashboard)
+            // 4. Refus
+            req.session.flashMessage = { type: 'error', text: 'Vous n\'avez pas le droit de supprimer ce commentaire.' };
+            req.session.save(() => res.redirect(returnTo));
         }
     });
 });
@@ -2043,39 +2133,51 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
 // Ajout de commentaire (Public)
 app.post('/article/:id/comment', commentLimiter, async (req, res) => {
     const articleId = req.params.id;
-    let { author_name, author_email, content, parent_id } = req.body;
+    let { author_name, author_email, content, parent_id, author_avatar_style } = req.body;
 
-    if (req.body.website_field && req.body.website_field !== '') return res.redirect(`/entree/${articleId}`);
-    if (!author_name || !content || !author_name.trim() || !content.trim()) {
-        req.session.flashMessage = { type: 'error', text: 'Veuillez remplir tous les champs.' };
-        return req.session.save(() => res.redirect(`/entree/${articleId}`));
+    if (req.body.website_field && req.body.website_field !== '') {
+        return res.redirect(`/entree/${articleId}`);
     }
 
-    // Validation : Nom ET Email requis (sauf si Admin)
+    // 2. Validation (Champs requis pour les visiteurs)
     if (!req.session.userId && (!author_name || !author_email || !content)) {
-        req.session.flashMessage = { type: 'error', text: 'Nom, Email et Message sont requis.' };
+        req.session.flashMessage = { type: 'error', text: 'Veuillez remplir tous les champs (Nom, Email, Message).' };
         return req.session.save(() => res.redirect(`/entree/${articleId}`));
     }
 
-    // 2. SÉCURITÉ ADMIN (Inchangé)
-    // Si c'est l'admin connecté, on force son nom et on ne le renomme pas
-    if (req.session.userId && req.session.username) {
-        return insertComment(req, res, articleId, parent_id, req.session.username, 'admin@internal', content, 1, 1);
-    }
-
-    // 3. Modération Automatique (Bad-words) (Inchangé)
+    // 3. Modération Automatique
     if (filter.isProfane(content) || filter.isProfane(author_name)) {
-        req.session.flashMessage = { type: 'error', text: 'Commentaire rejeté (langage inapproprié).' };
+        req.session.flashMessage = { type: 'error', text: 'Votre commentaire a été rejeté (langage inapproprié).' };
         return req.session.save(() => res.redirect(`/entree/${articleId}`));
     }
 
-    // 4. --- GESTION DES DOUBLONS DE PSEUDO ---
-    const sqlCheck = `SELECT author_name FROM comments WHERE author_name = ? OR author_name LIKE ?`;
+    let author_avatar = '';
+    if (req.session.userId) {
+        // Admin : on récupère son avatar en BDD
+        const user = await new Promise(resolve => db.get('SELECT avatar_url FROM users WHERE id = ?', [req.session.userId], (err, row) => resolve(row)));
+        author_avatar = user ? user.avatar_url : '';
+    } else {
+        // Visiteur : on génère l'avatar DiceBear
+        const style = author_avatar_style || 'bottts';
+        const seed = encodeURIComponent(author_name);
+        author_avatar = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+    }
 
+    // --- CAS A : C'est l'ADMIN ---
+    if (req.session.userId && req.session.username) {
+        return insertComment(
+            req, res, articleId, parent_id,
+            req.session.username, 'admin@internal', author_avatar, content,
+            1, 1
+        );
+    }
+
+    // --- CAS B : C'est un VISITEUR ---
+    const sqlCheck = `SELECT author_name FROM comments WHERE author_name = ? OR author_name LIKE ?`;
+    
     db.all(sqlCheck, [author_name, `${author_name} %`], (err, rows) => {
         if (!err) {
             const nameExists = rows.some(row => row.author_name.toLowerCase() === author_name.toLowerCase());
-
             if (nameExists) {
                 let counter = 1;
                 let newName = `${author_name} ${counter}`;
@@ -2083,16 +2185,21 @@ app.post('/article/:id/comment', commentLimiter, async (req, res) => {
                     counter++;
                     newName = `${author_name} ${counter}`;
                 }
-                author_name = newName; // On change le nom
+                author_name = newName;
+                req.session.flashMessage = { type: 'info', text: `Publié sous "${author_name}" (pseudo pris).` };
 
-                req.session.flashMessage = {
-                    type: 'info',
-                    text: `Votre commentaire est publié sous le nom "${author_name}" car le pseudo d'origine était déjà pris.`
-                };
+                // On met à jour l'avatar pour correspondre au nouveau nom
+                const seed = encodeURIComponent(author_name);
+                const style = author_avatar_style || 'bottts';
+                author_avatar = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
             }
         }
 
-        insertComment(req, res, articleId, parent_id, author_name, author_email, content, 1, 0);
+        insertComment(
+            req, res, articleId, parent_id, 
+            author_name, author_email, author_avatar, content, 
+            1, 0
+        );
     });
 });
 

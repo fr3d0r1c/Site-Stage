@@ -2,36 +2,47 @@
 
 <div class="static-page">
     <h1><%= t('auth.register_title') %></h1>
-    
-    <%# Message d'information (non géré par SweetAlert, s'affiche toujours) %>
+
     <p class="feedback-message" style="background-color: #fff3cd; color: #664d03; border-color: #ffecb5; display: block;">
         ⚠️ <%= t('auth.register_info') %>
     </p>
     <hr>
 
     <% if (locals.error) { %>
-        <p class="error-message" style="display: none;" data-detail="<%= locals.detail || '' %>">
-            <%= error %>
-        </p>
+        <p class="error-message" style="display: none;"><%= error %></p>
     <% } %>
 
-    <% if (locals.success) { %>
-        <p class="feedback-message success" style="display: none;"><%= success %></p>
-    <% } %>
-
-    <form action="/inscription" method="POST">
+    <form action="/inscription" method="POST" enctype="multipart/form-data">
         <div class="form-group">
-            <label for="username"><%= t('forms.username') %> :</label><br>
+            <label for="username"><%= t('forms.username') %> :</label>
             <input type="text" id="username" name="username" required>
         </div>
 
         <div class="form-group">
-            <label for="email"><%= t('contact.form_email') %> :</label><br>
+            <label for="email">Email :</label>
             <input type="email" id="email" name="email" required>
         </div>
 
+        <div class="form-group">
+            <label for="avatar">Photo de profil (Optionnel) :</label>
+            <input type="file" id="avatar" name="avatar" accept="image/*">
+            <small style="color: var(--c-text-light);">Si vide, un avatar sera généré.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="avatar_style">Style de l'avatar généré :</label>
+            <select name="avatar_style" id="avatar_style" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-background); color: var(--c-text);">
+                <option value="bottts">🤖 Robots</option>
+                <option value="avataaars">🧑 Humains</option>
+                <option value="monsterrr">👾 Monstres</option>
+                <option value="identicon">🔷 Géométrique</option>
+                <option value="initials">🅰️ Initiales</option>
+            </select>
+            <small style="color: var(--c-text-light);">Utilisé uniquement si vous n'uploadez pas de photo.</small>
+        </div>
+
         <div class="form-group password-container">
-            <label for="password"><%= t('forms.password') %> :</label><br>
+            <label for="password"><%= t('forms.password') %> :</label>
             <div style="position: relative;">
                 <input type="password" id="password" name="password" required minlength="8">
                 <i class="fas fa-eye toggle-password-icon" data-target="password"></i>
@@ -40,11 +51,11 @@
         </div>
 
         <div>
-            <button type="submit"><%= t('forms.create_account_button') %></button>
+            <button type="submit" class="btn"><%= t('forms.create_account_button') %></button>
         </div>
     </form>
 </div>
 
-<%- include('partials/footer') %>
-
 <script src="/js/auth-ui.js"></script>
+
+<%- include('partials/footer') %>
