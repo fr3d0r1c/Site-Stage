@@ -1,0 +1,51 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page" style="max-width: 600px; margin: 0 auto;">
+    <h1><i class="fas fa-id-card"></i> Mon Profil Invité</h1>
+    <p>Configurez votre identité pour signer vos commentaires et vos likes. Ces informations sont stockées uniquement dans votre navigateur.</p>
+    
+    <hr>
+
+    <div style="text-align: center; margin-bottom: 2rem; padding: 1.5rem; background: var(--c-background); border-radius: 12px; border: 1px solid var(--c-border);">
+        <img id="avatar-preview" src="" alt="Avatar" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid var(--c-surface); box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <h2 id="name-preview" style="margin: 10px 0 5px 0; font-size: 1.5rem;">Invité</h2>
+        <span id="status-badge" style="background: #ccc; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;">NON CONFIGURÉ</span>
+    </div>
+
+    <form id="guest-profile-form">
+        <div class="form-group">
+            <label for="g-name">Pseudo :</label>
+            <input type="text" id="g-name" required placeholder="Votre pseudo public">
+        </div>
+
+        <div class="form-group">
+            <label for="g-email">Email (Privé) :</label>
+            <input type="email" id="g-email" required placeholder="Pour vous contacter (non affiché)">
+            <small style="color: var(--c-text-light);">Sert aussi à valider votre identité.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="g-style">Style de l'avatar :</label>
+            <select id="g-style" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text);">
+                <option value="bottts">🤖 Robots</option>
+                <option value="avataaars">🧑 Humains</option>
+                <option value="monsterrr">👾 Monstres</option>
+                <option value="identicon">🔷 Géométrique</option>
+                <option value="initials">🅰️ Initiales</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">
+            <i class="fas fa-save"></i> Sauvegarder mon profil
+        </button>
+    </form>
+
+    <button id="guest-reset-btn" class="btn btn-danger" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--c-danger); border: 1px solid var(--c-danger);">
+        <i class="fas fa-trash"></i> Effacer mes données
+    </button>
+
+</div>
+
+<script src="/js/guest-profile-page.js"></script>
+
+<%- include('partials/footer') %>

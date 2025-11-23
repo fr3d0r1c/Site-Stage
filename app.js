@@ -353,6 +353,7 @@ CREATE TABLE IF NOT EXISTS articles (
   summary_fr TEXT, summary_en TEXT, -- NOUVEAUX CHAMPS
   content_fr TEXT NOT NULL, content_en TEXT NOT NULL,
   cover_image_url TEXT,
+  likes INTEGER DEFAULT 0,
   publication_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER,
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
@@ -835,6 +836,8 @@ app.get('/entree/:id', (req, res) => {
             new Promise((resolve, reject) => db.all(sqlSimilar, [id, id], (err, rows) => err ? reject(err) : resolve(rows)))
         ]).then(([tagRows, prevEntry, nextEntry, flatComments, similarArticles]) => {
 
+            const hasLiked = req.cookies[`liked_article_${id}`] ? true : false;
+
             article.tags = tagRows.map(tag => tag.name);
 
             // ORGANISATION DES COMMENTAIRES
@@ -888,6 +891,7 @@ app.get('/entree/:id', (req, res) => {
                 similarArticles: similarArticles || [],
                 messageSent: req.query.comment === 'success' ? true : (req.query.comment === 'error' ? false : null),
                 ogTitle: article.title,
+                hasLiked: hasLiked,
                 ogDescription: ogDescription,
                 ogImage: absoluteOgImage,
                 ogType: 'article'
@@ -1143,11 +1147,16 @@ app.get('/sitemap.xml', async (req, res) => {
     }
 });
 
-// Page de gestion du Compte Invité (Login/Logout client-side)
-app.get('/espace-invite', (req, res) => {
-    res.render('guest-login', {
-        pageTitle: 'Espace Invité',
-        activePage: 'guest' // Pour le menu (optionnel)
+// --- PAGE PROFIL INVITÉ ---
+app.get('/guest-profile', (req, res) => {
+    // Si c'est l'admin, il n'a rien à faire là, on le renvoie vers son profil admin
+    if (req.session.userId) {
+        return res.redirect('/admin/dashboard');
+    }
+
+    res.render('guest-profile', {
+        pageTitle: 'Mon Profil Invité',
+        activePage: 'guest' // Pour activer le menu
     });
 });
 
@@ -2289,6 +2298,39 @@ app.post('/api/tags/create', isAuthenticated, async (req, res) => {
             name: (lang === 'en' ? name_en : name_fr), // Nom dans la langue actuelle
             name_fr: name_fr,
             name_en: name_en
+        });
+    });
+});
+
+// --- API LIKE SÉCURISÉE (Avec Cookies) ---
+app.post('/api/entree/:id/like', (req, res) => {
+    const id = req.params.id;
+    const cookieName = `liked_article_${id}`;
+
+    // 1. Vérification : Le cookie existe-t-il déjà ?
+    if (req.cookies[cookieName]) {
+        return res.status(403).json({ error: "Vous avez déjà aimé cet article." });
+    }
+
+    // 2. Incrémentation BDD
+    const sqlUpdate = 'UPDATE articles SET likes = likes + 1 WHERE id = ?';
+
+    db.run(sqlUpdate, [id], function(err) {
+        if (err) {
+            console.error("Erreur Like API:", err);
+            return res.status(500).json({ error: "Erreur serveur" });
+        }
+
+        // 3. Récupérer le nouveau nombre
+        db.get('SELECT likes FROM articles WHERE id = ?', [id], (err, row) => {
+            if (err || !row) return res.status(500).json({ error: "Erreur lecture likes" });
+
+            res.cookie(cookieName, 'true', {
+                maxAge: 365 * 24 * 60 * 60 * 1000,
+                httpOnly: true
+            });
+
+            res.json({ likes: row.likes });
         });
     });
 });

@@ -11,7 +11,7 @@
 <article class="full-article">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <h1 style="margin: 0;"><%= article.title %></h1>
-
+        
         <button id="zen-mode-btn" class="btn btn-secondary" title="Mode Lecture Zen" aria-label="Activer le mode lecture zen" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;">
             <i class="fas fa-book-open" aria-hidden="true"></i>
         </button>
@@ -30,20 +30,41 @@
     <% } %>
 
     <hr>
-
+    
     <div class="article-content"><%- article.content %></div>
 
-    <%# Actions Admin (Modifier / Supprimer l'article) %>
+    <div class="article-footer-actions" style="justify-content: flex-end;">
+
+        <button id="open-comments-btn" class="btn-comment">
+            <i class="far fa-comment"></i>
+            <span><%= comments.length %></span>
+        </button>
+
+        <% if (locals.username) { %>
+            <button class="btn-heart" disabled title="Vue Admin">
+                <i class="fas fa-heart" style="opacity: 0.5;"></i>
+                <span><%= article.likes || 0 %></span>
+            </button>
+        <% } else { %>
+            <button id="like-btn" class="btn-heart <%= hasLiked ? 'liked' : '' %>" 
+                    data-id="<%= article.id %>" <%= hasLiked ? 'disabled' : '' %>>
+                <i class="<%= hasLiked ? 'fas' : 'far' %> fa-heart"></i>
+                <span id="like-count"><%= article.likes || 0 %></span>
+            </button>
+        <% } %>
+    </div>
+
+    <%# Actions Admin sur l'article (Modifier / Supprimer) %>
     <% if (locals.username) { %>
-        <div class="actions" style="margin-top: 2rem; border-top: 1px solid var(--c-border); padding-top: 1.5rem;">
-            <a href="/entree/<%= article.id %>/edit" class="btn"><%= t('journal.edit') %></a>
-            <form action="/entree/<%= article.id %>/delete" method="POST" 
+         <div class="actions" style="margin-top: 1rem; border-top: 1px solid var(--c-border); padding-top: 1.5rem;">
+             <a href="/entree/<%= article.id %>/edit" class="btn"><%= t('journal.edit') %></a>
+             <form action="/entree/<%= article.id %>/delete" method="POST" 
                    data-confirm="<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>" 
                    style="display: inline;">
-                <button type="submit" class="btn btn-danger"><%= t('journal.delete') %></button>
-            </form>
-        </div>
-    <% } %>
+                 <button type="submit" class="btn btn-danger"><%= t('journal.delete') %></button>
+             </form>
+         </div>
+     <% } %>
 </article>
 
 <nav class="prev-next-nav" aria-label="Navigation entre les articles">
@@ -70,7 +91,7 @@
 <% if (typeof similarArticles !== 'undefined' && similarArticles.length > 0) { %>
     <section class="similar-posts" aria-labelledby="similar-posts-title">
         <h2 id="similar-posts-title"><%= t('journal.similar_posts') %></h2>
-
+        
         <div class="entries-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-top: 1.5rem;">
             <% similarArticles.forEach(entry => { %>
                 <article class="entry-card" style="font-size: 0.9em;">
@@ -92,159 +113,173 @@
     <hr>
 <% } %>
 
-<section class="comments-section" aria-labelledby="comments-title">
-    <h2 id="comments-title"><%= t('comments.title') %></h2>
-
-    <div class="comments-list">
-        <% if (comments && comments.length > 0) { %>
-
-            <%# --- FONCTION D'AFFICHAGE RÉCURSIVE --- %>
-            <% function renderComment(comment, isReply) { %>
-                <% const initial = comment.author_name.charAt(0).toUpperCase(); %>
-
-                <div class="comment-container <%= isReply ? 'is-reply' : '' %> <%= comment.is_admin ? 'is-admin-comment' : '' %>" id="comment-<%= comment.id %>">
-
-                    <div class="comment-avatar" aria-hidden="true">
-                        <% if (comment.author_avatar) { %>
-                            <img src="<%= comment.author_avatar %>" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
-                        <% } else { %>
-                            <%= initial %>
-                        <% } %>
-                    </div>
-
-                    <div class="comment-content-box">
-                        <div class="comment-header">
-                            <span class="comment-author">
-                                <%= comment.author_name %>
-                                <% if (comment.is_admin) { %>
-                                    <span class="admin-badge" title="Administrateur">
-                                        <i class="fas fa-shield-alt" aria-hidden="true"></i> Admin
-                                    </span>
-                                <% } %>
-                            </span>
-                            <span class="comment-date">
-                                &bull; <%= new Date(comment.created_at).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }) %>
-                            </span>
-                        </div>
-
-                        <div class="comment-text"><%= comment.content %></div>
-
-                        <div class="comment-actions">
-                            <button class="btn-text reply-btn" data-id="<%= comment.id %>" data-author="<%= comment.author_name %>" aria-label="Répondre au commentaire de <%= comment.author_name %>">
-                                <i class="fas fa-reply" aria-hidden="true"></i>
-                            </button>
-
-                            <% if (locals.username) { %>
-                                <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST" 
-                                      data-confirm="<%= t('admin_page.delete_confirm') %>" 
-                                      style="display: inline; margin-left: 10px;">
-                                    <button type="submit" class="btn-icon-danger" title="<%= t('journal.delete') %>" aria-label="Supprimer ce commentaire">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                            <% } else if (locals.cookies && locals.cookies['can_delete_' + comment.id]) { %>
-                                <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST" 
-                                      data-confirm="<%= t('admin_page.delete_confirm') %>" 
-                                      style="display: inline; margin-left: 10px;">
-                                    <button type="submit" class="btn-text btn-text-danger" aria-label="Supprimer mon commentaire">
-                                        <i class="fas fa-trash" aria-hidden="true"></i>
-                                    </button>
-                                </form>
-                            <% } %>
-                        </div>
-                    </div>
-                </div>
-
-                <% if (comment.replies && comment.replies.length > 0) { %>
-                    <div class="replies-wrapper">
-                        <% comment.replies.forEach(reply => { renderComment(reply, true); }); %>
-                    </div>
-                <% } %>
-
-            <% } %>
-            <%# --- FIN FONCTION --- %>
-
-            <% comments.forEach(comment => { renderComment(comment, false); }); %>
-
-        <% } else { %>
-            <div class="no-comments">
-                <i class="far fa-comments fa-2x" aria-hidden="true"></i>
-                <p><i><%= t('comments.no_comments') %></i></p>
-            </div>
-        <% } %>
-    </div>
-
-    <div class="comment-form" id="main-comment-form">
-        <h3 id="form-title"><%= t('comments.leave_comment') %></h3>
-
-        <div id="reply-indicator" style="display:none; background: var(--c-background); padding: 10px; border-left: 4px solid var(--c-primary); margin-bottom: 15px; border-radius: 4px;">
-            Réponse à <strong id="reply-author"></strong>
-            <button type="button" id="cancel-reply" aria-label="Annuler la réponse" style="float:right; background:none; border:none; cursor:pointer; color:var(--c-text-light);">&times; Annuler</button>
-        </div>
-
-        <form action="/article/<%= article.id %>/comment" method="POST">
-            <input type="hidden" name="parent_id" id="parent_id_input" value="">
-
-            <div class="form-group">
-                <label for="author_name"><%= t('comments.form_name') %> :</label>
-
-                <% if (locals.username) { %>
-                    <div style="position: relative; margin-bottom: 1rem;">
-                        <input type="text" id="author_name" name="author_name" value="<%= locals.username %>" readonly 
-                               style="background-color: var(--c-background); font-weight: bold; padding-left: 45px; width: 100%; box-sizing: border-box;">
-                        <i class="fas fa-user-shield" aria-hidden="true" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--c-primary); font-size: 1.1rem;"></i>
-                    </div>
-                    <small style="color: var(--c-primary); display:block; margin-top:-10px; margin-bottom:15px;"><i class="fas fa-check-circle" aria-hidden="true"></i> Connecté en tant qu'Administrateur</small>
-
-                <% } else { %>
-                    <input type="hidden" id="author_name" name="author_name">
-                    <input type="hidden" id="author_email" name="author_email">
-                    <input type="hidden" id="author_avatar_style" name="author_avatar_style">
-
-                    <div id="guest-ui-container" style="margin-bottom: 1rem;">
-                        <div id="guest-login-view">
-                            <button type="button" id="guest-login-btn" class="btn btn-secondary" style="width: 100%; text-align: left; padding: 10px 15px;">
-                                <i class="fas fa-sign-in-alt" aria-hidden="true"></i> S'identifier pour commenter (Compte Invité)
-                            </button>
-                        </div>
-                        <div id="guest-profile-view" style="display: none; background: #f0f9ff; border: 1px solid #bae6fd; padding: 10px 15px; border-radius: 8px; align-items: center; justify-content: space-between;">
-                            <div>
-                                <span style="color: green;">●</span>
-                                <span style="font-weight: bold; color: #222;" id="display-guest-name"></span>
-                                <br>
-                                <small style="color: #666;" id="display-guest-email"></small>
-                            </div>
-                            <div style="display: flex; gap: 10px;">
-                                <button type="button" id="guest-edit-btn" class="btn-text" title="Modifier" aria-label="Modifier mes informations"><i class="fas fa-pen" aria-hidden="true"></i></button>
-                                <button type="button" id="guest-logout-btn" class="btn-text btn-text-danger" title="Me déconnecter" aria-label="Se déconnecter du compte invité"><i class="fas fa-sign-out-alt" aria-hidden="true"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                <% } %>
-            </div>
-
-            <div class="form-group">
-                <label for="comment_content"><%= t('comments.form_comment') %> :</label>
-                <textarea id="comment_content" name="content" rows="5" required></textarea>
-            </div>
-
-            <div class="form-group honeypot">
-                <label for="website-field-comment">Ne pas remplir ce champ</label>
-                <input type="text" id="website-field-comment" name="website_field" autocomplete="off" tabindex="-1">
-            </div>
-
-            <div>
-                <button type="submit" class="btn"><%= t('comments.submit_button') %></button>
-            </div>
-        </form>
-    </div>
-</section>
-
 <nav style="margin-top: 2rem;">
     <a href="/journal"><%= t('journal.back_to_journal') %></a>
 </nav>
 
+<div id="comments-modal-overlay" class="comment-modal-overlay">
+    <div class="comment-modal-content">
+
+        <div class="comment-modal-header">
+            <h2><%= t('comments.title') %></h2>
+            <button id="close-comments-btn" class="close-comment-modal" aria-label="Fermer">
+                <i class="fas fa-times"></i>
+        </div>
+
+        <div class="comment-modal-body">
+
+            <section class="comments-section" aria-labelledby="comments-title">
+                <h2 id="comments-title"><%= t('comments.title') %></h2>
+
+                <div class="comments-list">
+                    <% if (comments && comments.length > 0) { %>
+                        
+                        <%# --- FONCTION D'AFFICHAGE RÉCURSIVE --- %>
+                        <% function renderComment(comment, isReply) { %>
+                            <% const initial = comment.author_name.charAt(0).toUpperCase(); %>
+                            
+                            <div class="comment-container <%= isReply ? 'is-reply' : '' %> <%= comment.is_admin ? 'is-admin-comment' : '' %>" id="comment-<%= comment.id %>">
+                                
+                                <div class="comment-avatar" aria-hidden="true">
+                                    <% if (comment.author_avatar) { %>
+                                        <img src="<%= comment.author_avatar %>" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                                    <% } else { %>
+                                        <%= initial %>
+                                    <% } %>
+                                </div>
+
+                                <div class="comment-content-box">
+                                    <div class="comment-header">
+                                        <span class="comment-author">
+                                            <%= comment.author_name %>
+                                            <% if (comment.is_admin) { %>
+                                                <span class="admin-badge" title="Administrateur">
+                                                    <i class="fas fa-shield-alt" aria-hidden="true"></i> Admin
+                                                </span>
+                                            <% } %>
+                                        </span>
+                                        <span class="comment-date">
+                                            &bull; <%= new Date(comment.created_at).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }) %>
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="comment-text"><%= comment.content %></div>
+                                    
+                                    <div class="comment-actions">
+                                        <button class="btn-text reply-btn" data-id="<%= comment.id %>" data-author="<%= comment.author_name %>" aria-label="Répondre au commentaire de <%= comment.author_name %>">
+                                            <i class="fas fa-reply" aria-hidden="true"></i> <%= t('comments.reply') || 'Répondre' %>
+                                        </button>
+                                        
+                                        <% if (locals.username) { %>
+                                            <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST" 
+                                                data-confirm="<%= t('admin_page.delete_confirm') %>" 
+                                                style="display: inline; margin-left: 10px;">
+                                                <button type="submit" class="btn-icon-danger" title="Supprimer (Admin)" aria-label="Supprimer ce commentaire">
+                                                    <i class="fas fa-trash-alt" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        <% } else if (locals.cookies && locals.cookies['can_delete_' + comment.id]) { %>
+                                            <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST" 
+                                                data-confirm="<%= t('admin_page.delete_confirm') %>" 
+                                                style="display: inline; margin-left: 10px;">
+                                                <button type="submit" class="btn-icon-danger" title="Supprimer (Auteur)" aria-label="Supprimer mon commentaire">
+                                                    <i class="fas fa-trash-alt" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <% if (comment.replies && comment.replies.length > 0) { %>
+                                
+                                <button class="btn-toggle-replies" data-target="replies-<%= comment.id %>" style="margin-left: 60px; margin-bottom: 10px;">
+                                    <i class="fas fa-caret-down"></i> Voir les <%= comment.replies.length %> réponses
+                                </button>
+
+                                <div id="replies-<%= comment.id %>" class="replies-wrapper" style="display: none;">
+                                    <% comment.replies.forEach(reply => { renderComment(reply, true); }); %>
+                                </div>
+                            
+                            <% } %>
+
+                        <% } %>
+                        <%# --- FIN FONCTION --- %>
+
+                        <% comments.forEach(comment => { renderComment(comment, false); }); %>
+
+                    <% } else { %>
+                        <div class="no-comments">
+                            <i class="far fa-comments fa-2x" aria-hidden="true"></i>
+                            <p><i><%= t('comments.no_comments') %></i></p>
+                        </div>
+                    <% } %>
+                </div>
+
+                <div class="comment-form" id="main-comment-form">
+                    <h3 id="form-title"><%= t('comments.leave_comment') %></h3>
+                    
+                    <div id="reply-indicator" style="display:none; background: var(--c-background); padding: 10px; border-left: 4px solid var(--c-primary); margin-bottom: 15px;">
+                        Réponse à <strong id="reply-author"></strong>
+                        <button type="button" id="cancel-reply" style="float:right; background:none; border:none; cursor:pointer;">&times;</button>
+                    </div>
+
+                    <form action="/article/<%= article.id %>/comment" method="POST" id="real-comment-form" style="<%= locals.username ? '' : 'display:none;' %>">
+                        <input type="hidden" name="parent_id" id="parent_id_input" value="">
+                        
+                        <div class="form-group">
+                            <% if (locals.username) { %>
+                                <div class="identity-box admin-box">
+                                    <div class="identity-content">
+                                        <div class="mini-avatar admin-avatar"><%= locals.username.charAt(0).toUpperCase() %></div>
+                                        <strong><%= locals.username %></strong> <span class="badge-admin">Admin</span>
+                                    </div>
+                                </div>
+                            <% } else { %>
+                                <input type="hidden" id="author_name" name="author_name">
+                                <input type="hidden" id="author_email" name="author_email">
+                                <input type="hidden" id="author_avatar_style" name="author_avatar_style">
+                                
+                                <div class="identity-box guest-box">
+                                    <div class="identity-content">
+                                        <span id="guest-avatar-preview"></span>
+                                        <div class="identity-text">
+                                            <strong id="display-guest-name"></strong>
+                                            <span class="badge-guest">Invité</span>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="guest-edit-btn" class="edit-icon"><i class="fas fa-pen"></i></button>
+                                    <button type="button" id="guest-logout-btn" class="edit-icon" style="color:var(--c-danger);"><i class="fas fa-sign-out-alt"></i></button>
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <div class="form-group">
+                            <textarea id="comment_content" name="content" rows="3" placeholder="Votre message..." required></textarea>
+                        </div>
+                        <div class="form-group honeypot"><input type="text" name="website_field"></div>
+                        <button type="submit" class="btn"><%= t('comments.submit_button') %></button>
+                    </form>
+
+                    <% if (!locals.username) { %>
+                        <div id="guest-login-placeholder" style="text-align: center; padding: 2rem; background: var(--c-background); border-radius: 12px; border: 1px dashed var(--c-border);">
+                            <i class="fas fa-lock" style="font-size: 2rem; color: var(--c-text-light); margin-bottom: 1rem;"></i>
+                            <p>Vous devez avoir un profil invité pour commenter ou liker.</p>
+                            <button type="button" id="create-guest-profile-btn" class="btn">
+                                <i class="fas fa-user-plus"></i> Créer mon profil invité
+                            </button>
+                        </div>
+                    <% } %>
+                </div>
+            </section>
+
+        </div>
+    </div>
+</div>
+
 <script src="/js/comment-reply.js"></script>
 <script src="/js/guest-memory.js"></script>
+<script src="/js/likes.js"></script> 
+<script src="/js/comment-modal.js"></script>
 
 <%- include('partials/footer') %>

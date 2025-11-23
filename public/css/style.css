@@ -1966,3 +1966,337 @@ body.zen-mode #zen-mode-btn {
     display: flex;
     align-items: center;
 }
+
+/*
+=========================================
+--- 30. Bouton Like (Cœur Minimaliste) ---
+=========================================
+*/
+
+/* La barre qui contient le cœur (alignée à droite) */
+.article-footer-actions {
+    display: flex;
+    justify-content: flex-end; /* Pousse tout à droite */
+    align-items: center;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--c-border); /* Une ligne fine de séparation */
+}
+
+/* Le bouton Cœur lui-même */
+.btn-heart {
+    background: none;       /* Pas de fond */
+    border: none;           /* Pas de bordure */
+    padding: 5px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;               /* Espace entre cœur et chiffre */
+    color: var(--c-text-light); /* Gris par défaut (cœur vide) */
+    font-size: 1.5rem;      /* Taille de l'icône */
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Effet "rebond" fluide */
+}
+
+/* Le compteur */
+.btn-heart span {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Effet au survol (devient un peu rouge) */
+.btn-heart:hover {
+    color: #ff6b6b; /* Rouge clair */
+    transform: scale(1.1);
+}
+
+/* État Liké (Cœur plein et rouge) */
+.btn-heart.liked {
+    color: var(--c-danger); /* Rouge vif */
+}
+.btn-heart.liked:hover {
+    cursor: default; /* On ne peut plus cliquer */
+    transform: scale(1); /* Pas de zoom */
+}
+
+/* Animation du "battement" au clic */
+@keyframes heart-burst {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.4); }
+    100% { transform: scale(1); }
+}
+
+/*
+=========================================
+--- 31. Styles Identité Commentaire ---
+=========================================
+*/
+.identity-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: 1px solid var(--c-border);
+    background-color: var(--c-background);
+}
+
+.identity-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Avatar Admin (Lettre ou Image) */
+.mini-avatar {
+    width: 36px;
+    height: 36px;
+    background-color: var(--c-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+/* Avatar Invité (Image Dicebear) */
+.mini-avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 1px solid var(--c-border);
+}
+
+.identity-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+.identity-text strong { font-size: 0.95rem; color: var(--c-text); }
+
+/* Badges */
+.badge-admin, .badge-guest {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 1px 5px;
+    display: inline-block;
+    width: fit-content;
+}
+.badge-admin { background-color: var(--c-primary); color: white; }
+.badge-guest { background-color: var(--c-border); color: var(--c-text-light); }
+
+/* Bouton Modifier */
+.edit-icon {
+    color: var(--c-text-light);
+    font-size: 0.9rem;
+    padding: 5px;
+    transition: color 0.2s;
+}
+.edit-icon:hover { color: var(--c-primary); }
+
+/* Placeholder si pas connecté */
+.guest-placeholder {
+    text-align: center;
+    padding: 1rem;
+    background-color: var(--c-background);
+    border: 1px dashed var(--c-border);
+    border-radius: 8px;
+}
+
+/* --- BOUTON DÉPLIER COMMENTAIRES (Principal) --- */
+.btn-comments-toggle {
+    width: 100%;
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border);
+    padding: 15px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+    color: var(--c-text);
+    margin-bottom: 2rem;
+}
+.btn-comments-toggle:hover {
+    background-color: var(--c-background);
+    border-color: var(--c-primary);
+}
+.btn-comments-toggle .icon-wrapper {
+    color: var(--c-primary);
+    font-size: 1.5rem;
+    margin-right: 15px;
+}
+.btn-comments-toggle .badge-count {
+    background-color: var(--c-primary);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+.btn-comments-toggle .chevron {
+    transition: transform 0.3s ease;
+}
+.btn-comments-toggle[aria-expanded="true"] .chevron {
+    transform: rotate(180deg);
+}
+
+/* --- BOUTON VOIR RÉPONSES (Secondaire) --- */
+.btn-toggle-replies {
+    background: none;
+    border: none;
+    color: var(--c-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    padding: 5px 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn-toggle-replies:hover {
+    text-decoration: underline;
+}
+
+/* --- Bouton Commentaire (Style Instagram) --- */
+.btn-comment {
+    background: none;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--c-text-light);
+    font-size: 1.5rem;
+    transition: all 0.2s ease;
+    margin-right: 1rem; /* Espace entre Commentaire et Like */
+}
+
+.btn-comment span {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.btn-comment:hover {
+    color: var(--c-primary);
+    transform: scale(1.1);
+}
+
+/*
+=========================================
+--- 32. Modale de Commentaires ---
+=========================================
+*/
+
+/* L'arrière-plan sombre */
+.comment-modal-overlay {
+    display: none; /* Caché par défaut */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8); /* Fond sombre */
+    z-index: 9999; /* Au-dessus de tout */
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px); /* Petit effet de flou sympa */
+}
+
+/* La boîte de contenu (Fenêtre) */
+.comment-modal-content {
+    background-color: var(--c-surface);
+    width: 90%;
+    max-width: 800px; /* Largeur max confortable */
+    height: 90vh; /* Prend 90% de la hauteur de l'écran */
+    border-radius: 12px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    border: 1px solid var(--c-border);
+}
+
+/* En-tête de la modale (Titre + Fermer) */
+.comment-modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--c-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--c-background);
+    border-radius: 12px 12px 0 0;
+}
+.comment-modal-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    border: none;
+}
+
+/* Corps de la modale (Scrollable) */
+.comment-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto; /* C'est ICI que ça scrolle */
+    flex-grow: 1;
+}
+
+/* Bouton Fermer (X) */
+.close-comment-modal {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--c-text-light);
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.2s;
+}
+.close-comment-modal:hover {
+    color: var(--c-danger);
+}
+
+/* Animation d'ouverture */
+.comment-modal-overlay.open {
+    display: flex;
+    animation: fadeIn 0.3s ease;
+}
+.comment-modal-overlay.open .comment-modal-content {
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* --- Bouton "Voir les réponses" --- */
+.btn-toggle-replies {
+    background: none;
+    border: none;
+    color: var(--c-text-light);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: color 0.2s;
+}
+
+.btn-toggle-replies:hover {
+    color: var(--c-primary);
+    background-color: var(--c-background);
+}
+
+.btn-toggle-replies i {
+    font-size: 1.1em;
+}

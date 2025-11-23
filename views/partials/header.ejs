@@ -105,6 +105,14 @@
                     </a>
                 </li>
 
+                <% if (!locals.username) { %>
+                    <li>
+                        <a href="/guest-profile" class="<%= activePage === 'guest' ? 'active' : '' %>">
+                            <i class="fas fa-user-circle"></i> Espace Invité
+                        </a>
+                    </li>
+                <% } %>
+
                 <% if (locals.username) { %>
                     <li class="dropdown <%= activePage === 'admin' ? 'active-parent' : '' %>">
                         <a href="/admin" class="dropdown-toggle <%= activePage === 'admin' ? 'active' : '' %>">
