@@ -486,6 +486,23 @@ CREATE TABLE IF NOT EXISTS guests (
 `;
 db.run(createGuestsTable);
 
+// Création de la table de liaison 'article_likes'
+const createLikesTable = `
+CREATE TABLE IF NOT EXISTS article_likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    article_id INTEGER NOT NULL,
+    user_id INTEGER,
+    guest_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (guest_id) REFERENCES guests (id) ON DELETE CASCADE,
+    UNIQUE(article_id, user_id),
+    UNIQUE(article_id, guest_id)
+);
+`;
+db.run(createLikesTable);
+
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
 // =================================================================
@@ -869,16 +886,25 @@ app.get('/entree/:id', (req, res) => {
             LIMIT 3
         `;
 
+        const currentUserId = req.session.userId || null;
+        const currentGuestId = req.cookies.guest_token || null;
+
+        const sqlCheckLike = `SELECT id FROM article_likes WHERE article_id = ? AND (user_id = ? OR guest_id = ?)`;
+
         // On exécute les 4 requêtes restantes en parallèle
         Promise.all([
             new Promise((resolve, reject) => db.all(sqlTags, id, (err, rows) => err ? reject(err) : resolve(rows))),
             new Promise((resolve, reject) => db.get(sqlPrev, [currentPublicationDate], (err, row) => err ? reject(err) : resolve(row))),
             new Promise((resolve, reject) => db.get(sqlNext, [currentPublicationDate], (err, row) => err ? reject(err) : resolve(row))),
             new Promise((resolve, reject) => db.all(sqlComments, id, (err, rows) => err ? reject(err) : resolve(rows))),
-            new Promise((resolve, reject) => db.all(sqlSimilar, [id, id], (err, rows) => err ? reject(err) : resolve(rows)))
-        ]).then(([tagRows, prevEntry, nextEntry, flatComments, similarArticles]) => {
+            new Promise((resolve, reject) => db.all(sqlSimilar, [id, id], (err, rows) => err ? reject(err) : resolve(rows))),
+            new Promise((resolve) => {
+                if (!currentUserId && !currentGuestId) return resolve(null); // Pas connecté = Pas liké
+                db.get(sqlCheckLike, [id, currentUserId, currentGuestId], (err, row) => resolve(row));
+            })
+        ]).then(([tagRows, prevEntry, nextEntry, flatComments, similarArticles, likeRow]) => {
 
-            const hasLiked = req.cookies[`liked_article_${id}`] ? true : false;
+            const hasLiked = !!likeRow;
 
             article.tags = tagRows.map(tag => tag.name);
 
@@ -2043,7 +2069,10 @@ app.post('/guest/login', async (req, res) => {
 
     // Sinon (cas du formulaire classique), on redirige
     req.session.flashMessage = { type: 'success', text: `Profil invité ${isNew ? 'créé' : 'mis à jour'} !` };
-    req.session.save(() => res.redirect('back'));
+
+    req.session.save(() => {
+        res.redirect('/guest/dashboard');
+    });
 });
 
 // 2.b. Récupération de profil (Login Invité)
@@ -2482,34 +2511,47 @@ app.post('/api/tags/create', isAuthenticated, async (req, res) => {
 });
 
 // --- API LIKE SÉCURISÉE (Avec Cookies) ---
-app.post('/api/entree/:id/like', (req, res) => {
-    const id = req.params.id;
-    const cookieName = `liked_article_${id}`;
+app.post('/api/entree/:id/like', async (req, res) => {
+    const articleId = req.params.id;
 
-    // 1. Vérification : Le cookie existe-t-il déjà ?
-    if (req.cookies[cookieName]) {
-        return res.status(403).json({ error: "Vous avez déjà aimé cet article." });
+    // 1. Identifier l'utilisateur
+    const userId = req.session.userId || null;
+    const guestId = req.cookies.guest_token || null;
+
+    // Si personne n'est connecté, on refuse (le JS demandera de créer un profil)
+    if (!userId && !guestId) {
+        return res.status(401).json({ error: "Identification requise" });
     }
 
-    // 2. Incrémentation BDD
-    const sqlUpdate = 'UPDATE articles SET likes = likes + 1 WHERE id = ?';
+    // 2. Vérifier si déjà liké en BDD
+    const sqlCheck = `SELECT id FROM article_likes WHERE article_id = ? AND (user_id = ? OR guest_id = ?)`;
 
-    db.run(sqlUpdate, [id], function(err) {
-        if (err) {
-            console.error("Erreur Like API:", err);
-            return res.status(500).json({ error: "Erreur serveur" });
+    db.get(sqlCheck, [articleId, userId, guestId], (err, existingLike) => {
+        if (existingLike) {
+            // DÉJÀ LIKÉ -> On pourrait "Unliker" (supprimer), mais pour l'instant on bloque
+            return res.status(403).json({ error: "Déjà voté" });
         }
 
-        // 3. Récupérer le nouveau nombre
-        db.get('SELECT likes FROM articles WHERE id = ?', [id], (err, row) => {
-            if (err || !row) return res.status(500).json({ error: "Erreur lecture likes" });
+        // 3. Enregistrer le like
+        const sqlInsert = `INSERT INTO article_likes (article_id, user_id, guest_id) VALUES (?, ?, ?)`;
 
-            res.cookie(cookieName, 'true', {
-                maxAge: 365 * 24 * 60 * 60 * 1000,
-                httpOnly: true
+        db.run(sqlInsert, [articleId, userId, guestId], function(errInsert) {
+            if (errInsert) {
+                console.error("Erreur Insert Like:", errInsert);
+                return res.status(500).json({ error: "Erreur serveur" });
+            }
+
+            // 4. Mettre à jour le compteur total dans la table articles
+            // (On recompte le vrai nombre de lignes pour être toujours juste)
+            const sqlCount = `SELECT COUNT(*) as count FROM article_likes WHERE article_id = ?`;
+
+            db.get(sqlCount, [articleId], (errCount, rowCount) => {
+                const newCount = rowCount.count;
+
+                db.run('UPDATE articles SET likes = ? WHERE id = ?', [newCount, articleId], () => {
+                    res.json({ likes: newCount });
+                });
             });
-
-            res.json({ likes: row.likes });
         });
     });
 });
