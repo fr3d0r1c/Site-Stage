@@ -23,10 +23,17 @@
     <p>&copy; <%= new Date().getFullYear() %> Frederic Alleron. <%= t('footer.rights') %></p>
     <ul class="footer-links">
         <li><a href="/"><%= t('nav.home') %></a></li>
-        <li><a href="/profil/qui-suis-je"><%= t('nav.profile') %></a></li>
-        <li><a href="/stage/l-entreprise"><%= t('nav.internship') %></a></li>
-        <li><a href="/journal"><%= t('nav.journal') %></a></li>
         <li><a href="/contact"><%= t('page_titles.contact') %></a></li>
+
+        <li>
+            <a href="/feed.xml" target="_blank" title="S'abonner au flux RSS" style="color: #f26522;">
+                <i class="fas fa-rss"></i> RSS
+            </a>
+        </li>
+
+        <% if (!locals.username) { %>
+            <li><a href="/guest-profile"><i class="fas fa-user-circle"></i> <%= t('nav.guest_space') %></a></li>
+        <% } %>
     </ul>
 </footer>
 

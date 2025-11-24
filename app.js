@@ -27,6 +27,7 @@ const QRCode = require('qrcode');
 const puppeteer = require('puppeteer');
 const cookieParser = require('cookie-parser');
 const { randomUUID } = require('crypto');
+const RSS = require('rss');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -1065,6 +1066,62 @@ app.get('/tags/:tagName', (req, res) => {
                      currentSort: null
             });
         });
+    });
+});
+
+// --- FLUX RSS (Syndication) ---
+app.get('/feed.xml', (req, res) => {
+    const siteUrl = process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
+
+    const feed = new RSS({
+        title: 'Carnet de Stage - Frederic Alleron',
+        description: 'Journal de bord de mon stage ingénieur à l\'étranger.',
+        feed_url: `${siteUrl}/feed.xml`,
+        site_url: siteUrl,
+        image_url: `${siteUrl}/images/logo.png`,
+        language: 'fr',
+        pubDate: new Date().toUTCString(),
+        ttl: '60'
+    });
+
+    const sql = `
+        SELECT * FROM articles 
+        WHERE status = 'published' 
+        ORDER BY publication_date DESC 
+        LIMIT 20
+    `;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error("Erreur RSS:", err);
+            return res.status(500).send("Erreur génération flux");
+        }
+
+        rows.forEach(article => {
+            let cleanContent = article.content_fr.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+            let htmlContent = marked.parse(cleanContent);
+
+            let imageUrl = null;
+            if (article.cover_image_url) {
+                imageUrl = article.cover_image_url.startsWith('http') 
+                    ? article.cover_image_url 
+                    : `${siteUrl}${article.cover_image_url}`;
+            }
+
+            feed.item({
+                title:  article.title_fr,
+                description: htmlContent, // Le contenu complet en HTML
+                url: `${siteUrl}/entree/${article.id}`, // Lien vers l'article
+                guid: article.id,
+                categories: [], // Tu pourrais ajouter les tags ici si tu fais une requête JOIN
+                author: 'Frederic Alleron',
+                date: article.publication_date,
+                enclosure: imageUrl ? { url: imageUrl } : undefined // Image attachée
+            });
+        });
+
+        res.set('Content-Type', 'application/xml');
+        res.send(feed.xml());
     });
 });
 

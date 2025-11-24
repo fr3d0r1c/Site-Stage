@@ -35,6 +35,7 @@
     "nodemailer": "^7.0.10",
     "puppeteer": "^24.31.0",
     "qrcode": "^1.5.4",
+    "rss": "^1.2.2",
     "sharp": "^0.34.4",
     "sitemap": "^8.0.2",
     "speakeasy": "^2.0.0",
