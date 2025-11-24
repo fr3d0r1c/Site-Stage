@@ -8,7 +8,8 @@
     "admin": "Administration",
     "logout": "Logout",
     "about": "About",
-    "guest_space": "Guest Area"
+    "guest_space": "Guest Area",
+    "min_read": "min read"
   },
   "subnav": {
     "who_am_i": "Who am I?",

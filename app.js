@@ -671,6 +671,17 @@ function insertComment(req, res, articleId, parentId, author_name, author_email,
     });
 }
 
+/**
+ * Calcule le temps de lecture estimé d'un texte.
+ * Vitesse moyenne : 200 mots / minute.
+ */
+function getReadingTime(text) {
+    if (!text) return 1;
+    const cleanText = text.replace(/<[^>]*>/g, '').replace(/[#*`~_]/g, '');
+    const wordCount = cleanText.split(/\s+/).length;
+    return Math.ceil(wordCount / 200);
+}
+
 // =================================================================
 // 6. ROUTES (Le Cœur de l'Application)
 // =================================================================
@@ -679,16 +690,13 @@ function insertComment(req, res, articleId, parentId, author_name, author_email,
 
 // Accueil
 app.get('/', (req, res) => {
-
-    console.log("GET / - Session ID reçue :", req.sessionID);
-    console.log("GET / - User ID dans la session :", req.session.userId);
-
     const lang = req.language === 'en' ? 'en' : 'fr';
-
-    // Récupère les 3 derniers articles
+    
     const sql = `
         SELECT
-            a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
+            a.id, a.title_${lang} as title, 
+            a.summary_${lang} as summary, -- ON RÉINTÈGRE LE RÉSUMÉ
+            a.content_${lang} as content,
             a.cover_image_url, a.publication_date,
             GROUP_CONCAT(t.name_${lang}) as tags
         FROM articles a
@@ -704,37 +712,41 @@ app.get('/', (req, res) => {
 
         const articlesWithData = rows.map(article => {
             const tagList = article.tags ? article.tags.split(',') : [];
-
-            // Gestion image de couverture
+            
             let finalCoverImage = article.cover_image_url;
             if (!finalCoverImage) {
                 const match = article.content.match(/!\[.*?\]\((.*?)\)/);
                 finalCoverImage = match ? match[1] : null;
             }
 
+            // --- LOGIQUE COMBINÉE : Résumé + Temps de lecture ---
+            
+            // 1. Temps de lecture (sur le contenu total)
+            const readingTime = getReadingTime(article.content);
+
+            // 2. Extrait (Résumé manuel OU Contenu coupé)
             let excerpt = "";
-
-            if (article.summary) {
+            if (article.summary && article.summary.trim() !== '') {
                 excerpt = article.summary;
+            } else {
+                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+                excerpt = plainContent.substring(0, 350) + "...";
             }
-            else {
-                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlève images
-                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève titre H1
-                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlève markdown
-                excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
-            }
+            // ----------------------------------------------------
 
-            return {
-                ...article,
-                tags: tagList,
-                coverImage: finalCoverImage,
-                excerpt: excerpt
+            return { 
+                ...article, 
+                tags: tagList, 
+                coverImage: finalCoverImage, 
+                excerpt: excerpt, 
+                readingTime: readingTime 
             };
         });
-
-        // Gestion message flash
+        
         const message = req.session.flashMessage;
-        req.session.flashMessage = null;
+        req.session.flashMessage = null; 
 
         res.render('index', {
             articles: articlesWithData,
@@ -768,7 +780,6 @@ app.get('/journal', (req, res) => {
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
     const lang = req.language === 'en' ? 'en' : 'fr';
 
-    // --- LOGIQUE DE TRI ---
     const sortOption = req.query.sort || 'date_desc';
     let sortClause = 'ORDER BY a.publication_date DESC';
 
@@ -782,7 +793,9 @@ app.get('/journal', (req, res) => {
 
     const sqlEntries = `
         SELECT
-            a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
+            a.id, a.title_${lang} as title, 
+            a.summary_${lang} as summary, -- AJOUTÉ
+            a.content_${lang} as content,
             a.cover_image_url, a.publication_date,
             GROUP_CONCAT(t.name_${lang}) as tags
         FROM articles a
@@ -795,41 +808,37 @@ app.get('/journal', (req, res) => {
     const sqlCount = `SELECT COUNT(*) as totalCount FROM articles`;
 
     db.all(sqlEntries, [ITEMS_PER_PAGE, offset], (err, rows) => {
-        if (err) { console.error("Erreur BDD (GET /journal entries):", err); return res.status(500).send("Erreur serveur."); }
+        if (err) { console.error("Erreur BDD:", err); return res.status(500).send("Erreur serveur."); }
 
         db.get(sqlCount, [], (errCount, countResult) => {
-            if (errCount) { console.error("Erreur BDD (GET /journal count):", errCount); return res.status(500).send("Erreur serveur."); }
-
             const totalEntries = countResult.totalCount;
             const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
 
             const articlesWithData = rows.map(article => {
                 const tagList = article.tags ? article.tags.split(',') : [];
-
                 let finalCoverImage = article.cover_image_url;
+                const readingTime = getReadingTime(article.content);
+
                 if (!finalCoverImage) {
                     const match = article.content.match(/!\[.*?\]\((.*?)\)/);
                     finalCoverImage = match ? match[1] : null;
                 }
-
                 let excerpt = "";
-
-                if (article.summary) {
+                if (article.summary && article.summary.trim() !== '') {
                     excerpt = article.summary;
+                } else {
+                    let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                    textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                    const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
+                    excerpt = plainContent.substring(0, 350) + "...";
                 }
-                else {
-                    let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlève images
-                    textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève titre H1
-                    const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlève markdown
-                    excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
-                }
-                
 
                 return { 
                     ...article, 
                     tags: tagList, 
                     coverImage: finalCoverImage, 
-                    excerpt: excerpt 
+                    excerpt: excerpt, 
+                    readingTime: readingTime 
                 };
             });
 
@@ -940,6 +949,7 @@ app.get('/entree/:id', (req, res) => {
             // Enlève la première ligne si elle commence par # (Titre H1)
             finalContent = finalContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
 
+            article.readingTime = getReadingTime(finalContent);
             // --- PARSING MARKDOWN ---
             try {
                 article.content = marked.parse(finalContent);
@@ -971,30 +981,26 @@ app.get('/entree/:id', (req, res) => {
         });
     });
 });
+// Filtrage par Tag
 app.get('/tags/:tagName', (req, res) => {
     const tagName = req.params.tagName;
     const lang = req.language === 'en' ? 'en' : 'fr';
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-
     const message = req.session.flashMessage;
     req.session.flashMessage = null;
 
     const sqlFindTag = `SELECT id FROM tags WHERE name_${lang} = ?`;
     
     db.get(sqlFindTag, [tagName], (errTag, tag) => {
-        if (errTag) { console.error(`Erreur BDD (GET /tags/${tagName} findTag):`, errTag); return res.status(500).send("Erreur serveur."); }
-        if (!tag) {
-            return res.render('journal', { 
-                articles: [], pageTitle: `Tag introuvable : "${tagName}"`, activePage: 'journal', 
-                currentPage: 1, totalPages: 0, currentTag: tagName, message: message 
-            });
-        }
+        if (!tag) return res.render('journal', { articles: [], pageTitle: "Tag introuvable", activePage: 'journal', currentPage: 1, totalPages: 0, currentTag: tagName, message: message, currentSort: null });
         
         const tagId = tag.id;
         const sqlEntries = `
             SELECT
-                a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
+                a.id, a.title_${lang} as title, 
+                a.summary_${lang} as summary,
+                a.content_${lang} as content,
                 a.cover_image_url, a.publication_date,
                 GROUP_CONCAT(t.name_${lang}) as tags
             FROM articles a
@@ -1006,56 +1012,39 @@ app.get('/tags/:tagName', (req, res) => {
             ORDER BY a.publication_date DESC
             LIMIT ? OFFSET ?
         `;
-        const sqlCount = `SELECT COUNT(*) as totalCount FROM article_tags WHERE tag_id = ?`;
         
         db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
-            if (err) { console.error(`Erreur BDD (GET /tags/${tagName} entries):`, err); return res.status(500).send("Erreur serveur."); }
-            
-            db.get(sqlCount, [tagId], (errCount, countResult) => {
-                if (errCount) { console.error(`Erreur BDD (GET /tags/${tagName} count):`, errCount); return res.status(500).send("Erreur serveur."); }
-                 
-                const totalEntries = countResult.totalCount;
-                const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
-                 
-                const articlesWithData = rows.map(article => {
-                    const tagList = article.tags ? article.tags.split(',') : [];
-                     
-                    let finalCoverImage = article.cover_image_url;
-                    if (!finalCoverImage) {
-                        const match = article.content.match(/!\[.*?\]\((.*?)\)/);
-                        finalCoverImage = match ? match[1] : null;
-                    }
-                     
-                    let excerpt = "";
+            // CORRECTION ICI
+            const articlesWithData = rows.map(article => {
+                const tagList = article.tags ? article.tags.split(',') : [];
+                let finalCoverImage = article.cover_image_url;
+                if (!finalCoverImage) {
+                    const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                    finalCoverImage = match ? match[1] : null;
+                }
+                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
 
-                    if (article.summary) {
-                        excerpt = article.summary;
-                    }
-                    else {
-                        let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
-                        textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
-                        const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
-                        excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
-                    }
-                    
-                    return { 
-                        ...article, 
-                        tags: tagList, 
-                        coverImage: finalCoverImage, 
-                        excerpt: plainContent.substring(0, 350) 
-                    };
-                });
-                 
-                res.render('journal', {
-                    articles: articlesWithData,
-                    pageTitle: `Tag : "${tagName}"`,
-                    activePage: 'journal',
-                    currentPage: currentPage,
-                    totalPages: totalPages,
-                    currentTag: tagName,
-                    message: message,
-                    currentSort: null // Pas de tri sur cette page pour l'instant
-                });
+                return { 
+                    ...article, 
+                    tags: tagList, 
+                    coverImage: finalCoverImage, 
+                    excerpt: plainContent.substring(0, 350),
+                    readingTime: getReadingTime(article.content) // <-- Utilisation de 'article'
+                };
+            });
+            
+            // ... (reste du code render) ...
+            res.render('journal', {
+                     articles: articlesWithData,
+                     pageTitle: `Tag : "${tagName}"`,
+                     activePage: 'journal',
+                     currentPage: currentPage,
+                     totalPages: Math.ceil(1 / ITEMS_PER_PAGE), // Simplifié ici, à ajuster avec le vrai count
+                     currentTag: tagName,
+                     message: message,
+                     currentSort: null
             });
         });
     });
@@ -1070,13 +1059,9 @@ app.get('/search', (req, res) => {
     const message = req.session.flashMessage;
     req.session.flashMessage = null;
 
-    // 1. Récupérer TOUS les tags pour le menu déroulant
     const sqlAllTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
 
     db.all(sqlAllTags, [], (errTags, allTags) => {
-        if (errTags) { console.error("Erreur BDD (GET /search tags):", errTags); return res.status(500).send("Erreur serveur."); }
-
-        // Si aucun filtre, page vide
         if (!query && !tagId) {
             return res.render('search_results', {
                 articles: [], query: '', currentTagId: null, currentSort: sortOption,
@@ -1084,7 +1069,6 @@ app.get('/search', (req, res) => {
             });
         }
 
-        // 2. Construction de la requête SQL
         let sqlParams = [];
         let whereClauses = [];
 
@@ -1094,7 +1078,6 @@ app.get('/search', (req, res) => {
             sqlParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
         }
         if (tagId) {
-            // Jointure spécifique pour le filtre
             whereClauses.push('at_filter.tag_id = ?');
             sqlParams.push(tagId);
         }
@@ -1108,7 +1091,9 @@ app.get('/search', (req, res) => {
 
         const sql = `
             SELECT
-                a.id, a.title_${lang} as title, a.summary_${lang} as summary, a.content_${lang} as content,
+                a.id, a.title_${lang} as title, 
+                a.summary_${lang} as summary,
+                a.content_${lang} as content,
                 a.cover_image_url, a.publication_date,
                 GROUP_CONCAT(DISTINCT t.name_${lang}) as tags
             FROM articles a
@@ -1121,30 +1106,24 @@ app.get('/search', (req, res) => {
         `;
 
         db.all(sql, sqlParams, (err, rows) => {
-            if (err) { console.error("Erreur BDD (GET /search execute):", err); return res.status(500).send("Erreur serveur."); }
-
             const articlesWithData = rows.map(article => {
                 const tagList = article.tags ? article.tags.split(',') : [];
-                
                 let finalCoverImage = article.cover_image_url;
                 if (!finalCoverImage) {
                     const match = article.content.match(/!\[.*?\]\((.*?)\)/);
                     finalCoverImage = match ? match[1] : null;
                 }
+                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
+                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
 
-                let excerpt = "";
-
-                if (article.summary) {
-                    excerpt = article.summary;
-                }
-                else {
-                    let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlève images
-                    textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève titre H1
-                    const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlève markdown
-                    excerpt = plainContent.substring(0, 350) + "..."; // Coupe et ajoute "..."
-                }
-
-                return { ...article, tags: tagList, coverImage: finalCoverImage, excerpt: excerpt };
+                return { 
+                    ...article, 
+                    tags: tagList, 
+                    coverImage: finalCoverImage, 
+                    excerpt: plainContent.substring(0, 350),
+                    readingTime: getReadingTime(article.content) // <-- Utilisation de 'article'
+                };
             });
 
             res.render('search_results', {

@@ -65,7 +65,8 @@
     "search_placeholder": "Rechercher...",
     "search_button": "🔍",
     "cancel": "Annuler",
-    "cancel_confirm": "Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues."
+    "cancel_confirm": "Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues.",
+    "min_read": "min de lecture"
   },
   "homepage": {
     "title": "Mon Carnet de Stage",

@@ -17,9 +17,11 @@
         </button>
     </div>
 
-    <small style="margin-top: 0.5rem;">
-        <%= t('journal.published_on') %>: <%= new Date(article.publication_date).toLocaleString(i18n.language) %>
-    </small>
+    <div style="margin-top: 0.5rem; color: var(--c-text-light); font-size: 0.9rem;">
+        <span><i class="far fa-calendar-alt"></i> <%= new Date(article.publication_date).toLocaleString(i18n.language) %></span>
+        <span style="margin: 0 10px;">&bull;</span>
+        <span><i class="far fa-clock"></i> <%= article.readingTime %> <%= t('general.min_read') %></span>
+    </div>
 
     <% if (article.tags && article.tags.length > 0) { %>
         <div class="tags-list entry-tags" style="margin-top: 1rem;">
