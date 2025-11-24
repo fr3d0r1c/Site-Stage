@@ -2182,33 +2182,42 @@ app.post('/article/:id/comment', commentLimiter, async (req, res) => {
     }
 
     // --- CAS B : C'est un VISITEUR ---
-    const sqlCheck = `SELECT author_name FROM comments WHERE author_name = ? OR author_name LIKE ?`;
+    const sqlCheck = `SELECT author_name, author_email FROM comments WHERE author_name = ? OR author_name LIKE ?`;
     
     db.all(sqlCheck, [author_name, `${author_name} %`], (err, rows) => {
         if (!err) {
-            const nameExists = rows.some(row => row.author_name.toLowerCase() === author_name.toLowerCase());
-            if (nameExists) {
-                let counter = 1;
-                let newName = `${author_name} ${counter}`;
-                while (rows.some(row => row.author_name.toLowerCase() === newName.toLowerCase())) {
-                    counter++;
-                    newName = `${author_name} ${counter}`;
-                }
-                author_name = newName;
-                req.session.flashMessage = { type: 'info', text: `Publié sous "${author_name}" (pseudo pris).` };
+            // On cherche si le nom exact existe déjà
+            const existingUser = rows.find(row => row.author_name.toLowerCase() === author_name.toLowerCase());
 
-                // On met à jour l'avatar pour correspondre au nouveau nom
-                const seed = encodeURIComponent(author_name);
-                const style = author_avatar_style || 'bottts';
-                author_avatar = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+            if (existingUser) {
+                if (existingUser.author_email === author_email) {
+
+                } else {
+                    let counter = 1;
+                    let newName = `${author_name} ${counter}`;
+
+                    // On cherche le prochain numéro libre
+                    while (rows.some(row => row.author_name.toLowerCase() === newName.toLowerCase())) {
+                        counter++;
+                        newName = `${author_name} ${counter}`;
+                    }
+
+                    // On attribue le nouveau nom
+                    author_name = newName;
+
+                    req.session.flashMessage = { 
+                        type: 'info', 
+                        text: `Ce pseudo est déjà pris par quelqu'un d'autre. Vous publiez en tant que "${author_name}".` 
+                    };
+
+                    const seed = encodeURIComponent(author_name);
+                    const style = author_avatar_style || 'bottts';
+                    author_avatar = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+                }
             }
         }
 
-        insertComment(
-            req, res, articleId, parent_id, 
-            author_name, author_email, author_avatar, content, 
-            1, 0
-        );
+        insertComment(req, res, articleId, parent_id, author_name, author_email, author_avatar, content, 1, 0);
     });
 });
 
