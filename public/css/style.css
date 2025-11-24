@@ -2408,3 +2408,69 @@ div.swal2-container {
     font-weight: bold;
     letter-spacing: 0.5px;
 }
+
+/*
+=========================================
+--- 33. Boutons de Partage ---
+=========================================
+*/
+.share-section {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Centré */
+    gap: 1rem;
+    margin: 2rem 0;
+    padding: 1rem;
+    background-color: var(--c-background);
+    border-radius: 12px;
+}
+
+.share-label {
+    font-weight: 600;
+    color: var(--c-text-light);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.share-buttons {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.btn-share {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--c-text);
+    background-color: var(--c-surface);
+    border: 1px solid var(--c-border);
+    transition: all 0.2s ease;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+/* Couleurs au survol */
+.btn-share:hover {
+    transform: translateY(-3px);
+    color: white;
+    border-color: transparent;
+}
+
+.btn-share.linkedin:hover { background-color: #0077b5; }
+.btn-share.twitter:hover { background-color: #000000; }
+.btn-share.facebook:hover { background-color: #1877f2; }
+.btn-share.copy:hover { background-color: var(--c-gray); }
+.btn-share.native:hover { background-color: var(--c-primary); }
+
+/* Responsive */
+@media (max-width: 600px) {
+    .share-section {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}

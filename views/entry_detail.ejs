@@ -61,26 +61,34 @@
         <% } %>
     </div>
 
-    <% if (locals.username) { %>
-        <div class="admin-share" style="margin-top: 1rem; text-align: right;">
-            <span style="font-size: 0.9rem; color: var(--c-text-light); margin-right: 10px;">Partager :</span>
+    <div class="share-section">
+        <span class="share-label">Partager cet article :</span>
 
+        <div class="share-buttons">
             <a href="https://www.linkedin.com/sharing/share-offsite/?url=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
-               target="_blank" class="btn-icon-share" style="color: #0077b5;">
-               <i class="fab fa-linkedin fa-lg"></i>
+               target="_blank" class="btn-share linkedin" aria-label="Partager sur LinkedIn">
+               <i class="fab fa-linkedin-in"></i>
             </a>
 
             <a href="https://twitter.com/intent/tweet?text=<%= encodeURIComponent(article.title) %>&url=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
-               target="_blank" class="btn-icon-share" style="color: #000;">
-               <i class="fab fa-x-twitter fa-lg"></i>
+               target="_blank" class="btn-share twitter" aria-label="Partager sur Twitter">
+               <i class="fab fa-x-twitter"></i>
             </a>
 
-            <button onclick="navigator.clipboard.writeText(window.location.href); Swal.fire({icon:'success', title:'Lien copié !', toast:true, position:'top-end', timer:2000, showConfirmButton:false});" 
-                    class="btn-icon-share" style="border:none; background:none; cursor:pointer; color: var(--c-text);">
-                <i class="fas fa-link fa-lg"></i>
+            <a href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
+               target="_blank" class="btn-share facebook" aria-label="Partager sur Facebook">
+               <i class="fab fa-facebook-f"></i>
+            </a>
+
+            <button id="copy-link-btn" class="btn-share copy" aria-label="Copier le lien">
+                <i class="fas fa-link"></i>
+            </button>
+
+            <button id="native-share-btn" class="btn-share native" style="display: none;" aria-label="Ouvrir le menu de partage">
+                <i class="fas fa-share-alt"></i>
             </button>
         </div>
-    <% } %>
+    </div>
 
     <%# Actions Admin sur l'article (Modifier / Supprimer) %>
     <% if (locals.username) { %>
@@ -307,5 +315,6 @@
 <script src="/js/guest-memory.js"></script>
 <script src="/js/likes.js"></script>
 <script src="/js/comment-modal.js"></script>
+<script src="/js/share.js"></script>
 
 <%- include('partials/footer') %>
