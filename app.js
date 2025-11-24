@@ -381,6 +381,8 @@ CREATE TABLE IF NOT EXISTS articles (
   content_fr TEXT NOT NULL, content_en TEXT NOT NULL,
   cover_image_url TEXT,
   likes INTEGER DEFAULT 0,
+  views INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'published',
   publication_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER,
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
@@ -702,6 +704,7 @@ app.get('/', (req, res) => {
         FROM articles a
         LEFT JOIN article_tags at ON a.id = at.article_id
         LEFT JOIN tags t ON at.tag_id = t.id
+        WHERE status = 'published'
         GROUP BY a.id
         ORDER BY a.publication_date DESC
         LIMIT 3
@@ -791,21 +794,28 @@ app.get('/journal', (req, res) => {
         case 'tag_desc': sortClause = 'ORDER BY tags DESC'; break;
     }
 
+    const statusClause = req.session.userId ? "" : "WHERE status = 'published'";
+
     const sqlEntries = `
         SELECT
             a.id, a.title_${lang} as title, 
-            a.summary_${lang} as summary, -- AJOUTÉ
+            a.summary_${lang} as summary,
             a.content_${lang} as content,
             a.cover_image_url, a.publication_date,
+            a.status, -- ON RÉCUPÈRE LE STATUT POUR L'AFFICHAGE
             GROUP_CONCAT(t.name_${lang}) as tags
         FROM articles a
         LEFT JOIN article_tags at ON a.id = at.article_id
         LEFT JOIN tags t ON at.tag_id = t.id
+        ${statusClause} -- Injection dynamique
         GROUP BY a.id
         ${sortClause}
         LIMIT ? OFFSET ?
     `;
-    const sqlCount = `SELECT COUNT(*) as totalCount FROM articles`;
+    
+    const sqlCount = req.session.userId
+        ? `SELECT COUNT(*) as totalCount FROM articles`
+        : `SELECT COUNT(*) as totalCount FROM articles WHERE status = 'published'`;
 
     db.all(sqlEntries, [ITEMS_PER_PAGE, offset], (err, rows) => {
         if (err) { console.error("Erreur BDD:", err); return res.status(500).send("Erreur serveur."); }
@@ -817,18 +827,18 @@ app.get('/journal', (req, res) => {
             const articlesWithData = rows.map(article => {
                 const tagList = article.tags ? article.tags.split(',') : [];
                 let finalCoverImage = article.cover_image_url;
-                const readingTime = getReadingTime(article.content);
-
                 if (!finalCoverImage) {
                     const match = article.content.match(/!\[.*?\]\((.*?)\)/);
                     finalCoverImage = match ? match[1] : null;
                 }
+
+                const readingTime = getReadingTime(article.content);
+
                 let excerpt = "";
                 if (article.summary && article.summary.trim() !== '') {
                     excerpt = article.summary;
                 } else {
-                    let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
-                    textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+                    let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '').replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
                     const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
                     excerpt = plainContent.substring(0, 350) + "...";
                 }
@@ -838,7 +848,8 @@ app.get('/journal', (req, res) => {
                     tags: tagList, 
                     coverImage: finalCoverImage, 
                     excerpt: excerpt, 
-                    readingTime: readingTime 
+                    readingTime: readingTime,
+                    status: article.status // On passe le statut à la vue !
                 };
             });
 
@@ -858,6 +869,7 @@ app.get('/journal', (req, res) => {
         });
     });
 });
+
 app.get('/entree/:id', (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { return res.status(400).send("ID d'entrée invalide."); }
@@ -879,6 +891,11 @@ app.get('/entree/:id', (req, res) => {
     db.get(sqlArticle, id, (err, article) => {
         if (err) { console.error(`Erreur BDD (GET /entree/${id} article):`, err); return res.status(500).send("Erreur serveur."); }
         if (!article) { return res.status(404).send("Entrée non trouvée !"); }
+
+        if (!req.session.userId) {
+            db.run('UPDATE articles SET views = views + 1 WHERE id = ?', [id]);
+            article.views += 1;
+        }
 
         // On a la date de l'article, on prépare les requêtes Précédent/Suivant
         const currentPublicationDate = article.publication_date;
@@ -1008,6 +1025,7 @@ app.get('/tags/:tagName', (req, res) => {
             LEFT JOIN article_tags at_all ON a.id = at_all.article_id
             LEFT JOIN tags t ON at_all.tag_id = t.id
             WHERE at.tag_id = ?
+            AND status = status = 'published'
             GROUP BY a.id
             ORDER BY a.publication_date DESC
             LIMIT ? OFFSET ?
@@ -1100,7 +1118,7 @@ app.get('/search', (req, res) => {
             LEFT JOIN article_tags at_display ON a.id = at_display.article_id
             LEFT JOIN tags t ON at_display.tag_id = t.id
             ${tagId ? 'JOIN article_tags at_filter ON a.id = at_filter.article_id' : ''}
-            WHERE ${whereClauses.join(' AND ')}
+            WHERE ${whereClauses.join(' AND ')} AND status = 'published'
             GROUP BY a.id
             ${sortClause}
         `;
@@ -2143,19 +2161,20 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
     });
 });
 app.post('/journal', isAuthenticated, async (req, res) => {
-    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags } = req.body;
-    let summary_en = req.body.summary_en; // On prend la valeur du formulaire
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags, action } = req.body;
+    let summary_en = req.body.summary_en;
     const userId = req.session.userId;
 
-    // --- Gestion des Tags (Tableau d'IDs) ---
+    const status = (action === 'draft') ? 'draft' : 'published';
+
     let tagIds = tags;
-    if (tagIds === undefined) { tagIds = []; }
+    if (tagIds === undefined) { tagIds = []; } 
     else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
     tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
 
-    if (summary_fr && !summary_en && translator) {
+    if (summary_fr && (!summary_en || summary_en.trim() === '') && translator) {
         try {
-            console.log("Traduction automatique du résumé...");
+            console.log("Traduction automatique du résumé (création)...");
             const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
             if (result && typeof result.text === 'string') {
                 summary_en = result.text;
@@ -2164,40 +2183,33 @@ app.post('/journal', isAuthenticated, async (req, res) => {
             console.error("Erreur traduction résumé :", error);
         }
     }
-    
-    const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-    
-    db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url], async function(err) {
-        if (err) {
-            console.error("Erreur BDD (POST /journal insert):", err);
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Erreur lors de la création de l\'entrée.',
-                detail: err.message
+
+    const sqlInsertArticle = 'INSERT INTO articles (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+
+    db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url, status], async function(err) {
+        if (err) { 
+            console.error("Erreur BDD (POST /journal insert):", err); 
+            req.session.flashMessage = { 
+                type: 'error', 
+                text: 'Erreur lors de la création de l\'entrée.', 
+                detail: err.message 
             };
-            return res.redirect('/journal');
+            return req.session.save(() => res.redirect('/journal/nouvelle'));
         }
-        
+
         const articleId = this.lastID;
-
-        logAction(req, 'CREATE_ARTICLE', `Titre: ${title_fr} (ID: ${articleId})`);
-
         try {
             await processTags(articleId, tagIds);
-            req.session.flashMessage = { type: 'success', text: 'Entrée créée avec succès !' };
-
-            req.session.save(function() {
-                res.redirect('/journal');
-            });
-
+            
+            // Message adapté au statut
+            const msgText = status === 'draft' ? 'Brouillon sauvegardé avec succès !' : 'Entrée publiée avec succès !';
+            
+            req.session.flashMessage = { type: 'success', text: msgText };
+            req.session.save(() => res.redirect('/journal'));
         } catch (tagError) {
-            console.error("Erreur tags:", tagError);
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Entrée créée, mais erreur lors de l\'ajout des tags.',
-                detail: tagError.message
-            };
-            res.redirect('/journal');
+            console.error("Erreur tags (POST /journal):", tagError); 
+            req.session.flashMessage = { type: 'error', text: 'Entrée créée mais erreur tags.', detail: tagError.message };
+            req.session.save(() => res.redirect('/journal'));
         }
     });
 });
@@ -2230,19 +2242,19 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
 });
 app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     const id = req.params.id;
-    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags } = req.body;
-    let summary_en = req.body.summary_en; // Valeur du formulaire
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags, action } = req.body;
+    let summary_en = req.body.summary_en;
 
-    // --- Gestion des Tags ---
+    const status = (action === 'draft') ? 'draft' : 'published';
+
     let tagIds = tags;
-    if (tagIds === undefined) { tagIds = []; }
+    if (tagIds === undefined) { tagIds = []; } 
     else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
     tagIds = tagIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
 
-    // --- TRADUCTION AUTOMATIQUE DU RÉSUMÉ ---
     if (summary_fr && (!summary_en || summary_en.trim() === '') && translator) {
         try {
-            console.log("Traduction automatique du résumé (edit)...");
+            console.log("Traduction automatique du résumé (modif)...");
             const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
             summary_en = result.text;
         } catch (error) {
@@ -2250,33 +2262,30 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
         }
     }
 
-    const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, content_fr = ?, content_en = ?, cover_image_url = ? WHERE id = ?';
+    const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, content_fr = ?, content_en = ?, cover_image_url = ?, status = ? WHERE id = ?';
 
-    db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, id], async function(err) {
+    db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, status, id], async function(err) {
         if (err) { 
             console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); 
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Erreur lors de la modification de l\'entrée.',
-                detail: err.message // <-- AJOUT DU DÉTAIL
+            req.session.flashMessage = { 
+                type: 'error', 
+                text: 'Erreur lors de la modification.', 
+                detail: err.message 
             };
-            return res.redirect('/journal');
+            return req.session.save(() => res.redirect(`/entree/${id}/edit`));
         }
 
-        try  {
+        try {
             await processTags(id, tagIds);
-            req.session.flashMessage = { type: 'success', text: 'Entrée mise à jour avec succès !' };
-            req.session.save(function() {
-                res.redirect('/journal')
-            })
+
+            const msgText = status === 'draft' ? 'Brouillon mis à jour !' : 'Entrée mise à jour avec succès !';
+
+            req.session.flashMessage = { type: 'success', text: msgText };
+            req.session.save(() => res.redirect('/journal'));
         } catch (tagError) {
             console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
-            req.session.flashMessage = {
-                type: 'error',
-                text: 'Entrée mise à jour, mais erreur sur les tags.',
-                detail: tagError.message
-            };
-            res.redirect('/journal');
+            req.session.flashMessage = { type: 'error', text: 'Erreur tags.', detail: tagError.message };
+            req.session.save(() => res.redirect('/journal'));
         }
     });
 });
@@ -2284,24 +2293,23 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
 // Suppression
 app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
     const id = req.params.id;
+
     const sql = 'DELETE FROM articles WHERE id = ?';
-    db.run(sql, id, function(err) {
+
+    db.run(sql, [id], function(err) {
         if (err) {
             console.error(`Erreur BDD (POST /entree/${id}/delete):`, err);
-            req.session.flashMessage = {
-                type: 'error',
+            req.session.flashMessage = { 
+                type: 'error', 
                 text: 'Erreur lors de la suppression de l\'entrée.',
-                detail: err.message // <-- AJOUT DU DÉTAIL
+                detail: err.message 
             };
-            return res.redirect('/journal');
+            return req.session.save(() => res.redirect(`/entree/${id}`));
         }
-        logAction(req, 'DELETE_ARTICLE', `ID supprimé: ${id}`);
 
         req.session.flashMessage = { type: 'success', text: 'Entrée supprimée avec succès.' };
-        
-        req.session.save(function() {
-            res.redirect('/journal');
-        });
+
+        req.session.save(() => res.redirect('/journal'));
     });
 });
 

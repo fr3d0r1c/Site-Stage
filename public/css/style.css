@@ -2394,3 +2394,17 @@ body.zen-mode #zen-mode-btn {
 div.swal2-container {
     z-index: 20000 !important; /* Très haut pour dépasser le 9999 de la modale */
 }
+
+/* Badge Brouillon */
+.badge-draft {
+    background-color: #f39c12; /* Orange */
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-left: 10px;
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}

@@ -84,9 +84,13 @@
         </div>
     </div>
 
-    <div style="margin-top: 2rem;">
-        <button type="submit" id="submit-button" class="btn">
-            <%= t('forms.update_entry') %>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <button type="submit" name="action" value="published" id="submit-button" class="btn">
+            <i class="fas fa-paper-plane"></i> <%= t('forms.update_entry') %>
+        </button>
+
+        <button type="submit" name="action" value="draft" class="btn" style="background-color: #f39c12; border-color: #f39c12; color: white;">
+            <i class="fas fa-save"></i> Sauvegarder Brouillon
         </button>
 
         <a href="/journal"

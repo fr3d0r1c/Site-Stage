@@ -196,9 +196,8 @@ describe('Tests des routes admin (authentifié)', () => {
     };
     const response = await agent.post('/journal').send(badEntry);
 
-
     expect(response.statusCode).toBe(302);
-    expect(response.headers.location).toBe('/journal');
+    expect(response.headers.location).toBe('/journal/nouvelle');
   });
 
   // Test 12: L'agent connecté peut supprimer une entrée

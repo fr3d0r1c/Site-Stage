@@ -19,7 +19,8 @@
 
     <div style="margin-top: 0.5rem; color: var(--c-text-light); font-size: 0.9rem;">
         <span><i class="far fa-calendar-alt"></i> <%= new Date(article.publication_date).toLocaleString(i18n.language) %></span>
-        <span style="margin: 0 10px;">&bull;</span>
+        &nbsp;&bull;&nbsp;
+        <i class="far fa-eye"></i> <%= article.views %> vues &nbsp;&bull;&nbsp;
         <span><i class="far fa-clock"></i> <%= article.readingTime %> <%= t('general.min_read') %></span>
     </div>
 
@@ -58,8 +59,28 @@
                 <span id="like-count"><%= article.likes || 0 %></span>
             </button>
         <% } %>
-
     </div>
+
+    <% if (locals.username) { %>
+        <div class="admin-share" style="margin-top: 1rem; text-align: right;">
+            <span style="font-size: 0.9rem; color: var(--c-text-light); margin-right: 10px;">Partager :</span>
+
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
+               target="_blank" class="btn-icon-share" style="color: #0077b5;">
+               <i class="fab fa-linkedin fa-lg"></i>
+            </a>
+
+            <a href="https://twitter.com/intent/tweet?text=<%= encodeURIComponent(article.title) %>&url=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
+               target="_blank" class="btn-icon-share" style="color: #000;">
+               <i class="fab fa-x-twitter fa-lg"></i>
+            </a>
+
+            <button onclick="navigator.clipboard.writeText(window.location.href); Swal.fire({icon:'success', title:'Lien copié !', toast:true, position:'top-end', timer:2000, showConfirmButton:false});" 
+                    class="btn-icon-share" style="border:none; background:none; cursor:pointer; color: var(--c-text);">
+                <i class="fas fa-link fa-lg"></i>
+            </button>
+        </div>
+    <% } %>
 
     <%# Actions Admin sur l'article (Modifier / Supprimer) %>
     <% if (locals.username) { %>

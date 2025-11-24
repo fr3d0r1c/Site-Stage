@@ -58,7 +58,13 @@
             <% } %>
             
             <div class="card-body">
-                <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
+                <h2>
+                    <a href="/entree/<%= entry.id %>"><%= entry.title %></a>
+
+                    <% if (entry.status === 'draft') { %>
+                        <span class="badge-draft"><i class="fas fa-pencil-ruler"></i> Brouillon</span>
+                    <% } %>
+                </h2>
                 <div style="font-size: 0.85rem; color: var(--c-text-light); margin-bottom: 10px;">
                     <i class="far fa-calendar-alt"></i> <%= new Date(entry.publication_date).toLocaleDateString(i18n.language) %>
                     &nbsp; | &nbsp;
@@ -81,7 +87,7 @@
                 <% if (locals.username) { %>
                     <div class="actions">
                         <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
-                        <form action=action="/entree/<%= entry.id %>/delete" method="POST"
+                        <form action="/entree/<%= entry.id %>/delete" method="POST"
                             data-confirm="<%= t('admin_page.delete_confirm') %>"
                             style="display: inline;">
                             <button type="submit"><%= t('journal.delete') %></button>
