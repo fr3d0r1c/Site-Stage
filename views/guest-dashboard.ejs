@@ -1,0 +1,55 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <img src="<%= guest.avatarUrl %>" alt="Avatar" style="width: 60px; height: 60px; border-radius: 50%; border: 3px solid var(--c-primary);">
+            <div>
+                <h1 style="margin: 0; font-size: 1.8rem;"><%= guest.name %></h1>
+                <small style="color: var(--c-text-light);"><%= guest.email %></small>
+            </div>
+        </div>
+        <a href="/guest/logout" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+    </div>
+
+    <hr>
+
+    <h2>📝 Mes Commentaires (<%= myComments.length %>)</h2>
+
+    <% if (myComments.length > 0) { %>
+        <div class="comments-list">
+            <% myComments.forEach(comment => { %>
+                <div class="comment-container" style="border: 1px solid var(--c-border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <div class="comment-content-box" style="border: none; padding: 0;">
+                        <div class="comment-header">
+                            <span style="font-size: 0.9rem; color: var(--c-text-light);">
+                                Sur l'article : <a href="/entree/<%= comment.article_id %>"><strong><%= comment.article_title %></strong></a>
+                            </span>
+                            <span class="comment-date" style="float: right;">
+                                <%= new Date(comment.created_at).toLocaleDateString() %>
+                            </span>
+                        </div>
+                        <div class="comment-text" style="margin-top: 0.5rem; font-size: 1rem;">
+                            <%= comment.content %>
+                        </div>
+
+                        <div class="comment-actions" style="margin-top: 10px;">
+                            <a href="/entree/<%= comment.article_id %>" class="btn-text">
+                                <i class="fas fa-eye"></i> Voir
+                            </a>
+                            <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/guest/dashboard" method="POST" 
+                                  data-confirm="Supprimer ce commentaire ?" style="display: inline; margin-left: 15px;">
+                                <button type="submit" class="btn-text btn-text-danger"><i class="fas fa-trash"></i> Supprimer</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <p>Vous n'avez pas encore posté de commentaires.</p>
+        <a href="/journal" class="btn">Aller lire le journal</a>
+    <% } %>
+</div>
+
+<%- include('partials/footer') %>

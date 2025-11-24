@@ -312,14 +312,41 @@ const commentLimiter = rateLimit({
      }
 });
 
-app.use((req, res, next) => {
+// --- MIDDLEWARE "PONT" ---
+app.use(async (req, res, next) => {
+    // 1. Données Admin (Session)
     res.locals.username = req.session.username;
     res.locals.userId = req.session.userId;
+
+    // 2. Messages Flash
     res.locals.message = req.session.flashMessage;
     delete req.session.flashMessage;
 
-    // AJOUT : On rend les cookies accessibles dans les vues EJS
+    // 3. Cookies (pour les likes/delete tokens)
     res.locals.cookies = req.cookies;
+
+    // 4. Données Invité (Cookie Persistant)
+    res.locals.guest = null; // Par défaut, pas d'invité
+
+    if (req.cookies.guest_token) {
+        try {
+            // On cherche l'invité correspondant au cookie
+            const guest = await new Promise((resolve, reject) => {
+                db.get('SELECT * FROM guests WHERE id = ?', [req.cookies.guest_token], (err, row) => {
+                    if (err) reject(err); else resolve(row);
+                });
+            });
+
+            if (guest) {
+                // On calcule l'URL de l'avatar pour l'affichage
+                const seed = encodeURIComponent(guest.name);
+                guest.avatarUrl = `https://api.dicebear.com/7.x/${guest.avatar_style}/svg?seed=${seed}`;
+                res.locals.guest = guest; // On le rend dispo pour les vues
+            }
+        } catch (e) {
+            console.error("Erreur middleware guest:", e);
+        }
+    }
 
     next();
 });
@@ -410,19 +437,21 @@ db.run(createArticleTagsTable, (err) => {
 // Création de la table 'comments'
 const createCommentsTable = `
 CREATE TABLE IF NOT EXISTS comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    article_id INTEGER NOT NULL,
-    parent_id INTEGER DEFAULT NULL,
-    author_name TEXT NOT NULL,
-    author_email TEXT,
-    author_avatar TEXT,
-    content TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_approved INTEGER DEFAULT 1,
-    is_admin INTEGER DEFAULT 0,
-    delete_token TEXT,
-    FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_id) REFERENCES comments (id) ON DELETE CASCADE
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  article_id INTEGER NOT NULL,
+  parent_id INTEGER DEFAULT NULL,
+  guest_id TEXT, -- NOUVEAU : Lien vers l'invité
+  author_name TEXT NOT NULL,
+  author_email TEXT,
+  author_avatar TEXT,
+  content TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  is_approved INTEGER DEFAULT 1,
+  is_admin INTEGER DEFAULT 0,
+  delete_token TEXT,
+  FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_id) REFERENCES comments (id) ON DELETE CASCADE,
+  FOREIGN KEY (guest_id) REFERENCES guests (id) ON DELETE SET NULL
 );
 `;
 db.run(createCommentsTable, (err) => {
@@ -445,6 +474,17 @@ db.run(createAuditTable, (err) => {
     if (err) console.error("Erreur création table audit_logs:", err);
 });
 
+// Création de la table 'guests' (Comptes Invités)
+const createGuestsTable = `
+CREATE TABLE IF NOT EXISTS guests (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT,
+    avatar_style TEXT DEFAULT 'bottts',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`;
+db.run(createGuestsTable);
 
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
@@ -579,8 +619,9 @@ function insertComment(req, res, articleId, parentId, author_name, author_email,
     const sql = `INSERT INTO comments (article_id, parent_id, author_name, author_email, author_avatar, content, is_approved, is_admin, delete_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     const parentIdValue = parentId ? parseInt(parentId) : null;
-    const isAdminValue = req.session.userId ? 1 : 0;
 
+    // Génère un token de suppression pour les visiteurs
+    // (Nécessite : const crypto = require('crypto'); en haut du fichier)
     const deleteToken = isAdmin ? null : crypto.randomUUID();
 
     db.run(sql, [articleId, parentIdValue, author_name, author_email, author_avatar, content, isApproved, isAdmin, deleteToken], function(err) {
@@ -590,24 +631,25 @@ function insertComment(req, res, articleId, parentId, author_name, author_email,
             return req.session.save(() => res.redirect(`/entree/${articleId}`));
         }
 
-        // Notification Admin (si ce n'est pas l'admin lui-même qui poste)
+        // Notification par email (si ce n'est pas l'admin qui poste)
         if (!isAdmin) {
              sendAdminNotification(req, articleId, this.lastID, author_name, content);
         }
 
-        // Si le message flash n'a pas déjà été défini par la logique de déduplication (Toto 1...)
+        // Message de succès (s'il n'est pas déjà défini par le renommage)
         if (!req.session.flashMessage) {
              req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
         }
 
+        // Dépôt du Cookie de suppression pour le visiteur (Valide 1 an)
+        // Cela lui permettra de supprimer son propre commentaire plus tard
         if (deleteToken) {
             res.cookie(`can_delete_${this.lastID}`, deleteToken, { 
-                maxAge: 365 * 24 * 60 * 60 * 1000, // 1 an
+                maxAge: 365 * 24 * 60 * 60 * 1000, 
                 httpOnly: true 
             });
         }
 
-        // Sauvegarde la session et redirige
         req.session.save(() => res.redirect(`/entree/${articleId}`));
     });
 }
@@ -1960,6 +2002,122 @@ app.post('/admin/2fa/disable', isAuthenticated, (req, res) => {
     });
 });
 
+// =================================================================
+// GESTION COMPTES INVITÉS (Persistants)
+// =================================================================
+
+// 1. Page de Connexion / Création
+app.get('/guest/login', (req, res) => {
+    // Si déjà connecté (cookie présent), on va au dashboard
+    if (req.cookies.guest_token) {
+        return res.redirect('/guest/dashboard');
+    }
+    res.render('guest-login', { pageTitle: 'Espace Invité', activePage: 'guest' });
+});
+
+// 2. Traitement du Formulaire (Création ou Mise à jour)
+app.post('/guest/login', async (req, res) => {
+    const { name, email, avatar_style } = req.body;
+
+    let guestId = req.cookies.guest_token;
+    let isNew = false;
+
+    if (!guestId) {
+        guestId = crypto.randomUUID();
+        isNew = true;
+    }
+
+    if (isNew) {
+        db.run('INSERT INTO guests (id, name, email, avatar_style) VALUES (?, ?, ?, ?)', [guestId, name, email, avatar_style]);
+    } else {
+        db.run('UPDATE guests SET name = ?, email = ?, avatar_style = ? WHERE id = ?', [name, email, avatar_style, guestId]);
+    }
+
+    res.cookie('guest_token', guestId, { maxAge: 31536000000, httpOnly: true });
+
+    // --- CORRECTION ICI : Gestion intelligente de la réponse ---
+    // Si la requête demande du JSON (cas de la pop-up)
+    if (req.headers.accept && req.headers.accept.includes('application/json')) {
+        return res.json({ success: true, message: 'Profil configuré avec succès !' });
+    }
+
+    // Sinon (cas du formulaire classique), on redirige
+    req.session.flashMessage = { type: 'success', text: `Profil invité ${isNew ? 'créé' : 'mis à jour'} !` };
+    req.session.save(() => res.redirect('back'));
+});
+
+// 2.b. Récupération de profil (Login Invité)
+app.post('/guest/recover', (req, res) => {
+    const { name, email } = req.body;
+
+    db.get('SELECT * FROM guests WHERE name = ? AND email = ?', [name, email], (err, guest) => {
+        if (guest) {
+            res.cookie('guest_token', guest.id, { maxAge: 31536000000, httpOnly: true });
+
+            // --- RÉPONSE JSON ---
+            if (req.headers.accept && req.headers.accept.includes('application/json')) {
+                return res.json({ success: true, message: `Bon retour, ${guest.name} !` });
+            }
+            // --------------------
+
+            req.session.flashMessage = { type: 'success', text: `Profil retrouvé ! Bon retour, ${guest.name}.` };
+            res.redirect('/guest/dashboard');
+        } else {
+            // --- ERREUR JSON ---
+            if (req.headers.accept && req.headers.accept.includes('application/json')) {
+                return res.status(404).json({ success: false, error: 'Profil introuvable.' });
+            }
+            // -------------------
+
+            req.session.flashMessage = { type: 'error', text: 'Aucun profil trouvé.' };
+            res.redirect('/guest/login');
+        }
+    });
+});
+
+// 3. Tableau de Bord Invité
+app.get('/guest/dashboard', (req, res) => {
+    const guestId = req.cookies.guest_token;
+    if (!guestId) return res.redirect('/guest/login');
+
+    // Récupère l'invité
+    db.get('SELECT * FROM guests WHERE id = ?', [guestId], (err, guest) => {
+        if (!guest) {
+            res.clearCookie('guest_token'); // Nettoyage si ID invalide
+            return res.redirect('/guest/login');
+        }
+
+        // Récupère ses commentaires
+        const sqlComments = `
+            SELECT c.*, a.title_fr as article_title 
+            FROM comments c
+            JOIN articles a ON c.article_id = a.id
+            WHERE c.guest_id = ?
+            ORDER BY c.created_at DESC
+        `;
+
+        db.all(sqlComments, [guestId], (errComm, comments) => {
+            // Génération avatar pour l'affichage
+            const seed = encodeURIComponent(guest.name);
+            const avatarUrl = `https://api.dicebear.com/7.x/${guest.avatar_style}/svg?seed=${seed}`;
+
+            res.render('guest-dashboard', {
+                pageTitle: 'Mon Tableau de Bord',
+                activePage: 'guest',
+                guest: { ...guest, avatarUrl },
+                myComments: comments
+            });
+        });
+    });
+});
+
+// 4. Déconnexion
+app.get('/guest/logout', (req, res) => {
+    res.clearCookie('guest_token'); // On supprime le cookie
+    req.session.flashMessage = { type: 'success', text: 'Vous êtes déconnecté.' };
+    res.redirect('/');
+});
+
 // --- Gestion du Contenu (Création / Modif / Suppression) ---
 
 // Création
@@ -2144,55 +2302,61 @@ app.post('/article/:id/comment', commentLimiter, async (req, res) => {
     const articleId = req.params.id;
     let { author_name, author_email, content, parent_id, author_avatar_style } = req.body;
 
+    // 1. HONEYPOT (Protection Anti-robot)
     if (req.body.website_field && req.body.website_field !== '') {
+        // On redirige silencieusement sans rien faire
         return res.redirect(`/entree/${articleId}`);
     }
 
-    // 2. Validation (Champs requis pour les visiteurs)
+    // 2. VALIDATION (Champs requis pour les visiteurs)
     if (!req.session.userId && (!author_name || !author_email || !content)) {
-        req.session.flashMessage = { type: 'error', text: 'Veuillez remplir tous les champs (Nom, Email, Message).' };
+        req.session.flashMessage = { type: 'error', text: 'Nom, Email et Message sont requis.' };
         return req.session.save(() => res.redirect(`/entree/${articleId}`));
     }
 
-    // 3. Modération Automatique
+    // 3. MODÉRATION AUTOMATIQUE (Bad-words)
     if (filter.isProfane(content) || filter.isProfane(author_name)) {
         req.session.flashMessage = { type: 'error', text: 'Votre commentaire a été rejeté (langage inapproprié).' };
         return req.session.save(() => res.redirect(`/entree/${articleId}`));
     }
 
+    // 4. CALCUL DE L'AVATAR
     let author_avatar = '';
+
     if (req.session.userId) {
-        // Admin : on récupère son avatar en BDD
+        // C'est l'ADMIN : on récupère son avatar depuis la BDD
         const user = await new Promise(resolve => db.get('SELECT avatar_url FROM users WHERE id = ?', [req.session.userId], (err, row) => resolve(row)));
         author_avatar = user ? user.avatar_url : '';
     } else {
-        // Visiteur : on génère l'avatar DiceBear
-        const style = author_avatar_style || 'bottts';
+        // C'est un VISITEUR : on génère l'avatar DiceBear selon le style choisi
+        const style = author_avatar_style || 'bottts'; // Style par défaut
         const seed = encodeURIComponent(author_name);
         author_avatar = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
     }
 
-    // --- CAS A : C'est l'ADMIN ---
+    // 5. LOGIQUE DE TRAITEMENT
+
+    // --- CAS A : ADMIN ---
     if (req.session.userId && req.session.username) {
         return insertComment(
-            req, res, articleId, parent_id,
-            req.session.username, 'admin@internal', author_avatar, content,
-            1, 1
+            req, res, 
+            articleId, parent_id, 
+            req.session.username, 'admin@internal', author_avatar, content, 
+            1, 1 // isApproved=1, isAdmin=1
         );
     }
 
-    // --- CAS B : C'est un VISITEUR ---
+    // --- CAS B : VISITEUR (Déduplication Intelligente) ---
     const sqlCheck = `SELECT author_name, author_email FROM comments WHERE author_name = ? OR author_name LIKE ?`;
-    
+
     db.all(sqlCheck, [author_name, `${author_name} %`], (err, rows) => {
         if (!err) {
-            // On cherche si le nom exact existe déjà
+            // On cherche si le pseudo exact existe déjà
             const existingUser = rows.find(row => row.author_name.toLowerCase() === author_name.toLowerCase());
 
             if (existingUser) {
-                if (existingUser.author_email === author_email) {
-
-                } else {
+                // Si l'email ne correspond pas à celui en base -> USURPATION -> On renomme
+                if (existingUser.author_email !== author_email) {
                     let counter = 1;
                     let newName = `${author_name} ${counter}`;
 
@@ -2202,22 +2366,28 @@ app.post('/article/:id/comment', commentLimiter, async (req, res) => {
                         newName = `${author_name} ${counter}`;
                     }
 
-                    // On attribue le nouveau nom
                     author_name = newName;
-
                     req.session.flashMessage = { 
                         type: 'info', 
-                        text: `Ce pseudo est déjà pris par quelqu'un d'autre. Vous publiez en tant que "${author_name}".` 
+                        text: `Ce pseudo est déjà pris. Vous publiez en tant que "${author_name}".` 
                     };
 
+                    // On met à jour l'avatar pour correspondre au nouveau nom (seed)
                     const seed = encodeURIComponent(author_name);
                     const style = author_avatar_style || 'bottts';
                     author_avatar = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
                 }
+                // Sinon (emails identiques) : C'est la même personne, on garde le nom !
             }
         }
 
-        insertComment(req, res, articleId, parent_id, author_name, author_email, author_avatar, content, 1, 0);
+        // Appel final
+        insertComment(
+            req, res, 
+            articleId, parent_id, 
+            author_name, author_email, author_avatar, content, 
+            1, 0 // Approuvé (Auto), Pas Admin
+        );
     });
 });
 

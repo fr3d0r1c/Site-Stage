@@ -1,0 +1,62 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page" style="max-width: 900px; margin: 0 auto;">
+    <h1><i class="fas fa-user-astronaut"></i> Espace Invité</h1>
+    <p>Gérez votre identité pour commenter sur le blog.</p>
+    <hr>
+
+    <div class="guest-login-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+
+        <div class="login-box" style="padding: 1.5rem; border: 1px solid var(--c-border); border-radius: 8px;">
+            <h2 style="margin-top: 0; font-size: 1.3rem; color: var(--c-primary);">🌟 Nouveau venu ?</h2>
+            <p style="font-size: 0.9rem;">Créez un profil pour choisir votre avatar.</p>
+
+            <form action="/guest/login" method="POST">
+                <div class="form-group">
+                    <label>Pseudo :</label>
+                    <input type="text" name="name" required placeholder="Votre pseudo public">
+                </div>
+                <div class="form-group">
+                    <label>Email :</label>
+                    <input type="email" name="email" required placeholder="Votre email (privé)">
+                </div>
+                <div class="form-group">
+                    <label>Style d'avatar :</label>
+                    <select name="avatar_style" style="width: 100%; padding: 10px; border-radius: 8px; background: var(--c-background); color: var(--c-text); border: 1px solid var(--c-border);">
+                        <option value="bottts">🤖 Robots</option>
+                        <option value="avataaars">🧑 Humains</option>
+                        <option value="monsterrr">👾 Monstres</option>
+                        <option value="identicon">🔷 Géométrique</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Créer mon profil</button>
+            </form>
+        </div>
+
+        <div class="login-box" style="padding: 1.5rem; border: 1px solid var(--c-border); border-radius: 8px; background-color: var(--c-background);">
+            <h2 style="margin-top: 0; font-size: 1.3rem; color: var(--c-text);">🔄 Déjà un profil ?</h2>
+            <p style="font-size: 0.9rem;">Entrez vos infos pour récupérer votre historique.</p>
+
+            <form action="/guest/recover" method="POST">
+                <div class="form-group">
+                    <label>Pseudo enregistré :</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email enregistré :</label>
+                    <input type="email" name="email" required>
+                </div>
+                <button type="submit" class="btn btn-secondary" style="width: 100%;">Récupérer mon compte</button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    @media (max-width: 768px) {
+        .guest-login-grid { grid-template-columns: 1fr !important; }
+    }
+</style>
+
+<%- include('partials/footer') %>

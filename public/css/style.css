@@ -2300,3 +2300,97 @@ body.zen-mode #zen-mode-btn {
 .btn-toggle-replies i {
     font-size: 1.1em;
 }
+
+/*
+=========================================
+--- 31. Identité Commentaire (Cartes) ---
+=========================================
+*/
+.identity-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 50px; /* Forme pilule très arrondie */
+    border: 1px solid var(--c-border);
+    background-color: var(--c-background);
+    margin-bottom: 1rem;
+}
+
+/* Style spécifique Admin */
+.admin-box {
+    border-color: var(--c-primary);
+    background-color: color-mix(in srgb, var(--c-primary) 5%, var(--c-surface));
+}
+
+.identity-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Avatar Admin (Lettre) */
+.mini-avatar {
+    width: 36px;
+    height: 36px;
+    background-color: var(--c-primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+/* Avatar Invité (Image Dicebear) */
+.mini-avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #fff;
+    border: 1px solid var(--c-border);
+}
+
+.identity-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+.identity-text strong { 
+    font-size: 0.95rem; 
+    color: var(--c-text); 
+}
+
+/* Badges (Admin / Invité) */
+.badge-admin, .badge-guest {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+.badge-admin { color: var(--c-primary); }
+.badge-guest { color: var(--c-text-light); }
+
+/* Bouton Modifier (Crayon) */
+.edit-icon {
+    background: none;
+    border: none;
+    color: var(--c-text-light);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.2s;
+}
+.edit-icon:hover { color: var(--c-primary); }
+
+/*
+=========================================
+--- CORRECTIF Z-INDEX SWEETALERT ---
+=========================================
+*/
+/* Force SweetAlert à être au-dessus de TOUTES les modales personnalisées */
+div.swal2-container {
+    z-index: 20000 !important; /* Très haut pour dépasser le 9999 de la modale */
+}

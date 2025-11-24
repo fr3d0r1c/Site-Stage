@@ -1,87 +1,146 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Éléments
-    const realForm = document.getElementById('real-comment-form');
-    const loginPlaceholder = document.getElementById('guest-login-placeholder');
-    const createProfileBtn = document.getElementById('create-guest-profile-btn');
-    
-    const hiddenName = document.getElementById('author_name');
-    const hiddenEmail = document.getElementById('author_email');
-    const hiddenStyle = document.getElementById('author_avatar_style');
-    
-    const displayName = document.getElementById('display-guest-name');
-    const avatarPreview = document.getElementById('guest-avatar-preview');
+    const loginBtn = document.getElementById('guest-login-btn');
     const editBtn = document.getElementById('guest-edit-btn');
-    const logoutBtn = document.getElementById('guest-logout-btn');
+    const commentForm = document.querySelector('.comment-form form');
+    const hiddenName = document.getElementById('author_name');
 
-    // Si on est admin (pas de placeholder), on arrête
-    if (!loginPlaceholder) return;
+    // --- 1. MENU PRINCIPAL : CRÉER OU RÉCUPÉRER ---
+    const promptForGuestInfo = async () => {
+        const result = await Swal.fire({
+            title: 'Identification Invité',
+            text: 'Avez-vous déjà créé un profil sur ce site ?',
+            icon: 'question',
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonText: 'Non, créer un profil',
+            denyButtonText: 'Oui, récupérer mon compte',
+            cancelButtonText: 'Annuler',
+            confirmButtonColor: 'var(--c-primary)', // Couleur thème
+            denyButtonColor: '#28a745' // Vert pour "Oui"
+        });
 
-    // --- 1. FONCTION : Pop-up Configuration ---
-    const promptProfile = async () => {
-        const storedName = localStorage.getItem('blog_guest_username') || '';
-        const storedEmail = localStorage.getItem('blog_guest_email') || '';
-        const storedStyle = localStorage.getItem('blog_guest_avatar_style') || 'bottts';
+        if (result.isConfirmed) {
+            // Choix : Créer
+            handleCreation();
+        } else if (result.isDenied) {
+            // Choix : Récupérer
+            handleRecovery();
+        }
+    };
 
+    // --- 2. FORMULAIRE DE CRÉATION ---
+    const handleCreation = async () => {
         const { value: formValues } = await Swal.fire({
-            title: 'Créer votre profil',
+            title: 'Nouveau Profil',
             html:
-                `<input id="swal-name" class="swal2-input" placeholder="Pseudo" value="${storedName}">` +
-                `<input id="swal-email" class="swal2-input" type="email" placeholder="Email (privé)" value="${storedEmail}">` +
-                `<select id="swal-style" class="swal2-input"><option value="bottts">🤖 Robots</option><option value="avataaars">🧑 Humains</option><option value="monsterrr">👾 Monstres</option></select>`,
+                `<p style="font-size:0.9rem; color:#666; margin-bottom:1rem;">Créez votre identité pour commenter.</p>` +
+                `<input id="swal-name" class="swal2-input" placeholder="Pseudo public">` +
+                `<input id="swal-email" class="swal2-input" placeholder="Email (privé)">` +
+                `<label style="display:block; margin-top:10px; font-weight:bold; font-size:0.9rem;">Avatar :</label>` +
+                `<select id="swal-style" class="swal2-input" style="margin-top:5px;">
+                    <option value="bottts">🤖 Robots</option>
+                    <option value="avataaars">🧑 Humains</option>
+                    <option value="monsterrr">👾 Monstres</option>
+                    <option value="identicon">🔷 Géométrique</option>
+                    <option value="initials">🅰️ Initiales</option>
+                 </select>`,
             focusConfirm: false,
             showCancelButton: true,
+            confirmButtonText: 'Créer & Connecter',
             preConfirm: () => {
                 const name = document.getElementById('swal-name').value;
                 const email = document.getElementById('swal-email').value;
                 const style = document.getElementById('swal-style').value;
-                if (!name || !email) return Swal.showValidationMessage('Champs requis');
-                return { name, email, style };
+                if (!name || !email) return Swal.showValidationMessage('Tous les champs sont requis');
+                return { name, email, avatar_style: style };
             }
         });
 
         if (formValues) {
-            localStorage.setItem('blog_guest_username', formValues.name);
-            localStorage.setItem('blog_guest_email', formValues.email);
-            localStorage.setItem('blog_guest_avatar_style', formValues.style);
-            updateUI();
+            // Envoi au serveur
+            sendData('/guest/login', formValues, 'Profil créé avec succès !');
         }
     };
 
-    // --- 2. FONCTION : Mise à jour UI ---
-    const updateUI = () => {
-        const name = localStorage.getItem('blog_guest_username');
-        const email = localStorage.getItem('blog_guest_email');
-        const style = localStorage.getItem('blog_guest_avatar_style') || 'bottts';
+    // --- 3. FORMULAIRE DE RÉCUPÉRATION ---
+    const handleRecovery = async () => {
+        const { value: formValues } = await Swal.fire({
+            title: 'Connexion',
+            html:
+                `<p style="font-size:0.9rem; color:#666; margin-bottom:1rem;">Entrez vos infos pour retrouver votre historique.</p>` +
+                `<input id="swal-name" class="swal2-input" placeholder="Votre Pseudo enregistré">` +
+                `<input id="swal-email" class="swal2-input" placeholder="Votre Email enregistré">`,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Récupérer',
+            preConfirm: () => {
+                const name = document.getElementById('swal-name').value;
+                const email = document.getElementById('swal-email').value;
+                if (!name || !email) return Swal.showValidationMessage('Pseudo et Email requis');
+                return { name, email };
+            }
+        });
 
-        if (name && email) {
-            // CONNECTÉ : On affiche le formulaire, on cache le bouton login
-            loginPlaceholder.style.display = 'none';
-            realForm.style.display = 'block';
-            
-            // Remplir les champs
-            hiddenName.value = name;
-            hiddenEmail.value = email;
-            hiddenStyle.value = style;
-            
-            displayName.textContent = name;
-            const avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(name)}`;
-            avatarPreview.innerHTML = `<img src="${avatarUrl}" style="width:30px; height:30px; border-radius:50%; vertical-align:middle; margin-right:10px;">`;
-        } else {
-            // DÉCONNECTÉ : On cache le formulaire, on affiche le bouton login
-            loginPlaceholder.style.display = 'block';
-            realForm.style.display = 'none';
+        if (formValues) {
+            // Envoi au serveur
+            sendData('/guest/recover', formValues, 'Profil retrouvé !');
         }
     };
 
-    // --- 3. FONCTION : Déconnexion ---
-    const handleLogout = () => {
-        localStorage.clear(); // Ou removeItem un par un
-        updateUI();
+    // --- 4. FONCTION D'ENVOI AU SERVEUR ---
+    const sendData = async (url, data, successMessage) => {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json' // IMPORTANT : On demande du JSON au serveur
+                },
+                body: JSON.stringify(data)
+            });
+
+            // On lit la réponse JSON du serveur
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Succès !',
+                    text: successMessage,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload(); // On recharge pour afficher le profil connecté
+                });
+            } else {
+                // Erreur envoyée par le serveur (ex: profil non trouvé)
+                Swal.fire('Erreur', result.error || 'Une erreur est survenue.', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Erreur', 'Problème de connexion au serveur.', 'error');
+        }
     };
 
-    // --- INITIALISATION ---
-    updateUI();
-    if (createProfileBtn) createProfileBtn.addEventListener('click', promptProfile);
-    if (editBtn) editBtn.addEventListener('click', promptProfile);
-    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+    // --- 5. ÉVÉNEMENTS ---
+    if (loginBtn) loginBtn.addEventListener('click', promptForGuestInfo);
+    if (editBtn) editBtn.addEventListener('click', promptForGuestInfo); // Le crayon rouvre le menu choix
+
+    // Interception envoi formulaire commentaire
+    if (commentForm) {
+        commentForm.addEventListener('submit', (e) => {
+            if (!hiddenName || !hiddenName.value) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Identification requise',
+                    text: 'Veuillez vous identifier pour commenter.',
+                    confirmButtonText: 'S\'identifier',
+                    confirmButtonColor: 'var(--c-primary)'
+                }).then((res) => {
+                    if (res.isConfirmed) promptForGuestInfo();
+                });
+            }
+        });
+    }
 });
