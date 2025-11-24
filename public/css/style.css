@@ -2474,3 +2474,57 @@ div.swal2-container {
         gap: 0.5rem;
     }
 }
+
+/*
+=========================================
+--- 34. Sommaire Automatique (TOC) ---
+=========================================
+*/
+#table-of-contents {
+    background-color: var(--c-background);
+    border: 1px solid var(--c-border);
+    border-left: 4px solid var(--c-primary); /* Jolie barre colorée à gauche */
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    max-width: 400px; /* Pas trop large */
+}
+
+.toc-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+    color: var(--c-text);
+}
+
+#table-of-contents ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#table-of-contents li {
+    margin-bottom: 0.5rem;
+}
+
+#table-of-contents a {
+    text-decoration: none;
+    color: var(--c-primary);
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+#table-of-contents a:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
+
+/* Indentation pour les H3 */
+.toc-subitem {
+    margin-left: 1.5rem;
+    font-size: 0.95em;
+}
+
+/* Mode Zen : On cache le sommaire pour une lecture pure */
+body.zen-mode #table-of-contents {
+    display: none;
+}
