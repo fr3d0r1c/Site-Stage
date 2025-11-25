@@ -123,44 +123,38 @@ app.use(
       directives: {
         defaultSrc: ["'self'"], // N'autorise que le même domaine par défaut
         scriptSrc: [
-          "'self'", // Scripts du même domaine (ex: /js/main.js)
-          "https://cdn.jsdelivr.net/npm/marked/marked.min.js", // CDN Marked.js
-          "https://unpkg.com/easymde/dist/easymde.min.js", // CDN EasyMDE JS
-          "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js", // CDN SweetAlert2 JS
-          "https://cdn.jsdelivr.net/",
-          "https://unpkg.com/"
+            "'self'",
+            "https://cdn.jsdelivr.net",
+            "https://unpkg.com",
+            "https://cdnjs.cloudflare.com"
         ],
         styleSrc: [
-          "'self'",
-          "https://unpkg.com/easymde/dist/easymde.min.css",
-          "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/",
-          "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
-          "https://fonts.googleapis.com/",
-          "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css",
-          "https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css", // <-- AJOUTE CETTE LIGNE
-          "'unsafe-inline'",
-          "https://unpkg.com/"
+            "'self'",
+            "'unsafe-inline'", // Nécessaire pour certains styles injectés par JS
+            "https://cdn.jsdelivr.net",
+            "https://unpkg.com",
+            "https://cdnjs.cloudflare.com",
+            "https://fonts.googleapis.com"
         ],
         imgSrc: [
-          "'self'", // Images du même domaine (tes uploads)
-          "data:", // Images encodées (ex: data:image/png;...)
-          "https://via.placeholder.com", // Images d'exemple
-          "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/", // SVG des drapeaux
-          "https:",
-          "https://*.tile.openstreetmap.org",
-          "https://unpkg.com"
+            "'self'",
+            "data:",
+            "https:", // Autorise toutes les images externes
+            "blob:"
         ],
         fontSrc: [
             "'self'",
-            "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/",
-            "https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/",
-            "https://fonts.gstatic.com",
-            "https://maxcdn.bootstrapcdn.com/"
+            "https://cdnjs.cloudflare.com",
+            "https://fonts.gstatic.com"
         ],
         connectSrc: [
-          "'self'",
-          "https://cdn.jsdelivr.net/",
-          "https://unpkg.com"
+            "'self'",
+            "https://cdn.jsdelivr.net",
+            "https://unpkg.com",
+            "https://cdnjs.cloudflare.com", // <-- INDISPENSABLE pour FontAwesome
+            "https://fonts.googleapis.com", // <-- INDISPENSABLE pour les polices
+            "https://fonts.gstatic.com",
+            "https://api.dicebear.com"      // <-- Pour les avatars
         ],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
