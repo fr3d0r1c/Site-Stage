@@ -28,6 +28,8 @@ const puppeteer = require('puppeteer');
 const cookieParser = require('cookie-parser');
 const { randomUUID } = require('crypto');
 const RSS = require('rss');
+const NodeCache = require('node-cache');
+
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -111,6 +113,8 @@ if (deeplApiKey) {
     console.warn("AVERTISSEMENT : Clé API DeepL manquante.");
 }
 
+const myCache = new NodeCache();
+
 // =================================================================
 // 3. MIDDLEWARES
 // =================================================================
@@ -177,6 +181,11 @@ filter.addWords('testbad');
 // Servir les fichiers statiques (CSS, JS, images) depuis le dossier 'public'
 app.use(express.static('public'));
 
+app.use((req, res, next) => {
+    console.log(`➡️ Requête reçue : ${req.method} ${req.url}`);
+    next();
+});
+
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 app.use(cookieParser());
@@ -207,15 +216,42 @@ app.use(session({
 }));
 
 // --- MIDDLEWARE "PONT" ---
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
+    // 1. Données Admin (Session)
     res.locals.username = req.session.username;
     res.locals.userId = req.session.userId;
 
+    // 2. Messages Flash
     res.locals.message = req.session.flashMessage;
     delete req.session.flashMessage;
 
+    // 3. Cookies (pour les likes/delete tokens)
     res.locals.cookies = req.cookies;
-    res.locals.isGuest = !!req.cookies.guest_token;
+
+    // 4. Données Invité (Cookie Persistant)
+    res.locals.guest = null; // Par défaut, pas d'invité
+
+    if (req.cookies.guest_token) {
+        try {
+            // On cherche l'invité correspondant au cookie
+            const guest = await new Promise((resolve, reject) => {
+                db.get('SELECT * FROM guests WHERE id = ?', [req.cookies.guest_token], (err, row) => {
+                    if (err) reject(err); else resolve(row);
+                });
+            });
+
+            if (guest) {
+                // On calcule l'URL de l'avatar pour l'affichage
+                const seed = encodeURIComponent(guest.name);
+                guest.avatarUrl = `https://api.dicebear.com/7.x/${guest.avatar_style}/svg?seed=${seed}`;
+                res.locals.guest = guest; // On le rend dispo pour les vues
+            }
+        } catch (e) {
+            console.error("Erreur middleware guest:", e);
+        }
+    }
+
+    next();
 });
 
 // Middleware pour i18next (traduction)
@@ -309,44 +345,28 @@ const commentLimiter = rateLimit({
      }
 });
 
-// --- MIDDLEWARE "PONT" ---
-app.use(async (req, res, next) => {
-    // 1. Données Admin (Session)
-    res.locals.username = req.session.username;
-    res.locals.userId = req.session.userId;
-
-    // 2. Messages Flash
-    res.locals.message = req.session.flashMessage;
-    delete req.session.flashMessage;
-
-    // 3. Cookies (pour les likes/delete tokens)
-    res.locals.cookies = req.cookies;
-
-    // 4. Données Invité (Cookie Persistant)
-    res.locals.guest = null; // Par défaut, pas d'invité
-
-    if (req.cookies.guest_token) {
-        try {
-            // On cherche l'invité correspondant au cookie
-            const guest = await new Promise((resolve, reject) => {
-                db.get('SELECT * FROM guests WHERE id = ?', [req.cookies.guest_token], (err, row) => {
-                    if (err) reject(err); else resolve(row);
-                });
-            });
-
-            if (guest) {
-                // On calcule l'URL de l'avatar pour l'affichage
-                const seed = encodeURIComponent(guest.name);
-                guest.avatarUrl = `https://api.dicebear.com/7.x/${guest.avatar_style}/svg?seed=${seed}`;
-                res.locals.guest = guest; // On le rend dispo pour les vues
-            }
-        } catch (e) {
-            console.error("Erreur middleware guest:", e);
-        }
+const cacheMiddleware = (duration) => (req, res, next) => {
+    if (req.method !== 'GET' || req.session.userId || res.locals.message) {
+        return next();
     }
 
-    next();
-});
+    const key = '__express__' + req.originalUrl || req.url;
+
+    const cachedBody = myCache.get(key);
+
+    if (cachedBody) {
+        return res.send(cachedBody);
+    } else {
+        res.sendResponse = res.send;
+        res.send = (body) => {
+            if (res.statusCode === 200) {
+                myCache.set(key, body, duration);
+            }
+            res.sendResponse(body);
+        };
+        next();
+    }
+};
 
 // =================================================================
 // 4. CONNEXION À LA BASE DE DONNÉES ET CRÉATION DES TABLES
@@ -748,7 +768,7 @@ async function sendNewPostNotification(articleId, title, summary) {
 // --- Routes Publiques (Lecture & Navigation) ---
 
 // Accueil
-app.get('/', (req, res) => {
+app.get('/', cacheMiddleware(600), (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
     
     const sql = `
@@ -818,24 +838,24 @@ app.get('/', (req, res) => {
 });
 
 // Pages Statiques (Profil & Stage)
-app.get('/profil/qui-suis-je', (req, res) => {
+app.get('/profil/qui-suis-je', cacheMiddleware(3600), (req, res) => {
     res.render('whoami', { pageTitle: 'Qui suis-je ?', activePage: 'profil' });
 });
-app.get('/profil/parcours-scolaire', (req, res) => {
+app.get('/profil/parcours-scolaire', cacheMiddleware(3600), (req, res) => {
     res.render('school', { pageTitle: 'Parcours Scolaire', activePage: 'profil' });
 });
-app.get('/profil/parcours-pro', (req, res) => {
+app.get('/profil/parcours-pro', cacheMiddleware(3600), (req, res) => {
     res.render('work', { pageTitle: 'Parcours Professionnel', activePage: 'profil' });
 });
-app.get('/stage/l-entreprise', (req, res) => {
+app.get('/stage/l-entreprise', cacheMiddleware(3600), (req, res) => {
     res.render('company', { pageTitle: "L'entreprise", activePage: 'stage' });
 });
-app.get('/stage/mes-missions', (req, res) => {
+app.get('/stage/mes-missions', cacheMiddleware(3600), (req, res) => {
     res.render('missions', { pageTitle: 'Mes Missions', activePage: 'stage' });
 });
 
 // Journal & Articles
-app.get('/journal', (req, res) => {
+app.get('/journal', cacheMiddleware(600), (req, res) => {
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
     const lang = req.language === 'en' ? 'en' : 'fr';
@@ -2321,6 +2341,8 @@ app.post('/journal', isAuthenticated, async (req, res) => {
             // Message adapté au statut
             const msgText = status === 'draft' ? 'Brouillon sauvegardé avec succès !' : 'Entrée publiée avec succès !';
             
+            myCache.flushAll();
+
             req.session.flashMessage = { type: 'success', text: msgText };
             req.session.save(() => res.redirect('/journal'));
         } catch (tagError) {
@@ -2402,6 +2424,8 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
 
                 const msgText = status === 'draft' ? 'Brouillon mis à jour !' : 'Entrée mise à jour !';
 
+                myCache.flushAll();
+
                 req.session.flashMessage = { type: 'success', text: msgText };
                 req.session.save(() => res.redirect('/journal'));
             } catch (tagError) {
@@ -2429,6 +2453,8 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
             };
             return req.session.save(() => res.redirect(`/entree/${id}`));
         }
+
+        myCache.flushAll();
 
         req.session.flashMessage = { type: 'success', text: 'Entrée supprimée avec succès.' };
 
@@ -2837,4 +2863,12 @@ app.use((req, res, next) => {
 // =================================================================
 // 7. EXPORT DE L'APPLICATION (pour les tests)
 // =================================================================
+
 module.exports = { app, db };
+
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`🚀 Serveur démarré sur http://localhost:${port}`);
+        console.log(`   Mode: ${process.env.NODE_ENV || 'development'}`);
+    });
+}
