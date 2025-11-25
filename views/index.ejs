@@ -1,13 +1,5 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<% if (locals.message) { %>
-    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
-       style="display: none;"
-       data-detail="<%= message.detail || '' %>">
-        <%= message.text %>
-    </p>
-<% } %>
-
 <h1><%= t('homepage.title') %></h1>
 <p><%= t('homepage.welcome') %></p>
 
@@ -57,7 +49,7 @@
                     <div class="actions">
                         <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
                         <form action="/entree/<%= entry.id %>/delete" method="POST" 
-                              onsubmit="return confirm('<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>');"
+                              data-confirm="<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>" 
                               style="display: inline;">
                             <button type="submit"><%= t('journal.delete') %></button>
                         </form>

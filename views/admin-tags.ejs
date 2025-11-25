@@ -4,13 +4,7 @@
     <h1><%= t('admin_page.manage_tags_title') %></h1>
 
     <%# Affichage des messages Flash (succès/erreur) %>
-    <% if (locals.message) { %>
-        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
-        style="display: none;"
-        data-detail="<%= message.detail || '' %>">
-            <%= message.text %>
-        </p>
-    <% } %>
+
 
     <%# Formulaire de création de tag (simplifié pour auto-traduction) %>
     <h2><%= t('admin_page.add_new_tag_title') %></h2>

@@ -206,14 +206,16 @@ app.use(session({
     }
 }));
 
-// --- MIDDLEWARE GLOBAL POUR LES MESSAGES FLASH ---
+// --- MIDDLEWARE "PONT" ---
 app.use((req, res, next) => {
     res.locals.username = req.session.username;
     res.locals.userId = req.session.userId;
 
     res.locals.message = req.session.flashMessage;
     delete req.session.flashMessage;
-    next();
+
+    res.locals.cookies = req.cookies;
+    res.locals.isGuest = !!req.cookies.guest_token;
 });
 
 // Middleware pour i18next (traduction)
@@ -500,6 +502,15 @@ CREATE TABLE IF NOT EXISTS article_likes (
 `;
 db.run(createLikesTable);
 
+const createSubscribersTable = `
+CREATE TABLE IF NOT EXISTS subscribers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`;
+db.run(createSubscribersTable);
+
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
 // =================================================================
@@ -677,6 +688,57 @@ function getReadingTime(text) {
     const cleanText = text.replace(/<[^>]*>/g, '').replace(/[#*`~_]/g, '');
     const wordCount = cleanText.split(/\s+/).length;
     return Math.ceil(wordCount / 200);
+}
+
+/**
+ * Envoie une notification par email à tous les abonnés
+ * lors de la publication d'un nouvel article.
+ */
+async function sendNewPostNotification(articleId, title, summary) {
+    if (!transporter) return; // Si pas de mail configuré, on sort
+
+    // 1. Récupérer les emails des abonnés
+    const sql = 'SELECT email FROM subscribers';
+
+    db.all(sql, [], async (err, rows) => {
+        if (err || !rows || rows.length === 0) return;
+
+        const siteUrl = process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
+        const articleUrl = `${siteUrl}/entree/${articleId}`;
+
+        // Liste des destinataires (en copie cachée BCC pour la confidentialité)
+        const recipients = rows.map(r => r.email).join(', ');
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            bcc: recipients, // Important : BCC pour ne pas divulguer les emails
+            subject: `Nouvel article : ${title}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #0056b3;">Nouvelle publication !</h2>
+                    <p>Bonjour,</p>
+                    <p>Un nouvel article vient d'être publié sur mon carnet de stage :</p>
+                    <hr>
+                    <h3>${title}</h3>
+                    <p><em>${summary || 'Cliquez ci-dessous pour découvrir le contenu...'}</em></p>
+                    <p style="text-align: center; margin: 30px 0;">
+                        <a href="${articleUrl}" style="background-color: #0056b3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                            Lire l'article
+                        </a>
+                    </p>
+                    <hr>
+                    <small style="color: #666;">Vous recevez cet email car vous êtes abonné au flux du Carnet de Stage.</small>
+                </div>
+            `
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log(`✉️ Notification envoyée à ${rows.length} abonnés.`);
+        } catch (error) {
+            console.error("Erreur envoi notification article:", error);
+        }
+    });
 }
 
 // =================================================================
@@ -2251,6 +2313,10 @@ app.post('/journal', isAuthenticated, async (req, res) => {
         const articleId = this.lastID;
         try {
             await processTags(articleId, tagIds);
+
+            if (status === 'published') {
+                sendNewPostNotification(articleId, title_fr, summary_fr);
+            }
             
             // Message adapté au statut
             const msgText = status === 'draft' ? 'Brouillon sauvegardé avec succès !' : 'Entrée publiée avec succès !';
@@ -2315,29 +2381,35 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
 
     const sqlUpdateArticle = 'UPDATE articles SET title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, content_fr = ?, content_en = ?, cover_image_url = ?, status = ? WHERE id = ?';
 
-    db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, status, id], async function(err) {
-        if (err) { 
-            console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); 
-            req.session.flashMessage = { 
-                type: 'error', 
-                text: 'Erreur lors de la modification.', 
-                detail: err.message 
-            };
-            return req.session.save(() => res.redirect(`/entree/${id}/edit`));
-        }
+    db.get('SELECT status FROM articles WHERE id = ?', [id], (errGet, oldArticle) => {
+        db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, status, id], async function(err) {
+            if (err) { 
+                console.error(`Erreur BDD (POST /entree/${id}/edit update):`, err); 
+                req.session.flashMessage = { 
+                    type: 'error', 
+                    text: 'Erreur lors de la modification.', 
+                    detail: err.message 
+                };
+                return req.session.save(() => res.redirect(`/entree/${id}/edit`));
+            }
 
-        try {
-            await processTags(id, tagIds);
+            try {
+                await processTags(id, tagIds);
 
-            const msgText = status === 'draft' ? 'Brouillon mis à jour !' : 'Entrée mise à jour avec succès !';
+                if (oldArticle && oldArticle.status === 'draft' && status === 'published') {
+                     sendNewPostNotification(id, title_fr, summary_fr);
+                }
 
-            req.session.flashMessage = { type: 'success', text: msgText };
-            req.session.save(() => res.redirect('/journal'));
-        } catch (tagError) {
-            console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
-            req.session.flashMessage = { type: 'error', text: 'Erreur tags.', detail: tagError.message };
-            req.session.save(() => res.redirect('/journal'));
-        }
+                const msgText = status === 'draft' ? 'Brouillon mis à jour !' : 'Entrée mise à jour !';
+
+                req.session.flashMessage = { type: 'success', text: msgText };
+                req.session.save(() => res.redirect('/journal'));
+            } catch (tagError) {
+                console.error(`Erreur tags (POST /entree/${id}/edit):`, tagError);
+                req.session.flashMessage = { type: 'error', text: 'Erreur tags.', detail: tagError.message };
+                req.session.save(() => res.redirect('/journal'));
+            }
+        });
     });
 });
 
@@ -2641,6 +2713,117 @@ app.get('/api/search', async (req, res) => {
 
         res.json(results);
     });
+});
+
+// --- NEWSLETTER (Publique) ---
+
+// S'inscrire à la newsletter
+app.post('/newsletter/subscribe', (req, res) => {
+    const email = req.body.email;
+    
+    // Validation simple
+    if (!email || !email.includes('@')) {
+        req.session.flashMessage = { type: 'error', text: 'Email invalide.' };
+        return req.session.save(() => res.redirect('/')); // Retour accueil
+    }
+
+    const sql = 'INSERT INTO subscribers (email) VALUES (?)';
+    
+    db.run(sql, [email], function(err) {
+        if (err) {
+            if (err.message.includes('UNIQUE')) {
+                req.session.flashMessage = { type: 'info', text: 'Vous êtes déjà inscrit !' };
+            } else {
+                console.error("Erreur newsletter:", err);
+                req.session.flashMessage = { type: 'error', text: 'Erreur technique.' };
+            }
+        } else {
+            req.session.flashMessage = { type: 'success', text: 'Inscription réussie ! Merci.' };
+        }
+        
+        // CORRECTION : On sauvegarde et on redirige vers l'accueil (sûr)
+        req.session.save(() => res.redirect('/'));
+    });
+});
+
+// --- NEWSLETTER (Admin) ---
+
+// Page pour rédiger une newsletter
+app.get('/admin/newsletter', isAuthenticated, (req, res) => {
+    db.all('SELECT * FROM subscribers', [], (err, rows) => {
+        res.render('admin-newsletter', {
+            pageTitle: 'Gestion Newsletter',
+            activePage: 'admin',
+            subscribers: rows || []
+        });
+    });
+});
+
+// Envoyer une newsletter
+app.post('/admin/newsletter/send', isAuthenticated, async (req, res) => {
+    const { subject, message } = req.body;
+    
+    if (!subject || !message) {
+        req.session.flashMessage = { type: 'error', text: 'Sujet et message requis.' };
+        return req.session.save(() => res.redirect('/admin/newsletter'));
+    }
+
+    // 1. Récupérer tous les emails
+    db.all('SELECT email FROM subscribers', [], async (err, rows) => {
+        if (err || rows.length === 0) {
+            req.session.flashMessage = { type: 'warning', text: 'Aucun abonné ou erreur BDD.' };
+            return req.session.save(() => res.redirect('/admin/newsletter'));
+        }
+
+        // 2. Préparer les destinataires (BCC)
+        const recipients = rows.map(r => r.email).join(', ');
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            bcc: recipients, // Envoi caché
+            subject: subject,
+            html: `<div style="font-family: sans-serif;">
+                    <h2>Bonjour !</h2>
+                    <p>${message.replace(/\n/g, '<br>')}</p>
+                    <hr>
+                    <small>Vous recevez cet email car vous êtes abonné au Carnet de Stage.</small>
+                   </div>`
+        };
+
+        try {
+            if (transporter) {
+                await transporter.sendMail(mailOptions);
+                req.session.flashMessage = { type: 'success', text: `Newsletter envoyée à ${rows.length} abonnés !` };
+            } else {
+                req.session.flashMessage = { type: 'error', text: 'Serveur mail non configuré.' };
+            }
+        } catch (e) {
+            console.error("Erreur envoi newsletter:", e);
+            req.session.flashMessage = { type: 'error', text: 'Erreur lors de l\'envoi des emails.' };
+        }
+
+        // CORRECTION : On sauvegarde avant de rediriger
+        req.session.save(() => {
+            res.redirect('/admin/newsletter');
+        });
+    });
+});
+
+// Route de test pour les Toasts (pour les tests automatisés)
+app.get('/test-toasts', (req, res) => {
+    console.log(">>> Route GET /test-toasts atteinte");
+
+    if (req.query.type) {
+        req.session.flashMessage = { type: 'success', text: 'Test Toast Réussi' };
+        
+        // IMPORTANT : On sauvegarde explicitement avant de rediriger
+        return req.session.save(() => {
+            res.redirect('/test-toasts');
+        });
+    }
+    
+    // Le middleware global a déjà mis 'message' dans res.locals
+    res.render('test-toasts');
 });
 
 // --- GESTION ERREUR 404 (Doit être la DERNIÈRE route) ---

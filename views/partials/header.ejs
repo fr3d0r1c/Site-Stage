@@ -123,6 +123,7 @@
                             <li><a href="/admin/export/pdf" target="_blank"><i class="fas fa-file-pdf"></i> <%= t('dashboard.download_pdf') %></a></li>
                             <li><a href="/admin/backup"><i class="fas fa-database"></i> <%= t('dashboard.backup_db') %></a></li>
                             <li><a href="/change-password"><i class="fas fa-key"></i> <%= t('admin_page.action_change_password') %></a></li>
+                            <li><a href="/admin/newsletter"><i class="fas fa-bullhorn"></i> Newsletter</a></li>
                             <li><a href="/deconnexion" data-confirm="<%= t('nav.logout') %> ?"><i class="fas fa-sign-out-alt"></i> <%= t('admin_page.action_logout') %></a></li>
                         </ul>
                     </li>
@@ -151,3 +152,11 @@
         </div>
     </header>
     <div class="container">
+        <% if (locals.message) { %>
+            <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
+                style="display: none;"
+                data-detail="<%= message.detail || '' %>">
+                <%= message.text %>
+            </p>
+        <% } %>
+    

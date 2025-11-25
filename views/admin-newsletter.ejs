@@ -1,0 +1,47 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <h1>📢 Newsletter</h1>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+
+        <div>
+            <h2>Envoyer un message</h2>
+            <form action="/admin/newsletter/send" method="POST">
+                <div class="form-group">
+                    <label>Sujet :</label>
+                    <input type="text" name="subject" required placeholder="Ex: Nouvel article sur Kyoto !">
+                </div>
+                <div class="form-group">
+                    <label>Message :</label>
+                    <textarea name="message" rows="10" required placeholder="Bonjour à tous, je viens de publier..."></textarea>
+                </div>
+                <button type="submit" class="btn" data-confirm="Confirmer l'envoi à tous les abonnés ?">
+                    <i class="fas fa-paper-plane"></i> Envoyer
+                </button>
+            </form>
+        </div>
+
+        <div>
+            <h2>Abonnés (<%= subscribers.length %>)</h2>
+            <ul style="list-style: none; padding: 0; max-height: 400px; overflow-y: auto; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 8px;">
+                <% if (subscribers.length > 0) { %>
+                    <% subscribers.forEach(sub => { %>
+                        <li style="padding: 10px; border-bottom: 1px solid var(--c-border); font-size: 0.9rem;">
+                            <i class="fas fa-envelope"></i> <%= sub.email %>
+                            <br>
+                            <small style="color: var(--c-text-light);"><%= new Date(sub.created_at).toLocaleDateString() %></small>
+                        </li>
+                    <% }); %>
+                <% } else { %>
+                    <li style="padding: 10px; text-align: center; color: var(--c-text-light);">Aucun abonné pour le moment.</li>
+                <% } %>
+            </ul>
+        </div>
+    </div>
+
+    <hr>
+    <nav><a href="/admin">Retour au Tableau de Bord</a></nav>
+</div>
+
+<%- include('partials/footer') %>

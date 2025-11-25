@@ -3,14 +3,6 @@
 <div class="static-page">
     <h1>Gestion des Commentaires</h1>
 
-    <% if (locals.message) { %>
-        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
-           style="display: none;"
-           data-detail="<%= message.detail || '' %>">
-            <%= message.text %>
-        </p>
-    <% } %>
-
     <p>Voici l'historique de tous les commentaires publiés.</p>
 
     <% if (comments && comments.length > 0) { %>

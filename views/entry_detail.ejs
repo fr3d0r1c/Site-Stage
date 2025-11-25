@@ -1,13 +1,5 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<% if (locals.message) { %>
-    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
-       style="display: none;"
-       data-detail="<%= message.detail || '' %>">
-        <%= message.text %>
-    </p>
-<% } %>
-
 <article class="full-article">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <h1 style="margin: 0;"><%= article.title %></h1>
