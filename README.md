@@ -26,7 +26,7 @@ git clone https://github.com/fr3d0r1c/Site-Stage.git
 npm install
 
 # 3. Lancer le serveur
-node server.js
+node server.js ou npm start
 ```
 
 *L'application sera accessible sur `http://localhost:3000`. Le compte administrateur se configure au premier lancement.*
