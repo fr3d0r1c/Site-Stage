@@ -10,18 +10,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialisation Editeur Français ---
     if (frenchEditorTextarea) {
         
-        // Vérification de sécurité pour Marked
+        // Vérification de sécurité
         if (typeof marked === 'undefined') {
-            console.error("ERREUR CRITIQUE : La librairie 'marked' n'est pas chargée !");
-            if (frenchPreviewDiv) frenchPreviewDiv.innerHTML = "<p style='color:red; font-weight:bold;'>Erreur : La librairie 'marked' n'a pas pu se charger. Vérifiez votre connexion ou la console.</p>";
+            console.error("ERREUR : La librairie 'marked' n'est pas chargée !");
+            if (frenchPreviewDiv) frenchPreviewDiv.innerHTML = "<p style='color:red;'>Erreur : Librairie 'marked' manquante.</p>";
         }
 
         easyMDE_fr = new EasyMDE({
             element: frenchEditorTextarea,
+            autoDownloadFontAwesome: false, 
             spellChecker: false,
             status: ["lines", "words"],
             toolbar: [
-                "bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link",
+                "bold", "italic", "heading", 
+                "|", 
+                "quote", "unordered-list", "ordered-list", 
+                "|", 
+                
+                // --- NOUVEAU BOUTON CODE BLOCK {} ---
+                {
+                    name: "code-block",
+                    action: function(editor) {
+                        const cm = editor.codemirror;
+                        const selection = cm.getSelection();
+                        // Si du texte est sélectionné, on l'entoure. Sinon, texte par défaut.
+                        const text = selection ? selection : "Votre code ici";
+                        
+                        // Insertion des ```
+                        cm.replaceSelection("```\n" + text + "\n```\n");
+                        
+                        // Remet le focus sur l'éditeur
+                        cm.focus();
+                    },
+                    className: "fa fa-code", // Icône < >
+                    title: "Insérer un bloc de code",
+                },
+                // ------------------------------------
+
+                "link",
                 {
                     name: "image",
                     action: function customImage(editor) {
@@ -29,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (fileInput) fileInput.click();
                     },
                     className: "fa fa-image",
-                    title: "Insérer Image (Upload)",
+                    title: "Insérer Image",
                 },
                  "|", "preview", "side-by-side", "fullscreen", "|", "guide"
             ]
@@ -45,9 +71,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. Mise à jour Aperçu FR
             if (frenchPreviewDiv && typeof marked !== 'undefined') {
                 try {
-                    // Nettoyage du H1 pour l'affichage
                     const cleanMarkdown = markdownText.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
                     frenchPreviewDiv.innerHTML = marked.parse(cleanMarkdown);
+                    
+                    // Coloration syntaxique en temps réel
+                    if (typeof hljs !== 'undefined') {
+                        frenchPreviewDiv.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                        // Ajout des boutons "Copier" dynamiquement
+                        if (typeof addCopyButtons === 'function') addCopyButtons();
+                    }
                 } catch (e) {
                      console.error("Erreur parsing Markdown FR:", e);
                 }
@@ -65,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // 3. Traduction EN
+            // 3. Traduction EN (Debounce)
              clearTimeout(contentDebounceTimer);
              if (markdownText.trim()) {
                  contentDebounceTimer = setTimeout(() => {
@@ -74,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
                      }
                  }, 500);
              } else {
-                 // Nettoyage si vide
                  const previewEnDiv = document.getElementById('preview_en');
                  if (previewEnDiv) previewEnDiv.innerHTML = '';
                  const contentEnTextarea = document.getElementById('content_en');
@@ -90,6 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
                  const initial = easyMDE_fr.value();
                  const cleanInitial = initial.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
                  frenchPreviewDiv.innerHTML = marked.parse(cleanInitial);
+                 if (typeof hljs !== 'undefined') {
+                     hljs.highlightAll();
+                     if (typeof addCopyButtons === 'function') addCopyButtons();
+                 }
              } catch (e) {}
          }
     }

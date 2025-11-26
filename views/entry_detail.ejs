@@ -1,5 +1,9 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
+<div id="reading-progress-container">
+    <div id="reading-progress-bar"></div>
+</div>
+
 <article class="full-article">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <h1 style="margin: 0;"><%= article.title %></h1>
@@ -59,31 +63,29 @@
         <% } %>
     </div>
 
-    <div class="share-section">
-        <span class="share-label">Partager cet article :</span>
+    <div class="share-dropdown-container">
+        <button id="share-toggle-btn" class="btn-share-toggle" aria-label="Ouvrir le menu de partage">
+            <i class="fas fa-share-alt"></i> <span>Partager</span>
+        </button>
 
-        <div class="share-buttons">
+        <div id="share-menu" class="share-menu">
             <a href="https://www.linkedin.com/sharing/share-offsite/?url=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
-               target="_blank" class="btn-share linkedin" aria-label="Partager sur LinkedIn">
-               <i class="fab fa-linkedin-in"></i>
+               target="_blank" class="share-item">
+               <i class="fab fa-linkedin-in" style="color: #0077b5;"></i> LinkedIn
             </a>
 
             <a href="https://twitter.com/intent/tweet?text=<%= encodeURIComponent(article.title) %>&url=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
-               target="_blank" class="btn-share twitter" aria-label="Partager sur Twitter">
-               <i class="fab fa-x-twitter"></i>
+               target="_blank" class="share-item">
+               <i class="fab fa-x-twitter" style="color: var(--c-text);"></i> X (Twitter)
             </a>
 
             <a href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
-               target="_blank" class="btn-share facebook" aria-label="Partager sur Facebook">
-               <i class="fab fa-facebook-f"></i>
+               target="_blank" class="share-item">
+               <i class="fab fa-facebook-f" style="color: #1877f2;"></i> Facebook
             </a>
 
-            <button id="copy-link-btn" class="btn-share copy" aria-label="Copier le lien">
-                <i class="fas fa-link"></i>
-            </button>
-
-            <button id="native-share-btn" class="btn-share native" style="display: none;" aria-label="Ouvrir le menu de partage">
-                <i class="fas fa-share-alt"></i>
+            <button id="copy-link-btn" class="share-item">
+                <i class="fas fa-link" style="color: var(--c-text-light);"></i> Copier le lien
             </button>
         </div>
     </div>

@@ -1318,12 +1318,22 @@ body.zen-mode {
 body.zen-mode .site-header,
 body.zen-mode .site-footer,
 body.zen-mode .prev-next-nav,
-body.zen-mode .actions,
 body.zen-mode .tags-list,
 body.zen-mode hr,
 body.zen-mode nav,
-body.zen-mode .comments-section {
-    display: none !important;
+body.zen-mode .comments-section,
+body.zen-mode .article-footer-actions,
+body.zen-mode .share-dropdown-container,
+body.zen-mode .actions {
+    display: none ! important;
+}
+
+body.zen-mode #table-of-contents {
+    display: block !important;
+    margin: 2rem auto;
+    max-width: 100%;
+    box-shadow: none;
+    border: 1px solid var(--c-border);
 }
 
 body.zen-mode .container {
@@ -2414,65 +2424,74 @@ div.swal2-container {
 --- 33. Boutons de Partage ---
 =========================================
 */
-.share-section {
-    display: flex;
-    align-items: center;
-    justify-content: center; /* Centré */
-    gap: 1rem;
+.share-dropdown-container {
+    position: relative;
+    display: inline-block;
     margin: 2rem 0;
-    padding: 1rem;
-    background-color: var(--c-background);
-    border-radius: 12px;
+    width: 100%;
+    text-align: right; /* Aligné à droite comme les likes */
 }
 
-.share-label {
-    font-weight: 600;
-    color: var(--c-text-light);
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.share-buttons {
-    display: flex;
-    gap: 0.8rem;
-}
-
-.btn-share {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    color: var(--c-text);
+.btn-share-toggle {
     background-color: var(--c-surface);
     border: 1px solid var(--c-border);
+    color: var(--c-text);
+    padding: 8px 16px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     transition: all 0.2s ease;
-    font-size: 1.1rem;
+}
+
+.btn-share-toggle:hover {
+    background-color: var(--c-background);
+    border-color: var(--c-primary);
+    color: var(--c-primary);
+}
+
+.share-menu {
+    display: none; /* Caché par défaut */
+    position: absolute;
+    right: 0;
+    bottom: 100%; /* S'ouvre vers le haut (pour ne pas être caché par le footer) */
+    margin-bottom: 10px;
+    background-color: var(--c-surface);
+    min-width: 180px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    border-radius: 12px;
+    border: 1px solid var(--c-border);
+    overflow: hidden;
+    z-index: 100;
+    flex-direction: column;
+    animation: fadeIn 0.2s ease;
+}
+
+.share-menu.show {
+    display: flex;
+}
+
+.share-item {
+    padding: 12px 16px;
+    text-decoration: none;
+    color: var(--c-text);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
     cursor: pointer;
 }
 
-/* Couleurs au survol */
-.btn-share:hover {
-    transform: translateY(-3px);
-    color: white;
-    border-color: transparent;
-}
-
-.btn-share.linkedin:hover { background-color: #0077b5; }
-.btn-share.twitter:hover { background-color: #000000; }
-.btn-share.facebook:hover { background-color: #1877f2; }
-.btn-share.copy:hover { background-color: var(--c-gray); }
-.btn-share.native:hover { background-color: var(--c-primary); }
-
-/* Responsive */
-@media (max-width: 600px) {
-    .share-section {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
+.share-item:hover {
+    background-color: var(--c-background);
 }
 
 /*
@@ -2541,3 +2560,106 @@ body.zen-mode #table-of-contents {
 .reward-badge.green { color: #28a745; }
 .reward-badge.blue { color: #17a2b8; }
 .reward-badge.red { color: #dc3545; }
+
+/*
+=========================================
+--- 35. Outils de Lecture (Bonus) ---
+=========================================
+*/
+
+/* 1. Barre de Progression */
+#reading-progress-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: transparent;
+    z-index: 9999; /* Au-dessus du header */
+}
+
+#reading-progress-bar {
+    height: 100%;
+    background: var(--c-primary); /* Couleur cyan/bleue du thème */
+    width: 0%;
+    transition: width 0.1s ease-out;
+    box-shadow: 0 0 10px var(--c-primary);
+}
+
+/* 2. Bouton "Remonter en haut" */
+#back-to-top {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    background-color: var(--c-surface);
+    color: var(--c-text);
+    border: 2px solid var(--c-primary);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    z-index: 9990;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+#back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+#back-to-top:hover {
+    background-color: var(--c-primary);
+    color: white;
+    transform: translateY(-5px);
+}
+
+/*
+=========================================
+--- 36. Bouton Copier Code ---
+=========================================
+*/
+
+/* On s'assure que le bloc de code est le repère pour le bouton */
+pre {
+    position: relative;
+}
+
+/* Le bouton lui-même */
+.copy-code-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: rgba(255, 255, 255, 0.1); /* Transparent discret */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #abb2bf; /* Gris clair (style Atom) */
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    z-index: 10;
+}
+
+.copy-code-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* État "Copié !" (Vert) */
+.copy-code-btn.copied {
+    background-color: rgba(40, 167, 69, 0.2);
+    border-color: #28a745;
+    color: #28a745;
+}
