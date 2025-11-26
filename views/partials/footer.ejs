@@ -41,11 +41,7 @@
         </li>
 
         <% if (!locals.username) { %>
-            <li>
-                <a href="/guest/login" class="<%= activePage === 'guest' ? 'active' : '' %>">
-                    Espace Invité
-                </a>
-            </li>
+            <li><a href="/guest/login"><i class="fas fa-user-circle"></i> <%= t('nav.guest_space') %></a></li>
         <% } %>
     </ul>
 </footer>

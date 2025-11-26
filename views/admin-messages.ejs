@@ -1,0 +1,53 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <h1>📬 Boîte de Réception</h1>
+
+    <% if (locals.message) { %>
+        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+            <%= message.text %>
+        </p>
+    <% } %>
+
+    <% if (messages && messages.length > 0) { %>
+        <div style="overflow-x: auto;">
+            <table class="tags-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 20%">Date / Nom</th>
+                        <th style="width: 60%">Message</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% messages.forEach(msg => { %>
+                        <tr>
+                            <td style="vertical-align: top;">
+                                <strong><%= msg.name %></strong><br>
+                                <small style="color: var(--c-text-light);"><%= msg.email %></small><br>
+                                <small><%= new Date(msg.created_at).toLocaleDateString() %></small>
+                            </td>
+                            <td style="vertical-align: top; white-space: pre-wrap;">
+                                <div style="font-weight: bold; margin-bottom: 5px; color: var(--c-primary);">
+                                    <%= msg.subject %>
+                                </div>
+                                <%= msg.message %>
+                            </td>
+                            <td style="vertical-align: top;"></td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
+    <% } else { %>
+        <div style="text-align: center; padding: 3rem; color: var(--c-text-light);">
+            <i class="far fa-envelope-open fa-3x"></i>
+            <p>Aucun message reçu.</p>
+        </div>
+    <% } %>
+
+    <hr>
+    <nav><a href="/admin">Retour au Dashboard</a></nav>
+</div>
+
+<%- include('partials/footer') %>

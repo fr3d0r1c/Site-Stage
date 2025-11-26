@@ -513,6 +513,20 @@ CREATE TABLE IF NOT EXISTS subscribers (
 `;
 db.run(createSubscribersTable);
 
+// Création de la table 'contact_messages'
+const createContactTable = `
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  email TEXT,
+  subject TEXT, -- NOUVEAU : L'objet du message
+  message TEXT,
+  is_read INTEGER DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`;
+db.run(createContactTable);
+
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
 // =================================================================
@@ -1198,20 +1212,21 @@ app.get('/tags/:tagName', (req, res) => {
 });
 
 // --- Espace Invité ---
-app.get('/guest-profile', (req, res) => {
-    // Si c'est l'admin, il n'a rien à faire là, on le renvoie vers son profil admin
-    if (req.session.userId) {
-        return res.redirect('/admin/dashboard');
+app.get('/guest/login', (req, res) => {
+    // Si l'invité est déjà connecté (cookie présent), on l'envoie au dashboard
+    if (req.cookies.guest_token) {
+        return res.redirect('/guest/dashboard');
     }
 
-    res.render('guest-profile', {
-        pageTitle: 'Mon Profil Invité',
-        activePage: 'guest' // Pour activer le menu
+    // Sinon, on affiche la page de choix (guest-login.ejs)
+    res.render('guest-login', { 
+        pageTitle: 'Espace Invité', 
+        activePage: 'guest' 
     });
 });
 app.post('/guest/login', async (req, res) => {
     const { name, email, avatar_style } = req.body;
-
+    
     let guestId = req.cookies.guest_token;
     let isNew = false;
 
@@ -1227,19 +1242,15 @@ app.post('/guest/login', async (req, res) => {
     }
 
     res.cookie('guest_token', guestId, { maxAge: 31536000000, httpOnly: true });
-
-    // --- CORRECTION ICI : Gestion intelligente de la réponse ---
-    // Si la requête demande du JSON (cas de la pop-up)
+    
+    // Réponse JSON (pour la pop-up)
     if (req.headers.accept && req.headers.accept.includes('application/json')) {
-        return res.json({ success: true, message: 'Profil configuré avec succès !' });
+        return res.json({ success: true, message: 'Profil configuré !' });
     }
 
-    // Sinon (cas du formulaire classique), on redirige
+    // Réponse Classique (pour le formulaire page dédiée)
     req.session.flashMessage = { type: 'success', text: `Profil invité ${isNew ? 'créé' : 'mis à jour'} !` };
-
-    req.session.save(() => {
-        res.redirect('/guest/dashboard');
-    });
+    req.session.save(() => res.redirect('/guest/dashboard'));
 });
 app.post('/guest/recover', (req, res) => {
     const { name, email } = req.body;
@@ -1247,24 +1258,22 @@ app.post('/guest/recover', (req, res) => {
     db.get('SELECT * FROM guests WHERE name = ? AND email = ?', [name, email], (err, guest) => {
         if (guest) {
             res.cookie('guest_token', guest.id, { maxAge: 31536000000, httpOnly: true });
-
-            // --- RÉPONSE JSON ---
+            
+            // Réponse JSON
             if (req.headers.accept && req.headers.accept.includes('application/json')) {
                 return res.json({ success: true, message: `Bon retour, ${guest.name} !` });
             }
-            // --------------------
 
             req.session.flashMessage = { type: 'success', text: `Profil retrouvé ! Bon retour, ${guest.name}.` };
             res.redirect('/guest/dashboard');
         } else {
-            // --- ERREUR JSON ---
+            // Erreur JSON
             if (req.headers.accept && req.headers.accept.includes('application/json')) {
                 return res.status(404).json({ success: false, error: 'Profil introuvable.' });
             }
-            // -------------------
 
-            req.session.flashMessage = { type: 'error', text: 'Aucun profil trouvé.' };
-            res.redirect('/guest/login');
+            req.session.flashMessage = { type: 'error', text: 'Aucun profil trouvé avec ce pseudo et cet email.' };
+            res.redirect('/guest/login'); // Redirige vers la page qu'on vient de restaurer
         }
     });
 });
@@ -1272,14 +1281,12 @@ app.get('/guest/dashboard', (req, res) => {
     const guestId = req.cookies.guest_token;
     if (!guestId) return res.redirect('/guest/login');
 
-    // Récupère l'invité
     db.get('SELECT * FROM guests WHERE id = ?', [guestId], (err, guest) => {
         if (!guest) {
-            res.clearCookie('guest_token'); // Nettoyage si ID invalide
+            res.clearCookie('guest_token');
             return res.redirect('/guest/login');
         }
 
-        // Récupère ses commentaires
         const sqlComments = `
             SELECT c.*, a.title_fr as article_title 
             FROM comments c
@@ -1289,7 +1296,6 @@ app.get('/guest/dashboard', (req, res) => {
         `;
 
         db.all(sqlComments, [guestId], (errComm, comments) => {
-            // Génération avatar pour l'affichage
             const seed = encodeURIComponent(guest.name);
             const avatarUrl = `https://api.dicebear.com/7.x/${guest.avatar_style}/svg?seed=${seed}`;
 
@@ -1297,15 +1303,15 @@ app.get('/guest/dashboard', (req, res) => {
                 pageTitle: 'Mon Tableau de Bord',
                 activePage: 'guest',
                 guest: { ...guest, avatarUrl },
-                myComments: comments
+                myComments: comments || []
             });
         });
     });
 });
 app.get('/guest/logout', (req, res) => {
-    res.clearCookie('guest_token'); // On supprime le cookie
-    req.session.flashMessage = { type: 'success', text: 'Vous êtes déconnecté.' };
-    res.redirect('/');
+    res.clearCookie('guest_token');
+    req.session.flashMessage = { type: 'success', text: 'Vous êtes déconnecté du mode invité.' };
+    req.session.save(() => res.redirect('/'));
 });
 
 // --- Lecture Article & Interactions ---
@@ -1516,25 +1522,44 @@ app.get('/contact', (req, res) => {
         ogImage: null
     });
 });
-app.post('/contact', contactLimiter, (req, res) => {
-    // 1. Vérification Honeypot
-    if (req.body.website_field && req.body.website_field !== '') {
-        console.warn("Honeypot (contact) déclenché ! Rejet silencieux.");
-        return res.render('contact', { pageTitle: req.t('page_titles.contact'), activePage: 'contact', messageSent: true }); // Faux succès
-    }
-    // 2. Vérification Nodemailer
-    if (!transporter) { return res.status(503).render('contact', { /* ... error: 'Service email non dispo' ... */ }); }
-    // 3. Validation champs
-    const { name, email, message } = req.body;
-    if (!name || !email || !message || !email.includes('@')) { return res.status(400).render('contact', { /* ... error: 'Champs invalides' ... */ }); }
-    // 4. Préparation email
-    const mailOptions = { /* ... (détails email) ... */ };
-    // 5. Envoi email
-    transporter.sendMail(mailOptions, (error, info) => {
-        let messageStatus = null;
-        if (error) { console.error("Erreur envoi email:", error); messageStatus = false; }
-        else { console.log('Email contact envoyé: ' + info.response); messageStatus = true; }
-        res.render('contact', { pageTitle: req.t('page_titles.contact'), activePage: 'contact', messageSent: messageStatus, error: !messageStatus ? req.t('contact.error_message') : null });
+app.post('/contact', (req, res) => {
+    const { name, email, subject, message } = req.body;
+
+    const sql = 'INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)';
+
+    db.run(sql, [name, email, subject, message], async function(err) {
+        if (err) console.error("Erreur sauvegarde contact:", err);
+
+        if (transporter) {
+            const mailOptions = {
+                from: `"${name}" <${process.env.EMAIL_USER}>`,
+                
+                to: process.env.EMAIL_TO,
+
+                replyTo: email,
+                // Le sujet du mail devient le sujet saisi par l'utilisateur (avec un préfixe)
+                subject: `[Contact Site] ${subject}`,
+
+                html: `
+                    <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
+                        <h2 style="color: #0056b3; margin-top: 0;">Nouveau message de contact</h2>
+                        <p><strong>De :</strong> ${name} (<a href="mailto:${email}">${email}</a>)</p>
+                        <p><strong>Objet :</strong> ${subject}</p>
+                        <hr>
+                        <p style="white-space: pre-wrap; font-size: 1.1em;">${message}</p>
+                    </div>
+                `
+            };
+            
+            try { await transporter.sendMail(mailOptions); }
+            catch (mailErr) { console.error("Erreur mail:", mailErr); }
+        }
+
+        res.render('contact', { 
+            pageTitle: req.t('page_titles.contact'), 
+            activePage: 'contact', 
+            messageSent: true 
+        });
     });
 });
 
@@ -2094,7 +2119,8 @@ app.get('/admin/dashboard', isAuthenticated, (req, res) => {
         SELECT 
             COUNT(*) as totalEntries,
             (SELECT COUNT(*) FROM comments) as totalComments,
-            (SELECT COUNT(*) FROM tags) as totalTags
+            (SELECT COUNT(*) FROM tags) as totalTags,
+            (SELECT COUNT(*) FROM contact_messages) as totalMessages -- AJOUT ICI
         FROM articles
     `;
 
@@ -2753,6 +2779,27 @@ app.post('/admin/comments/delete/:id', async (req, res) => {
             req.session.flashMessage = { type: 'error', text: 'Vous n\'avez pas le droit de supprimer ce commentaire.' };
             req.session.save(() => res.redirect(returnTo));
         }
+    });
+});
+
+app.get('/admin/messages', isAuthenticated, (req, res) => {
+    const sql = 'SELECT * FROM contact_messages ORDER BY created_at DESC';
+
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).send("Erreur BDD");
+        
+        res.render('admin-messages', {
+            pageTitle: "Messagerie",
+            activePage: 'admin',
+            messages: rows
+        });
+    });
+});
+
+app.post('/admin/messages/delete/:id', isAuthenticated, (req, res) => {
+    db.run('DELETE FROM contact_messages WHERE id = ?', [req.params.id], (err) => {
+        req.session.flashMessage = { type: 'success', text: 'Message supprimé.' };
+        req.session.save(() => res.redirect('/admin/messages'));
     });
 });
 
