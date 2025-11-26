@@ -38,20 +38,24 @@
         </button>
 
         <% if (locals.username) { %>
-            <button class="btn-heart" disabled title="Vue Admin">
+            <button class="btn-heart" disabled title="L'auteur ne peut pas liker son propre article">
                 <i class="fas fa-heart" style="opacity: 0.5;" aria-hidden="true"></i>
                 <span><%= article.likes || 0 %></span>
             </button>
+
         <% } else { %>
+
             <button id="like-btn" 
                     class="btn-heart <%= hasLiked ? 'liked' : '' %>" 
                     data-id="<%= article.id %>"
                     data-has-profile="<%= locals.guest ? 'true' : 'false' %>"
-                    <%= hasLiked ? 'disabled' : '' %>
-                    aria-label="J'aime cet article">
+                    aria-label="<%= hasLiked ? 'Je n\'aime plus (Cliquer pour retirer)' : 'J\'aime cet article' %>">
+                
                 <i class="<%= hasLiked ? 'fas' : 'far' %> fa-heart" aria-hidden="true"></i>
+                
                 <span id="like-count"><%= article.likes || 0 %></span>
             </button>
+
         <% } %>
     </div>
 
@@ -177,33 +181,61 @@
                                     <div class="comment-header">
                                         <span class="comment-author">
                                             <%= comment.author_name %>
+
                                             <% if (comment.is_admin) { %>
-                                                <span class="admin-badge" title="Administrateur"><i class="fas fa-shield-alt" aria-hidden="true"></i> Admin</span>
+                                                <span class="admin-badge" title="Administrateur">
+                                                    <i class="fas fa-shield-alt" aria-hidden="true"></i> Admin
+                                                </span>
                                             <% } %>
-                                        </span>
-                                        <span class="comment-date">
-                                            &bull; <%= new Date(comment.created_at).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }) %>
+
+                                            <% if (!comment.is_admin && (comment.comment_count > 0 || comment.like_count > 0)) { %>
+
+                                                <% if (comment.comment_count >= 10) { %>
+                                                    <span class="reward-badge gold" title="Expert (10+ messages)"><i class="fas fa-crown"></i></span>
+                                                <% } else if (comment.comment_count >= 5) { %>
+                                                    <span class="reward-badge green" title="Bavard (5+ messages)"><i class="fas fa-comments"></i></span>
+                                                <% } else if (comment.comment_count >= 1) { %>
+                                                    <span class="reward-badge blue" title="Premier message"><i class="fas fa-comment"></i></span>
+                                                <% } %>
+
+                                                <% if (comment.like_count >= 5) { %>
+                                                    <span class="reward-badge red" title="Super Fan (5+ likes)"><i class="fas fa-heart"></i></span>
+                                                <% } else if (comment.like_count >= 1) { %>
+                                                <% } %>
+
+                                            <% } %>
                                         </span>
                                     </div>
 
                                     <div class="comment-text"><%= comment.content %></div>
 
                                     <div class="comment-actions">
-                                        <button class="btn-text reply-btn" data-id="<%= comment.id %>" data-author="<%= comment.author_name %>" aria-label="Répondre au commentaire de <%= comment.author_name %>">
+                                        <button class="btn-text reply-btn" 
+                                                data-id="<%= comment.id %>" 
+                                                data-author="<%= comment.author_name %>" 
+                                                aria-label="Répondre au commentaire de <%= comment.author_name %>">
                                             <i class="fas fa-reply" aria-hidden="true"></i> <%= t('comments.reply') || 'Répondre' %>
                                         </button>
 
-                                        <% if (locals.username) { %>
+                                        <% 
+                                            // 1. Est-ce que je suis le propriétaire de ce commentaire ?
+                                            // (Il faut que locals.guest existe ET que les ID correspondent)
+                                            const isOwner = (locals.guest && comment.guest_id) && (locals.guest.id === comment.guest_id);
+                                            
+                                            // 2. Est-ce que je suis admin ?
+                                            const isAdmin = locals.username;
+
+                                            // 3. Résultat final
+                                            const canDelete = isAdmin || isOwner;
+                                        %>
+
+                                        <% if (canDelete) { %>
                                             <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST" 
-                                                  data-confirm="<%= t('admin_page.delete_confirm') %>" 
-                                                  style="display: inline; margin-left: 10px;">
-                                                <button type="submit" class="btn-text btn-text-danger" aria-label="Supprimer ce commentaire"><i class="fas fa-trash" aria-hidden="true"></i></button>
-                                            </form>
-                                        <% } else if (locals.cookies && locals.cookies['can_delete_' + comment.id]) { %>
-                                            <form action="/admin/comments/delete/<%= comment.id %>?returnTo=/entree/<%= article.id %>" method="POST" 
-                                                  data-confirm="<%= t('admin_page.delete_confirm') %>" 
-                                                  style="display: inline; margin-left: 10px;">
-                                                <button type="submit" class="btn-text btn-text-danger" aria-label="Supprimer mon commentaire"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                                                data-confirm="<%= t('admin_page.delete_confirm') %>" 
+                                                style="display: inline; margin-left: 10px;">
+                                                <button type="submit" class="btn-icon-danger" title="Supprimer (Auteur)" aria-label="Supprimer mon commentaire">
+                                                    <i class="fas fa-trash-alt" aria-hidden="true"></i>
+                                                </button>
                                             </form>
                                         <% } %>
                                     </div>

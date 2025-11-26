@@ -2528,3 +2528,16 @@ div.swal2-container {
 body.zen-mode #table-of-contents {
     display: none;
 }
+
+/* --- Badges de Gamification --- */
+.reward-badge {
+    font-size: 0.85rem;
+    margin-left: 6px;
+    vertical-align: middle;
+    cursor: help; /* Petit point d'interrogation au survol */
+}
+
+.reward-badge.gold { color: #ffc107; }
+.reward-badge.green { color: #28a745; }
+.reward-badge.blue { color: #17a2b8; }
+.reward-badge.red { color: #dc3545; }
