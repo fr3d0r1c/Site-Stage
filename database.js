@@ -3,9 +3,19 @@ const fs = require('fs');
 const path = require('path');
 
 // Connexion à la BDD
-const db = new sqlite3.Database(process.env.NODE_ENV === 'test' ? ':memory:' : 'blog.db', (err) => {
-    if (err) console.error("❌ Erreur connexion BDD:", err.message);
-    else console.log("✅ Connecté à la base de données SQLite.");
+const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : 'blog.db';
+
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+        console.error("❌ Erreur connexion BDD:", err.message);
+    } else {
+        console.log(`✅ Connecté à la base de données SQLite (${dbPath}).`);
+
+        db.run("PRAGMA foreign_keys = ON", (err) => {
+            if (err) console.error("Erreur activation Foreign Keys:", err);
+            else console.log("🔑 Clés étrangères activées (Cascade Delete actif).");
+        });
+    }
 });
 
 // --- SYSTÈME DE MIGRATION ---

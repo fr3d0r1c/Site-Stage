@@ -1,0 +1,16 @@
+<%- include('partials/header', { pageTitle: 'Erreur 500' }) %>
+
+<div class="static-page error-container">
+    <div class="error-content">
+        <h1 class="error-code" style="color: var(--c-danger);">500</h1>
+        <h2 class="error-title">Erreur Interne du Serveur</h2>
+        <p class="error-message">Oups ! Quelque chose s'est mal passé de notre côté.</p>
+        <p style="font-size: 0.9rem; color: #888;">L'incident a été enregistré. Veuillez réessayer plus tard.</p>
+
+        <div style="margin-top: 2rem;">
+            <a href="/" class="btn">Retour à l'accueil</a>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

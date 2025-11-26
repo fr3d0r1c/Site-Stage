@@ -2856,6 +2856,15 @@ app.use((req, res, next) => {
     });
 });
 
+// --- GESTION DES ERREURS SERVEUR (500) ---
+app.use((err, req, res, next) => {
+    console.error("💥 ERREUR SERVEUR :", err.stack); // Log l'erreur dans la console serveur
+    res.status(500).render('500', {
+        pageTitle: 'Erreur Serveur',
+        activePage: ''
+    });
+});
+
 // DÉMARRAGE SERVEUR
 
 module.exports = { app, db };

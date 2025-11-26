@@ -69,7 +69,7 @@
             <article class="entry-card">
                 <% if (entry.coverImage) { %>
                     <a href="/entree/<%= entry.id %>" class="card-image-link">
-                        <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image">
+                        <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image" loading="lazy">
                     </a>
                 <% } %>
                 <div class="card-body">
