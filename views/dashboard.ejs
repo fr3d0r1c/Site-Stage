@@ -49,6 +49,33 @@
         <canvas id="tagsChart" data-stats='<%- JSON.stringify(tagData || []) %>'></canvas>
     </div>
 
+    <hr>
+
+    <div class="backup-zone" style="grid-column: span 2; background: var(--c-background); border: 1px dashed var(--c-border); padding: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+
+        <div style="flex: 1;">
+            <h3 style="margin: 0 0 5px 0; font-size: 1rem;">1. Sauvegarder</h3>
+            <a href="/admin/backup" class="btn btn-secondary" style="width: 100%; box-sizing: border-box;">
+                <i class="fas fa-download"></i> Télécharger .db
+            </a>
+        </div>
+
+        <div style="flex: 1;">
+            <h3 style="margin: 0 0 5px 0; font-size: 1rem;">2. Restaurer</h3>
+<form action="/admin/restore" method="POST" enctype="multipart/form-data" 
+                  onsubmit="return confirm('⚠️ ATTENTION : Ceci va ÉCRASER toutes les données actuelles par celles du fichier. Continuer ?');"
+                  style="display: flex; gap: 5px;">
+                
+                <input type="file" name="backup_file" accept=".db" required 
+                       style="font-size: 0.8rem; width: 100%;">
+                
+                <button type="submit" class="btn btn-danger" style="padding: 5px 10px;">
+                    <i class="fas fa-upload"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
 </div>
 
 <style>

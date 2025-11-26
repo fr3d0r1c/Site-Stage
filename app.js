@@ -343,183 +343,9 @@ const cacheMiddleware = (duration) => (req, res, next) => {
 };
 
 // =================================================================
-// 4. CONNEXION À LA BASE DE DONNÉES ET CRÉATION DES TABLES
+// 4. BASE DE DONNÉES
 // =================================================================
-
-// Choisit la BDD : en mémoire (vide) pour les tests, ou le fichier pour le dev/prod
-const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : './blog.db';
-
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    // Log fatal si la BDD échoue
-    console.error("Erreur fatale: Impossible de se connecter à la base de données SQLite.", err);
-    process.exit(1); // Quitte l'application si la BDD ne peut pas s'ouvrir
-  }
-  console.log(`Connecté à la base de données SQLite : ${dbPath}`);
-
-  // Active les contraintes de clé étrangère (pour ON DELETE CASCADE)
-  db.run('PRAGMA foreign_keys = ON;', (errPragma) => {
-    if (errPragma) console.error("Erreur activation clés étrangères:", errPragma);
-  });
-});
-
-// Création de la table 'articles' (version bilingue + cover + résumé)
-const createArticleTable = `
-CREATE TABLE IF NOT EXISTS articles (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  title_fr TEXT NOT NULL, title_en TEXT NOT NULL,
-  summary_fr TEXT, summary_en TEXT, -- NOUVEAUX CHAMPS
-  content_fr TEXT NOT NULL, content_en TEXT NOT NULL,
-  cover_image_url TEXT,
-  likes INTEGER DEFAULT 0,
-  views INTEGER DEFAULT 0,
-  status TEXT DEFAULT 'published',
-  publication_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-  user_id INTEGER,
-  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
-);
-`;
-db.run(createArticleTable, (err) => {
-    if (err) console.error("Erreur création table articles:", err);
-});
-
-// Création de la table 'users'
-const createUserTable = `
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  email TEXT UNIQUE,
-  avatar_url TEXT,
-  reset_token TEXT,
-  reset_token_expires INTEGER,
-  two_fa_secret TEXT,
-  two_fa_enabled INTEGER DEFAULT 0,
-  two_fa_prompted INTEGER DEFAULT 0
-);
-`;
-db.run(createUserTable, (err) => {
-     if (err) console.error("Erreur création table users:", err);
-});
-
-// Création de la table 'tags' (bilingue)
-const createTagsTable = `
-CREATE TABLE IF NOT EXISTS tags (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name_fr TEXT UNIQUE NOT NULL,
-  name_en TEXT UNIQUE NOT NULL
-);
-`;
-db.run(createTagsTable, (err) => {
-     if (err) console.error("Erreur création table tags:", err);
-});
-
-// Création de la table de liaison 'article_tags'
-const createArticleTagsTable = `
-CREATE TABLE IF NOT EXISTS article_tags (
-  article_id INTEGER, tag_id INTEGER,
-  FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
-  FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE,
-  PRIMARY KEY (article_id, tag_id)
-);
-`;
-db.run(createArticleTagsTable, (err) => {
-    if (err) console.error("Erreur création table article_tags:", err);
-});
-
-// Création de la table 'comments'
-const createCommentsTable = `
-CREATE TABLE IF NOT EXISTS comments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  article_id INTEGER NOT NULL,
-  parent_id INTEGER DEFAULT NULL,
-  guest_id TEXT, -- NOUVEAU : Lien vers l'invité
-  author_name TEXT NOT NULL,
-  author_email TEXT,
-  author_avatar TEXT,
-  content TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  is_approved INTEGER DEFAULT 1,
-  is_admin INTEGER DEFAULT 0,
-  delete_token TEXT,
-  FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
-  FOREIGN KEY (parent_id) REFERENCES comments (id) ON DELETE CASCADE,
-  FOREIGN KEY (guest_id) REFERENCES guests (id) ON DELETE SET NULL
-);
-`;
-db.run(createCommentsTable, (err) => {
-    if (err) console.error("Erreur création table comments:", err);
-});
-
-// Création de la table 'audit_logs'
-const createAuditTable = `
-CREATE TABLE IF NOT EXISTS audit_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER,
-  username TEXT,
-  action TEXT NOT NULL,      
-  details TEXT,              
-  ip_address TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-`;
-db.run(createAuditTable, (err) => {
-    if (err) console.error("Erreur création table audit_logs:", err);
-});
-
-// Création de la table 'guests' (Comptes Invités)
-const createGuestsTable = `
-CREATE TABLE IF NOT EXISTS guests (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT,
-  avatar_style TEXT DEFAULT 'bottts',
-  comment_count INTEGER DEFAULT 0, -- NOUVEAU
-  like_count INTEGER DEFAULT 0,    -- NOUVEAU
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-`;
-db.run(createGuestsTable);
-
-// Création de la table 'article_likes'
-const createLikesTable = `
-CREATE TABLE IF NOT EXISTS article_likes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  article_id INTEGER NOT NULL,
-  user_id INTEGER,
-  guest_id TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-  FOREIGN KEY (guest_id) REFERENCES guests (id) ON DELETE CASCADE,
-  UNIQUE(article_id, user_id),
-  UNIQUE(article_id, guest_id)
-);
-`;
-db.run(createLikesTable);
-
-const createSubscribersTable = `
-CREATE TABLE IF NOT EXISTS subscribers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  email TEXT UNIQUE NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-`;
-db.run(createSubscribersTable);
-
-// Création de la table 'contact_messages'
-const createContactTable = `
-CREATE TABLE IF NOT EXISTS contact_messages (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT,
-  email TEXT,
-  subject TEXT, -- NOUVEAU : L'objet du message
-  message TEXT,
-  is_read INTEGER DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-`;
-db.run(createContactTable);
+const db = require('./database');
 
 // =================================================================
 // 5. FONCTION HELPER POUR LES TAGS
@@ -2295,6 +2121,162 @@ app.get('/admin/backup', isAuthenticated, (req, res) => {
         }
     });
 });
+app.post('/admin/restore', isAuthenticated, upload.single('backup_file'), (req, res) => {
+    if (!req.file) {
+        req.session.flashMessage = { type: 'error', text: 'Aucun fichier fourni.' };
+        return res.redirect('/admin/dashboard');
+    }
+
+    const fs = require('fs');
+    const path = require('path');
+
+    const uploadedFilePath = req.file.path;
+    const dbPath = path.join(__dirname, 'blog.db');
+
+    try {
+        fs.copyFileSync(uploadedFilePath, dbPath);
+        fs.unlinkSync(uploadedFilePath);
+
+        console.log("♻️ BDD restaurée. Envoi de la page d'attente...");
+
+        res.set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com");
+
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Restauration en cours...</title>
+                
+                <link rel="stylesheet" href="/css/style.css">
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+                <style>
+                    body {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        background-color: var(--c-background);
+                        color: var(--c-text);
+                        margin: 0;
+                    }
+                    .restore-card {
+                        background: var(--c-surface);
+                        padding: 3rem;
+                        border-radius: 16px;
+                        box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+                        text-align: center;
+                        max-width: 450px;
+                        width: 90%;
+                        border: 1px solid var(--c-border);
+                        animation: fadeIn 0.5s ease;
+                    }
+                    .icon-box {
+                        width: 80px; height: 80px;
+                        background: rgba(40, 167, 69, 0.1);
+                        color: #28a745;
+                        border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        margin: 0 auto 1.5rem auto;
+                        font-size: 2.5rem;
+                    }
+                    h1 { margin: 0 0 10px 0; font-size: 1.8rem; color: var(--c-text); }
+                    p { color: var(--c-text-light); margin-bottom: 2rem; line-height: 1.5; }
+                    
+                    /* Status text qui change */
+                    #status { font-weight: bold; color: var(--c-primary); transition: color 0.3s; }
+
+                    /* Barre de chargement */
+                    .loader-bar {
+                        width: 100%; height: 6px; background: var(--c-border);
+                        border-radius: 3px; overflow: hidden; margin-top: 20px;
+                    }
+                    .loader-progress {
+                        width: 0%; height: 100%; background: var(--c-primary);
+                        border-radius: 3px;
+                        animation: loading 3s ease-in-out infinite;
+                    }
+                    @keyframes loading { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }
+                    @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+                </style>
+            </head>
+            <body>
+                <div class="restore-card">
+                    <div class="icon-box">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    
+                    <h1>Succès !</h1>
+                    <p>La base de données a été mise à jour.<br>Le serveur redémarre pour appliquer les changements.</p>
+                    
+                    <div id="status-container">
+                        <i class="fas fa-sync fa-spin" style="margin-right: 8px;"></i>
+                        <span id="status">Redémarrage en cours...</span>
+                    </div>
+
+                    <div class="loader-bar">
+                        <div class="loader-progress"></div>
+                    </div>
+                </div>
+
+                <script>
+                    let attempts = 0;
+                    const statusText = document.getElementById('status');
+                    const iconBox = document.querySelector('.icon-box');
+                    const progress = document.querySelector('.loader-progress');
+
+                    // 1. Délai initial (3s) pour laisser le serveur s'éteindre
+                    setTimeout(() => {
+                        
+                        // 2. Boucle de vérification
+                        const checkServer = setInterval(() => {
+                            attempts++;
+                            statusText.innerText = "Reconnexion... (Tentative " + attempts + ")";
+                            
+                            fetch('/admin/dashboard?t=' + Date.now(), { method: 'HEAD' })
+                                .then(response => {
+                                    if (response.ok) {
+                                        // SUCCÈS : SERVEUR REVENU
+                                        clearInterval(checkServer);
+                                        
+                                        statusText.innerText = "Serveur prêt ! Redirection...";
+                                        statusText.style.color = "#28a745"; // Vert
+                                        
+                                        // Animation de fin
+                                        progress.style.animation = 'none';
+                                        progress.style.width = '100%';
+                                        progress.style.background = '#28a745';
+
+                                        setTimeout(() => {
+                                            window.location.href = '/admin/dashboard';
+                                        }, 800);
+                                    }
+                                })
+                                .catch(err => {
+                                    // Échec, on continue d'attendre
+                                    console.log("Serveur injoignable...");
+                                });
+                        }, 1500); // Vérifie toutes les 1.5 secondes
+
+                    }, 3000);
+                </script>
+            </body>
+            </html>
+        `);
+
+        setTimeout(() => {
+            console.log("👋 Arrêt du processus pour redémarrage...");
+            process.exit(0); 
+        }, 3000);
+
+    } catch (error) {
+        console.error("Erreur restauration:", error);
+        req.session.flashMessage = { type: 'error', text: 'Erreur critique lors de la restauration.' };
+        res.redirect('/admin/dashboard');
+    }
+});
 app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
 
@@ -2366,7 +2348,6 @@ app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
         }
     });
 });
-
 app.get('/admin/2fa', isAuthenticated, (req, res) => {
     const userId = req.session.userId;
 
