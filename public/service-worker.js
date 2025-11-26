@@ -1,4 +1,4 @@
-const CACHE_NAME = 'carnet-stage-v5'; // INC: Changez ce numéro à chaque grosse mise à jour
+const CACHE_NAME = 'carnet-stage-v6'; // INC: Changez ce numéro à chaque grosse mise à jour
 const ASSETS_TO_CACHE = [
     '/',
     '/offline.html',

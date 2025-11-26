@@ -125,53 +125,47 @@ app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // 2. Sécurité & Parsers
 app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"], // N'autorise que le même domaine par défaut
-        scriptSrc: [
-            "'self'",
-            "https://cdn.jsdelivr.net",
-            "https://unpkg.com",
-            "https://cdnjs.cloudflare.com"
-        ],
-        styleSrc: [
-            "'self'",
-            "'unsafe-inline'", // Nécessaire pour certains styles injectés par JS
-            "https://cdn.jsdelivr.net",
-            "https://unpkg.com",
-            "https://cdnjs.cloudflare.com",
-            "https://fonts.googleapis.com",
-        ],
-        imgSrc: [
-            "'self'",
-            "data:",
-            "https:", // Autorise toutes les images externes
-            "blob:"
-        ],
-        fontSrc: [
-            "'self'",
-            "https://cdnjs.cloudflare.com",
-            "https://fonts.gstatic.com",
-            "https://unpkg.com"
-        ],
-        connectSrc: [
-            "'self'",
-            "https://cdn.jsdelivr.net",
-            "https://unpkg.com",
-            "https://cdnjs.cloudflare.com", // <-- INDISPENSABLE pour FontAwesome
-            "https://fonts.googleapis.com", // <-- INDISPENSABLE pour les polices
-            "https://fonts.gstatic.com",
-            "https://api.dicebear.com",      // <-- Pour les avatars
-        ],
-        objectSrc: ["'none'"],
-        upgradeInsecureRequests: [],
-        manifestSrc: ["'self'"]
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "same-site" },
-  })
+    helmet({
+        crossOriginEmbedderPolicy: false,
+        referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                connectSrc: [
+                    "'self'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://cdnjs.cloudflare.com", 
+                    "https://fonts.googleapis.com", "https://fonts.gstatic.com", "https://api.dicebear.com", 
+                    "https://maxcdn.bootstrapcdn.com"
+                ],
+                scriptSrc: [
+                    "'self'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://cdnjs.cloudflare.com"
+                ],
+                styleSrc: [
+                    "'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com", 
+                    "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com", "https://maxcdn.bootstrapcdn.com"
+                ],
+                fontSrc: [
+                    "'self'", "data:", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com", 
+                    "https://maxcdn.bootstrapcdn.com", "https://unpkg.com"
+                ],
+                imgSrc: ["'self'", "data:", "https:", "blob:"],
+                frameSrc: [
+                    "'self'",
+                    "https://www.youtube.com",
+                    "https://youtube.com",
+                    "https://www.youtube-nocookie.com",
+                    "https://player.vimeo.com"
+                ],
+                childSrc: [
+                    "'self'",
+                    "https://www.youtube.com",
+                    "https://youtube.com",
+                    "https://www.youtube-nocookie.com",
+                    "https://player.vimeo.com"
+                ],
+                upgradeInsecureRequests: [],
+            },
+        },
+    })
 );
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -656,41 +650,44 @@ function nestComments(comments) {
  * Gère l'insertion SQL, les notifications et la redirection.
  */
 function insertComment(req, res, articleId, parentId, author_name, author_email, author_avatar, content, isApproved, isAdmin, guestId) {
-
+    
     const sql = `INSERT INTO comments (article_id, parent_id, guest_id, author_name, author_email, author_avatar, content, is_approved, is_admin, delete_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-    const parentIdValue = parentId ? parseInt(parent_id) : null;
-    const deleteToken = isAdmin ? null : crypto.randomUUID();
+    
+    const parentIdValue = parentId ? parseInt(parentId) : null;
+    const deleteToken = isAdmin ? null : crypto.randomUUID(); 
 
     db.run(sql, [articleId, parentIdValue, guestId, author_name, author_email, author_avatar, content, isApproved, isAdmin, deleteToken], function(err) {
         if (err) { 
-            console.error("Erreur BDD Commentaire:", err);
-            req.session.flashMessage = { type: 'error', text: 'Erreur technique lors de l\'enregistrement.' };
-            return req.session.save(() => res.redirect(`/entree/${articleId}`));
+            // ... (Gestion erreur inchangée)
+            console.error(err);
+            return res.redirect('back');
         }
-
-        // --- CORRECTION : GAMIFICATION (Incrémenter le compteur) ---
+        
+        // 1. Gamification (Invité)
         if (guestId) {
-            db.run('UPDATE guests SET comment_count = comment_count + 1 WHERE id = ?', [guestId], (errGame) => {
-                if(errGame) console.error("Erreur gamification:", errGame);
-            });
+            db.run('UPDATE guests SET comment_count = comment_count + 1 WHERE id = ?', [guestId]);
         }
 
-        if (!isAdmin) {
+        // 2. Notification ADMIN (Si nouveau fil de discussion)
+        if (!isAdmin && !parentIdValue) {
              sendAdminNotification(req, articleId, this.lastID, author_name, content);
         }
+
+        // 3. --- NOUVEAU : NOTIFICATION RÉPONSE (Si c'est une réponse) ---
+        if (parentIdValue) {
+            // On lance l'envoi en tâche de fond (pas de await pour ne pas ralentir l'utilisateur)
+            sendReplyNotification(articleId, parentIdValue, author_name, content);
+        }
+        // ---------------------------------------------------------------
 
         if (!req.session.flashMessage) {
              req.session.flashMessage = { type: 'success', text: 'Votre commentaire a été publié !' };
         }
-
+        
         if (deleteToken) {
-            res.cookie(`can_delete_${this.lastID}`, deleteToken, { 
-                maxAge: 365 * 24 * 60 * 60 * 1000, 
-                httpOnly: true 
-            });
+            res.cookie(`can_delete_${this.lastID}`, deleteToken, { maxAge: 31536000000, httpOnly: true });
         }
-
+        
         req.session.save(() => res.redirect(`/entree/${articleId}`));
     });
 }
@@ -780,6 +777,73 @@ function getLikesCount(articleId, res, isLiked) {
     db.get('SELECT likes FROM articles WHERE id = ?', [articleId], (err, row) => {
         res.json({ likes: row ? row.likes : 0, liked: isLiked });
     });
+}
+
+/**
+ * Envoie un email à l'auteur du commentaire parent
+ */
+
+async function sendReplyNotification(articleId, parentId, replierName, replyContent) {
+    if (!parentId || !transporter) return; // Pas de parent ou pas de mailer = stop
+
+    try {
+        const sql = `
+            SELECT c.author_name, c.author_email, c.is_admin, a.title_fr as article_title 
+            FROM comments c
+            JOIN articles a ON c.article_id = a.id
+            WHERE c.id = ?
+        `;
+
+        const parent = await new Promise((resolve, reject) => {
+            db.get(sql, [parentId], (err, row) => err ? reject(err) : resolve(row));
+        });
+
+        if (!parent) return;
+
+        let recipientEmail = parent.author_email;
+
+        if (parent.is_admin) {
+            recipientEmail = process.env.EMAIL_TO;
+        }
+
+        if (!recipientEmail || !recipientEmail.includes('@')) return;
+
+        if (parent.author_name === replierName) return;
+
+        const siteUrl = process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
+        const link = `${siteUrl}/entree/${articleId}#comment-${parentId}`; // Ancre vers le commentaire
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: recipientEmail,
+            subject: `Nouvelle réponse de ${replierName} sur "${parent.article_title}"`,
+            html: `
+                <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px;">
+                    <h2 style="color: #0056b3;">Quelqu'un a répondu à votre commentaire !</h2>
+                    <p>Bonjour <strong>${parent.author_name}</strong>,</p>
+                    <p><strong>${replierName}</strong> vient de répondre à votre message sur l'article <em>"${parent.article_title}"</em>.</p>
+                    
+                    <div style="background: #f9f9f9; border-left: 4px solid #0056b3; padding: 10px; margin: 15px 0;">
+                        <strong>Le message :</strong><br>
+                        "${replyContent}"
+                    </div>
+
+                    <p style="text-align: center; margin-top: 20px;">
+                        <a href="${link}" style="background-color: #0056b3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                            Voir la réponse
+                        </a>
+                    </p>
+                    <hr>
+                    <small style="color: #888;">Vous recevez cet email car vous suivez cette discussion sur le Carnet de Stage.</small>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`📧 Notification de réponse envoyée à ${recipientEmail}`);
+    } catch (error) {
+        console.error("Erreur notification réponse:", error);
+    }
 }
 
 // =================================================================
