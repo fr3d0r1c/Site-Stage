@@ -2803,3 +2803,64 @@ pre {
     }
     #map { height: 300px; }
 }
+
+/*
+=========================================
+--- 40. Styles pour l'Impression ---
+=========================================
+*/
+@media print {
+    /* 1. On cache tout ce qui ne sert à rien sur papier */
+    .site-header, 
+    .site-footer, 
+    .article-footer-actions, /* Likes + Commentaires */
+    .share-section,          /* Boutons partage */
+    .share-dropdown-container,
+    .prev-next-nav, 
+    .actions,                /* Boutons admin */
+    #zen-mode-btn,
+    #back-to-top,
+    #reading-progress-container,
+    .video-responsive,       /* On ne peut pas imprimer une vidéo */
+    .comments-section {
+        display: none !important;
+    }
+
+    /* 2. On nettoie le style pour l'encre */
+    body, .static-page, article {
+        background-color: white !important;
+        color: black !important;
+        font-family: 'Times New Roman', serif; /* Plus lisible sur papier */
+        font-size: 12pt;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* 3. On améliore la lisibilité des liens */
+    a {
+        text-decoration: none;
+        color: black !important;
+    }
+    /* Affiche l'URL à côté du lien pour qu'on puisse la lire sur papier */
+    .article-content a::after {
+        content: " (" attr(href) ")";
+        font-size: 0.8em;
+        font-style: italic;
+    }
+
+    /* 4. Gestion des sauts de page */
+    h1, h2, h3 {
+        page-break-after: avoid; /* Pas de saut juste après un titre */
+    }
+    img {
+        max-width: 100% !important;
+        page-break-inside: avoid; /* Ne pas couper une image en deux */
+    }
+    blockquote {
+        border-left: 2px solid #000;
+        page-break-inside: avoid;
+    }
+}

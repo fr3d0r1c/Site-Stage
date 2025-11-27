@@ -48,6 +48,10 @@
                 <div class="skill-box"><i class="fab fa-git-alt"></i> Git</div>
             </div>
 
+            <div class="skills-chart-container" style="margin: 2rem auto; max-width: 400px;">
+                <canvas id="skillsChart"></canvas>
+            </div>
+
             <h3><i class="fas fa-users"></i> <%= t('static_pages.whoami_skills_soft') %></h3>
             <div class="tags-list">
                 <span class="tag-item"><%= t('static_pages.soft_skill_1') %></span>
@@ -65,5 +69,9 @@
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="/js/chart.js"></script>
 
 <%- include('partials/footer') %>
