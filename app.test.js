@@ -10,6 +10,8 @@ nodemailer.createTransport.mockReturnValue({
 
 const { app, db } = require('./app');
 
+let agent;
+
 // On dit à Jest d'attendre la fin de la fermeture de la BDD avant de quitter
 afterAll((done) => {
   db.close((err) => {
@@ -392,5 +394,41 @@ describe('Tests fonctionnels des Commentaires', () => {
       db.get('SELECT * FROM comments WHERE content = ?', [badComment.content], (err, row) => err ? reject(err) : resolve(row));
     });
     expect(rejectedComment).toBeUndefined();
+  });
+});
+
+describe('Système de Likes', () => {
+  let articleId;
+  const guestAgent = request.agent(app); 
+  
+  beforeAll(async () => {
+    await new Promise(resolve => {
+      db.run("INSERT INTO articles (title_fr, title_en, content_fr, content_en, status) VALUES ('Test Like', 'Test Like', 'C', 'C', 'published')", function() {
+        articleId = this.lastID;
+        resolve();
+      });
+    });
+    
+    await guestAgent.post('/guest/login').send({
+      name: 'LikeurFou',
+      email: 'like@test.com',
+      avatar_style: 'bottts'
+    });
+  });
+  
+  test('POST /api/entree/:id/like - Ajoute un like', async () => {
+    const response = await guestAgent.post(`/api/entree/${articleId}/like`);
+    
+    expect(response.statusCode).toBe(200);
+    expect(response.body.likes).toBe(1);
+    expect(response.body.liked).toBe(true);
+  });
+  
+  test('POST /api/entree/:id/like - Retire le like (Toggle)', async () => {
+    const response = await guestAgent.post(`/api/entree/${articleId}/like`);
+    
+    expect(response.statusCode).toBe(200);
+    expect(response.body.likes).toBe(0);
+    expect(response.body.liked).toBe(false);
   });
 });
