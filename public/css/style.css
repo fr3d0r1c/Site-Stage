@@ -2697,3 +2697,109 @@ pre {
     height: 100%;
     border: 0;
 }
+
+/*
+=========================================
+--- 38. Animations Scroll Reveal ---
+=========================================
+*/
+
+/* État initial : Invisible et décalé vers le bas */
+.reveal {
+    opacity: 0;
+    transform: translateY(50px);
+    transition: all 0.8s cubic-bezier(0.5, 0, 0, 1);
+    will-change: opacity, transform;
+}
+
+.reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/*
+=========================================
+--- 39. Layout Interactif Parcours ---
+=========================================
+*/
+
+/* Grille 2 colonnes */
+.school-interactive-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 50% / 50% */
+    gap: 2rem;
+    align-items: start;
+}
+
+/* La colonne de gauche (Carte) reste fixe pendant le scroll */
+.map-column-sticky {
+    position: sticky;
+    top: 20px; /* Colle au haut de l'écran */
+    z-index: 10;
+}
+
+#map {
+    height: 400px;
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 2px solid var(--c-border);
+}
+
+/* Barre de contrôle sous la carte */
+.map-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    background: var(--c-surface);
+    padding: 10px;
+    border-radius: 50px;
+    border: 1px solid var(--c-border);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.nav-arrow-btn {
+    background: var(--c-primary);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.nav-arrow-btn:disabled {
+    background: var(--c-border);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Effet "Actif" sur la timeline */
+.timeline-item {
+    transition: all 0.5s ease;
+    border: 2px solid transparent;
+    padding: 10px;
+    border-radius: 8px;
+    opacity: 0.5; /* Grisé par défaut */
+}
+
+.timeline-item.active {
+    opacity: 1; /* Pleine visibilité */
+    border-color: var(--c-primary); /* Bordure colorée */
+    background-color: var(--c-background);
+    transform: scale(1.02); /* Léger zoom */
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+/* Responsive Mobile : Tout empilé */
+@media (max-width: 900px) {
+    .school-interactive-grid {
+        grid-template-columns: 1fr;
+    }
+    .map-column-sticky {
+        position: relative;
+        top: 0;
+        order: -1; /* Carte en premier */
+    }
+    #map { height: 300px; }
+}

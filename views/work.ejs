@@ -1,29 +1,73 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<div class="static-page">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<div class="static-page full-width-container">
     <h1><%= t('static_pages.work_title') %></h1>
 
-    <div class="timeline">
-        
-        <div class="timeline-item">
-            <div class="timeline-icon"><i class="fas fa-broadcast-tower"></i></div>
-            <div class="timeline-content">
-                <h2><%= t('static_pages.work_item_1_title') %></h2>
-                <span class="timeline-date"><%= t('static_pages.work_item_1_date') %></span>
-                <p><%= t('static_pages.work_item_1_desc') %></p>
+    <div class="school-interactive-grid">
+
+        <div class="map-column-sticky">
+            <div id="map" 
+                 data-locations='[
+                    { 
+                        "lat": 46.6609, "lng": 0.3617, 
+                        "title": "Laboratoire LIAS (Poitiers)", 
+                        "icon": "fa-server" 
+                    },
+                    { 
+                        "lat": 46.3237, "lng": -0.4648, 
+                        "title": "SDIS 79 (Niort)", 
+                        "icon": "fa-shield-alt" 
+                    }
+                 ]'>
+            </div>
+
+            <div class="map-navigation">
+                <button id="prev-step-btn" class="nav-arrow-btn" disabled>
+                    <i class="fas fa-chevron-left"></i> Précédent
+                </button>
+                <span id="step-indicator" style="font-weight: bold; min-width: 40px; text-align: center;">-- / --</span>
+                <button id="next-step-btn" class="nav-arrow-btn">
+                    Suivant <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
 
-        <div class="timeline-item">
-            <div class="timeline-icon"><i class="fas fa-server"></i></div>
-            <div class="timeline-content">
-                <h2><%= t('static_pages.work_item_2_title') %></h2>
-                <span class="timeline-date"><%= t('static_pages.work_item_2_date') %></span>
-                <p><%= t('static_pages.work_item_2_desc') %></p>
+        <div class="timeline-column">
+            <div class="timeline">
+
+                <div class="timeline-item" id="step-0">
+                    <div class="timeline-icon"><i class="fas fa-server"></i></div>
+                    <div class="timeline-content">
+                        <h2><%= t('static_pages.work_item_2_title') %></h2> 
+                        <h3 style="font-size: 1rem; color: var(--c-primary); margin-top:5px;">
+                            <%= t('static_pages.work_item_2_subtitle') %>
+                        </h3>
+                        <span class="timeline-date"><%= t('static_pages.work_item_2_date') %></span>
+                        <p><%= t('static_pages.work_item_2_desc') %></p>
+                    </div>
+                </div>
+
+                <div class="timeline-item" id="step-1">
+                    <div class="timeline-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div class="timeline-content">
+                        <h2><%= t('static_pages.work_item_1_title') %></h2> 
+                        <h3 style="font-size: 1rem; color: var(--c-primary); margin-top:5px;">
+                            <%= t('static_pages.work_item_1_subtitle') %>
+                        </h3>
+                        <span class="timeline-date"><%= t('static_pages.work_item_1_date') %></span>
+                        <p><%= t('static_pages.work_item_1_desc') %></p>
+                    </div>
+                </div>
+
             </div>
         </div>
-        
     </div>
-    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/js/map.js"></script>
+<script src="/js/scroll-reveal.js"></script>
 
 <%- include('partials/footer') %>
