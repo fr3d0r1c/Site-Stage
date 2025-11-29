@@ -7,7 +7,7 @@
 
         <div>
             <h2>Envoyer un message</h2>
-            <form action="/admin/newsletter/send" method="POST">
+            <form action="/admin/newsletter/send" method="POST" id="newsletter-form">
                 <div class="form-group">
                     <label>Sujet :</label>
                     <input type="text" name="subject" required placeholder="Ex: Nouvel article sur Kyoto !">
@@ -16,8 +16,9 @@
                     <label>Message :</label>
                     <textarea name="message" rows="10" required placeholder="Bonjour à tous, je viens de publier..."></textarea>
                 </div>
-                <button type="submit" class="btn" data-confirm="Confirmer l'envoi à tous les abonnés ?">
-                    <i class="fas fa-paper-plane"></i> Envoyer
+
+                <button type="submit" class="btn">
+                   <i class="fas fa-paper-plane"></i> Envoyer la Newsletter
                 </button>
             </form>
         </div>
@@ -43,5 +44,9 @@
     <hr>
     <nav><a href="/admin">Retour au Tableau de Bord</a></nav>
 </div>
+
+<script src="/js/newsletter-admin.js"></script>
+
+<%- include('partials/footer') %>
 
 <%- include('partials/footer') %>

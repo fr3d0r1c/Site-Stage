@@ -57,18 +57,17 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(event.request.url);
 
-    // A. FICHIERS CRITIQUES (HTML, CSS, JS) -> NETWORK FIRST
-    // On veut toujours la dernière version si on est en ligne.
-    const isCritical = 
-        event.request.mode === 'navigate' || // Pages HTML
-        url.pathname.endsWith('.css') ||     // Styles
-        url.pathname.endsWith('.js');        // Scripts
+    if (!url.protocol.startsWith('http')) return;
+
+    const isCritical =
+        event.request.mode === 'navigate' ||
+        url.pathname.endsWith('.css') ||
+        url.pathname.endsWith('.js');
 
     if (isCritical) {
         event.respondWith(
             fetch(event.request)
                 .then((networkResponse) => {
-                    // Si succès, on met à jour le cache pour la prochaine fois
                     const responseClone = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, responseClone);
@@ -76,11 +75,8 @@ self.addEventListener('fetch', (event) => {
                     return networkResponse;
                 })
                 .catch(async () => {
-                    // Si échec (Offline), on prend le cache
                     const cachedResponse = await caches.match(event.request);
                     if (cachedResponse) return cachedResponse;
-                    
-                    // Si c'est une page et qu'elle n'est pas en cache -> Page Offline
                     if (event.request.mode === 'navigate') {
                         return caches.match('/offline.html');
                     }
@@ -89,13 +85,9 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // B. FICHIERS LOURDS / STATIQUES (Images, Fonts) -> CACHE FIRST
-    // Eux changent rarement, on privilégie la vitesse.
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) return cachedResponse;
-
-            // Pas en cache ? On télécharge et on cache
             return fetch(event.request).then((networkResponse) => {
                 const responseClone = networkResponse.clone();
                 caches.open(CACHE_NAME).then((cache) => {
@@ -103,7 +95,6 @@ self.addEventListener('fetch', (event) => {
                 });
                 return networkResponse;
             }).catch(() => {
-                // Erreur silencieuse pour les images (évite les erreurs consoles)
                 return new Response('', { status: 408, statusText: 'Request timed out' });
             });
         })

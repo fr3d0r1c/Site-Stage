@@ -251,7 +251,7 @@
     "onboarding_desc": "We recommend enabling two-factor authentication (2FA). This protects your log by asking for a code from your phone at each login.",
     "onboarding_accept": "Enable Security (Recommended)",
     "onboarding_skip": "Later",
-    "audit_title": "🕵️‍♂️ Audit Log (Security)",
+    "audit_title": "Audit Log (Security)",
     "audit_intro": "History of the last 100 critical actions on the site.",
     "audit_col_date": "Date",
     "audit_col_user": "User",

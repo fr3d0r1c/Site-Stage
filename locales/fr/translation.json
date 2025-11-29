@@ -253,7 +253,7 @@
     "onboarding_desc": "Nous vous recommandons d'activer l'authentification à deux facteurs (2FA). Cela protège votre journal en demandant un code depuis votre téléphone à chaque connexion.",
     "onboarding_accept": "Activer la sécurité (Recommandé)",
     "onboarding_skip": "Plus tard",
-    "audit_title": "🕵️‍♂️ Journal d'Audit (Sécurité)",
+    "audit_title": "Journal d'Audit (Sécurité)",
     "audit_intro": "Historique des 100 dernières actions critiques sur le site.",
     "audit_col_date": "Date",
     "audit_col_user": "Utilisateur",
