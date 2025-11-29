@@ -1,46 +1,76 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <div class="static-page">
-    <h1>Gestion des Commentaires</h1>
-
-    <p>Voici l'historique de tous les commentaires publiés.</p>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <h1 style="margin: 0; border: none;"><i class="fas fa-comments"></i> Modération</h1>
+        <span style="background: var(--c-surface); padding: 5px 15px; border-radius: 50px; border: 1px solid var(--c-border); font-weight: bold;">
+            <%= comments.length %> commentaires
+        </span>
+    </div>
 
     <% if (comments && comments.length > 0) { %>
-        <table class="tags-table" style="width: 100%; table-layout: fixed;">
-            <thead>
-                <tr>
-                    <th style="width: 20%;">Auteur / Date</th>
-                    <th style="width: 45%;">Message</th>
-                    <th style="width: 25%;">Article</th>
-                    <th style="width: 10%;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% comments.forEach(comment => { %>
+        <div class="table-wrapper">
+            <table class="tags-table" style="width: 100%;">
+                <thead>
                     <tr>
-                        <td>
-                            <strong><%= comment.author_name %></strong><br>
-                            <small style="color: var(--c-gray);"><%= new Date(comment.created_at).toLocaleDateString() %></small>
-                        </td>
-                        <td style="word-wrap: break-word;"><%= comment.content %></td>
-                        <td><a href="/entree/<%= comment.article_id %>"><%= comment.article_title %></a></td>
-                        <td>
-                            <form action="/admin/comments/delete/<%= comment.id %>" method="POST" 
-                                  data-confirm="<%= t('admin_page.delete_confirm') %>" 
-                                  style="display: inline;">
-                                <button type="submit" class="button-small button-danger"><%= t('admin_page.delete_button') %></button>
-                            </form>
-                        </td>
+                        th style="width: 20%">Auteur</th>
+                        <th style="width: 20%">Article</th>
+                        <th style="width: 45%">Commentaire</th>
+                        <th style="width: 15%; text-align: right;">Actions</th>
                     </tr>
-                <% }); %>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <% comments.forEach(comment => { %>
+                        <tr>
+                            <td data-label="Auteur" style="vertical-align: top;">
+                                <strong><%= comment.author_name %></strong>
+                                <% if (comment.is_admin) { %>
+                                    <span class="badge-admin" style="font-size: 0.6rem; margin-left: 5px;">ADMIN</span>
+                                <% } else if (comment.guest_id) { %>
+                                    <span class="badge-guest" style="font-size: 0.6rem; margin-left: 5px;">INVITÉ</span>
+                                <% } %>
+                                <br>
+                                <small style="color: var(--c-text-light);">
+                                    <%= new Date(comment.created_at).toLocaleDateString() %>
+                                </small>
+                            </td>
+
+                            <td data-label="Article" style="vertical-align: top;">
+                                <a href="/entree/<%= comment.article_id %>#comment-<%= comment.id %>" target="_blank" style="font-weight: 500;">
+                                    <i class="fas fa-external-link-alt"></i> Voir l'article
+                                </a>
+                            </td>
+
+                            <td data-label="Contenu" style="vertical-align: top;">
+                                <div style="max-height: 100px; overflow-y: auto; white-space: pre-wrap; font-size: 0.95rem;">
+                                    <%= comment.content %>
+                                </div>
+                            </td>
+
+                            <td data-label="Actions" style="vertical-align: top; text-align: right;">
+                                <form action="/admin/comments/delete/<%= comment.id %>" method="POST" 
+                                      data-confirm="Supprimer définitivement ce commentaire ?" 
+                                      style="display: inline-block;">
+                                    <button type="submit" class="btn-icon-danger" title="Supprimer">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+        </div>
     <% } else { %>
-        <p><i>Aucun commentaire pour le moment.</i></p>
+        <div style="text-align: center; padding: 4rem 2rem; color: var(--c-text-light); border: 2px dashed var(--c-border); border-radius: 12px;">
+            <i class="far fa-comment-dots fa-3x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p style="font-size: 1.2rem;">Aucun commentaire à modérer.</p>
+        </div>
     <% } %>
 
-    <hr>
-    <nav><a href="/admin"><%= t('admin_page.back_to_admin') %></a></nav>
+    <div style="margin-top: 2rem;">
+        <a href="/admin/dashboard" class="btn-text">&larr; Retour au Tableau de Bord</a>
+    </div>
 </div>
 
 <%- include('partials/footer') %>

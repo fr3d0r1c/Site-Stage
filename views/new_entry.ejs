@@ -52,6 +52,17 @@
 
     <input type="file" id="image-upload-input" style="display: none;" accept="image/*">
 
+    <div class="form-group">
+        <label><i class="fas fa-map-marker-alt"></i> Localisation (Latitude / Longitude) :</label>
+        <div style="display: flex; gap: 10px;">
+            <input type="number" step="any" name="lat" placeholder="Lat (ex: 48.8566)" 
+                value="<%= locals.article ? article.lat : '' %>">
+            <input type="number" step="any" name="lng" placeholder="Lng (ex: 2.3522)" 
+                value="<%= locals.article ? article.lng : '' %>">
+        </div>
+        <small style="color: var(--c-text-light);">Astuce : Faites un clic droit sur Google Maps -> "Plus d'infos" pour avoir ces chiffres.</small>
+    </div>
+
     <div>
         <label for="cover_image_url"><%= t('forms.cover_image_url') %> :</label><br>
         <input type="text" id="cover_image_url" name="cover_image_url" placeholder="Collez l'URL d'une image ici...">

@@ -1,23 +1,169 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-<div class="static-page">
-    <h1>Localisation de mon Parcours</h1>
-    <p>Voici les différents lieux où j'ai étudié et travaillé.</p>
-    <hr>
+<div class="static-page full-width-container">
+    <div style="text-align: center; margin-bottom: 3rem;">
+        <h1><i class="fas fa-building"></i> L'Histoire d'Actimage</h1>
+        <p class="lead">Une aventure digitale internationale débutée en 1995.</p>
+    </div>
 
-    <div id="map" 
-         style="height: 500px; width: 100%; border-radius: 12px; border: 1px solid var(--c-border); z-index: 1;"
-         data-locations='[
-            {"lat": 47.46420, "lng": -0.49735, "title": "ESAIP", "desc": "Cycle ingénieur Informatique & Réseaux"},
-            {"lat": 47.83878, "lng": -0.33995, "title": "Lycée Raphaël Elizé", "desc": "Baccalauréat STI2D"},
-            {"lat": 46.83548, "lng": 0.53547, "title": "IUT de Châtellerault", "desc": "BUT Réseaux & Télécommunications"}
-         ]'>
+    <div class="school-interactive-grid">
+
+        <div class="map-column-sticky">
+            <div id="map" 
+                 data-locations='[
+                    { 
+                        "lat": 48.07107, "lng": 7.35588, 
+                        "title": "1995 : Les Racines (Alsace)", 
+                        "icon": "fa-seedling" 
+                    },
+                    { 
+                        "lat": 49.64823, "lng": 6.12854, 
+                        "title": "1997 : Actimage au Luxembourg", 
+                        "icon": "fa-globe-europe" 
+                    },
+                    { 
+                        "lat": 48.57843, "lng": 7.80511, 
+                        "title": "2001 : Conquête de l&#39;Allemagne", 
+                        "icon": "fa-handshake" 
+                    },
+                    { 
+                        "lat": 48.86020, "lng": 2.30021, 
+                        "title": "2009 : Cap sur Paris & R&D", 
+                        "icon": "fa-flask" 
+                    },
+                    { 
+                        "lat": 47.40371, "lng": 7.80968, 
+                        "title": "2010 : Actimage en Suisse", 
+                        "icon": "fa-mountain" 
+                    },
+                    { 
+                        "lat": 39.75533, "lng": -75.62687, 
+                        "title": "2015 : The American Dream (USA)", 
+                        "icon": "fa-flag-usa" 
+                    },
+                    { 
+                        "lat": 49.12278, "lng": 6.18863, 
+                        "title": "2019 : Ancrage à Metz", 
+                        "icon": "fa-network-wired" 
+                    }
+                 ]'>
+            </div>
+
+            <div class="map-navigation">
+                <button id="prev-step-btn" class="nav-arrow-btn" disabled>
+                    <i class="fas fa-chevron-left"></i> Précédent
+                </button>
+                <span id="step-indicator" style="font-weight: bold; min-width: 40px; text-align: center;">-- / --</span>
+                <button id="next-step-btn" class="nav-arrow-btn">
+                    Suivant <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="timeline-column">
+            <div class="timeline">
+
+                <div class="timeline-item reveal" id="step-0">
+                    <div class="timeline-icon"><i class="fas fa-seedling"></i></div>
+                    <div class="timeline-content">
+                        <h2>1995 : La Genèse</h2>
+                        <span class="timeline-date">Alsace, France</span>
+                        <p>
+                            Création d'Actimage. La société se donne pour mission d'accompagner ses partenaires dans leur transformation digitale.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="timeline-item reveal" id="step-1">
+                    <div class="timeline-icon"><i class="fas fa-globe-europe"></i></div>
+                    <div class="timeline-content">
+                        <h2>1997 : Premier pas à l'International</h2>
+                        <span class="timeline-date">Luxembourg</span>
+                        <p>
+                            Seulement deux ans après sa création, Actimage s'implante au Luxembourg, marquant le début de son expansion européenne.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="timeline-item reveal" id="step-2">
+                    <div class="timeline-icon"><i class="fas fa-handshake"></i></div>
+                    <div class="timeline-content">
+                        <h2>2001 : Actimage en Allemagne</h2>
+                        <span class="timeline-date">Stuttgart & Kehl</span>
+                        <p>
+                            L'entreprise renforce sa présence transfrontalière en s'installant en Allemagne.
+                        </p>
+                        <ul style="margin-top: 10px; color: var(--c-text-light); list-style: none; padding-left: 0;">
+                            <li><i class="fas fa-check" style="color:var(--c-primary)"></i> Initiative de la création de l’EuroGIX (Global Internet Exchange).</li>
+                            <li><i class="fas fa-check" style="color:var(--c-primary)"></i> <strong>2005 :</strong> Commercialisation d'ActiNote.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item reveal" id="step-3">
+                    <div class="timeline-icon"><i class="fas fa-flask"></i></div>
+                    <div class="timeline-content">
+                        <h2>2009 : Innovation à Paris</h2>
+                        <span class="timeline-date">Paris</span>
+                        <p>
+                            Arrivée stratégique dans la capitale française. C'est aussi l'année du lancement d'<strong>Actimage Labs</strong>, le pôle dédié à la Recherche & Développement (R&D).
+                        </p>
+                    </div>
+                </div>
+
+                <div class="timeline-item reveal" id="step-4">
+                    <div class="timeline-icon"><i class="fas fa-mountain"></i></div>
+                    <div class="timeline-content">
+                        <h2>2010 : Cap sur la Suisse</h2>
+                        <span class="timeline-date">Diegten, Suisse</span>
+                        <p>
+                            Actimage s'implante en Suisse. L'excellence technique de l'entreprise est récompensée par le <strong>Partenariat Microsoft Gold</strong>.
+                        </p>
+                        <p style="margin-top:10px; font-size:0.9rem;">
+                            <strong>2014 :</strong> Lancement des projets Editus et ActiHome.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="timeline-item reveal" id="step-5">
+                    <div class="timeline-icon"><i class="fas fa-flag-usa"></i></div>
+                    <div class="timeline-content">
+                        <h2>2015 : The American Dream</h2>
+                        <span class="timeline-date">Wilmington, USA</span>
+                        <p>
+                            Pour célébrer ses <strong>20 ans</strong>, Actimage traverse l'Atlantique et s'installe aux États-Unis.
+                        </p>
+                        <div style="background: var(--c-background); padding: 10px; border-radius: 8px; margin-top: 10px; border: 1px solid var(--c-border);">
+                            <strong>L'ère de l'Innovation :</strong>
+                            <ul style="margin: 5px 0 0 20px;">
+                                <li>2016 : Premiers projets en <strong>Réalité Mixte</strong>.</li>
+                                <li>2017 : Création du département <strong>Hololize</strong> et de l'Actimage Academy.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timeline-item reveal" id="step-6">
+                    <div class="timeline-icon"><i class="fas fa-network-wired"></i></div>
+                    <div class="timeline-content">
+                        <h2>2019 : Ancrage à Metz</h2>
+                        <span class="timeline-date">Metz, Grand Est</span>
+                        <p>
+                            L'aventure continue avec une nouvelle implantation à Metz.
+                            En <strong>2020</strong>, Actimage a célébré ses 25 ans d'existence, forte de ses 5 pôles d'expertise.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
     </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/map.js"></script>
+<script src="/js/scroll-reveal.js"></script>
 
 <%- include('partials/footer') %>

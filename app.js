@@ -191,6 +191,13 @@ app.use(session({
 // 4. Middleware "PONT" (Global)
 app.use(async (req, res, next) => {
 
+    if (req.query.lng) {
+        res.cookie('i18next', req.query.lng, {
+            maxAge: 365 * 24 * 60 * 60 * 1000,
+            httpOnly: false
+        });
+    }
+
     res.locals.username = req.session.username;
     res.locals.userId = req.session.userId;
 
@@ -848,7 +855,7 @@ app.get('/chronologie', (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
 
     // Récupère tous les articles publiés, triés par date (le plus vieux en premier pour une frise logique)
-    const sql = `SELECT id, title_${lang} as title, publication_date, cover_image_url FROM articles WHERE status = 'published' ORDER BY publication_date ASC`;
+    const sql = `SELECT id, title_${lang} as title, publication_date, cover_image_url, summary_${lang} as summary, lat, lng FROM articles WHERE status = 'published' ORDER BY publication_date ASC`;
 
     db.all(sql, [], (err, rows) => {
         res.render('timeline-journal', {
@@ -2361,7 +2368,7 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
     });
 });
 app.post('/journal', isAuthenticated, async (req, res) => {
-    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags, action } = req.body;
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags, action, lat, lng } = req.body;
     let summary_en = req.body.summary_en;
     const userId = req.session.userId;
 
@@ -2381,11 +2388,11 @@ app.post('/journal', isAuthenticated, async (req, res) => {
 
     const sqlInsertArticle = `
         INSERT INTO articles 
-        (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url, status, views, likes) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)
+        (title_fr, title_en, summary_fr, summary_en, content_fr, content_en, user_id, cover_image_url, status, views, likes, lat, lng)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)
     `;
 
-    db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url, status], async function(err) {
+    db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url, status, lat || null, lng || null], async function(err) {
         if (err) { 
             console.error("Erreur BDD (Insert):", err);
             flashAndRedirect(req, res, 'error', 'Erreur lors de la création.', '/journal/nouvelle');
@@ -2439,7 +2446,7 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
 });
 app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     const id = req.params.id;
-    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags, action } = req.body;
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags, action, lat, lng} = req.body;
     let summary_en = req.body.summary_en;
 
     const status = (action === 'draft') ? 'draft' : 'published';
@@ -2462,11 +2469,11 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
         const sqlUpdateArticle = `
             UPDATE articles SET 
             title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, 
-            content_fr = ?, content_en = ?, cover_image_url = ?, status = ? 
+            content_fr = ?, content_en = ?, cover_image_url = ?, status = ?, lat = ?, lng = ?
             WHERE id = ?
         `;
 
-        db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, status, id], async function(err) {
+        db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, status, id, lat || null, lng || null, id], async function(err) {
             if (err) {
                 console.error("Erreur Update:", err);
                 flashAndRedirect(req, res, 'error', 'Erreur lors de la modification.', `/entree/${id}/edit`, err.message);

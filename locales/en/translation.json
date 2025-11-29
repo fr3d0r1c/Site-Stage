@@ -54,7 +54,8 @@
     "published_on": "Published on",
     "prev_entry": "Previous Entry",
     "next_entry": "Next Entry",
-    "similar_posts": "You might also like..."
+    "similar_posts": "You might also like...",
+    "chronology": "Chronology"
   },
   "general": {
     "logo": "Internship Log",

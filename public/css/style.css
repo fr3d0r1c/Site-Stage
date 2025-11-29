@@ -5,18 +5,18 @@
 */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
+/* --- THÈME PAR DÉFAUT : "CLASSIQUE" --- */
 :root {
-    /* --- THÈME PAR DÉFAUT : "CLASSIQUE" --- */
-    --c-primary: #0056b3; /* Bleu assombri (pour contraste accessibilité) */
-    --c-primary-rgb: 0, 86, 179; /* RGB de #0056b3 */
-    --c-text: #222222; /* Texte presque noir */
+    --c-primary: #007bff;
+    --c-primary-hover: #0056b3;
+    --c-text: #222222;
     --c-button-text: #ffffff;
     --c-text-light: #555555;
     --c-border: #eeeeee;
     --c-background: #f9f9f9;
     --c-surface: #ffffff;
     --c-danger: #ff3b30;
-    --c-gray: #767676; /* Assombri (pour contraste accessibilité) */
+    --c-gray: #767676;
 
     --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --border-radius: 12px;
@@ -24,16 +24,16 @@
 
 /* --- THÈME DARK --- */
 body.theme-dark {
-    --c-primary: #4dd0e1; /* Cyan éclairci (pour contraste accessibilité) */
-    --c-primary-rgb: 0, 224, 235; /* RGB de #00e0eb */
-    --c-text: #eeeeee;
+    --c-primary: #4dd0e1;
+    --c-primary-hover: #26c6da;
+    --c-text: #e0e0e0;
     --c-button-text: #222831;
-    --c-text-light: #d1d1d1; /* Éclairci (pour contraste accessibilité) */
-    --c-background: #222831;
-    --c-surface: #393e46;
-    --c-border: #4a4a4a;
+    --c-text-light: #b0b0b0;
+    --c-background: #121212;
+    --c-surface: #1e1e1e;
+    --c-border: #333333;
     --c-danger: #e74c3c;
-    --c-gray: #d0d0d0; /* Éclairci (pour contraste accessibilité) */
+    --c-gray: #d0d0d0;
 }
 
 /* --- THÈME SEPIA --- */
@@ -55,14 +55,18 @@ body.theme-sepia {
 --- 2. Style Général ---
 =========================================
 */
+* { box-sizing: border-box; }
+
 body {
     font-family: var(--font-main);
     line-height: 1.6;
     background-color: var(--c-background);
     color: var(--c-text);
     margin: 0;
+    padding: 0;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .container {
@@ -129,11 +133,13 @@ hr {
 
 body.theme-dark .site-logo { filter: brightness(1.2) contrast(1.1); }
 body.theme-sepia .site-logo { filter: none; }
+
 .header-controls { display: flex; align-items: center; gap: 1rem; }
-.language-switcher { display: flex; align-items: center; gap: 0.5rem; margin-left: 0; padding: 0; flex-shrink: 0; }
-.language-switcher .fi { font-size: 1.4em; line-height: 1; display: block; }
-.language-switcher span { color: var(--c-border); }
-.language-switcher a:hover { text-decoration: none; }
+.language-switcher { display: flex; gap: 8px; }
+.language-switcher a { opacity: 0.5; transition: 0.3s; border-radius: 100%; }
+.language-switcher a.active, .language-switcher a:hover { opacity: 1; transform: scale(1.1); }
+.fi { width: 1.5em; height: 1.5em; border-radius: 100%; display: block; }
+
 .nav-toggle { display: none; cursor: pointer; background: transparent; border: 0; padding: 0; width: 2em; height: 2em; z-index: 1001; }
 .hamburger, .hamburger::before, .hamburger::after { content: ''; display: block; background: var(--c-text); height: 3px; width: 100%; border-radius: 3px; transition: all .3s ease-in-out; }
 .hamburger::before { transform: translateY(-8px); }
@@ -2862,5 +2868,69 @@ pre {
     blockquote {
         border-left: 2px solid #000;
         page-break-inside: avoid;
+    }
+}
+
+mark {
+    background-color: #ffecb5;
+    color: #664d03;
+    padding: 0 2px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+body.theme-dark mark {
+    background-color: #5c4a08;
+    color: #ffecb5;
+}
+
+/*
+=========================================
+--- 41. Tableaux Responsive (Admin) ---
+=========================================
+*/
+@media (max-width: 768px) {
+    .tags-table, .tags-table thead, .tags-table tbody, .tags-table th, .tags-table td, .tags-table tr {
+        display: block;
+    }
+
+    .tags-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .tags-table tr {
+        border: 1px solid var(--c-border);
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        background: var(--c-background);
+        padding: 10px;
+    }
+
+    .tags-table td {
+        border: none;
+        border-bottom: 1px solid var(--c-border);
+        position: relative;
+        padding-left: 40%;
+        text-align: right;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .tags-table td:last-child {
+        border-bottom: none;
+    }
+
+    .tags-table td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        color: var(--c-primary);
     }
 }

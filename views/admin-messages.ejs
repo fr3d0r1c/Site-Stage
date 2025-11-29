@@ -1,53 +1,78 @@
 <%- include('partials/header', { pageTitle: pageTitle }) %>
 
 <div class="static-page">
-    <h1>📬 Boîte de Réception</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1 style="margin: 0; border: none;"><i class="fas fa-envelope-open-text"></i> Boîte de Réception</h1>
+        <span style="background: var(--c-surface); padding: 5px 15px; border-radius: 50px; border: 1px solid var(--c-border); font-weight: bold;">
+            <%= messages.length %> messages
+        </span>
+    </div>
 
     <% if (locals.message) { %>
-        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;">
+        <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" style="display: none;" data-detail="<%= message.detail || '' %>">
             <%= message.text %>
         </p>
     <% } %>
 
     <% if (messages && messages.length > 0) { %>
-        <div style="overflow-x: auto;">
+        <div class="table-wrapper">
             <table class="tags-table" style="width: 100%;">
                 <thead>
                     <tr>
-                        <th style="width: 20%">Date / Nom</th>
-                        <th style="width: 60%">Message</th>
-                        <th>Action</th>
+                        <th style="width: 25%">Expéditeur / Date</th>
+                        <th style="width: 60%">Contenu</th>
+                        <th style="width: 15%; text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <% messages.forEach(msg => { %>
                         <tr>
-                            <td style="vertical-align: top;">
+                            <td data-label="Expéditeur" style="vertical-align: top;">
                                 <strong><%= msg.name %></strong><br>
-                                <small style="color: var(--c-text-light);"><%= msg.email %></small><br>
-                                <small><%= new Date(msg.created_at).toLocaleDateString() %></small>
+                                <a href="mailto:<%= msg.email %>" style="font-size: 0.9rem;"><%= msg.email %></a><br>
+                                <span style="color: var(--c-text-light); font-size: 0.85rem; margin-top: 5px; display: block;">
+                                    <i class="far fa-calendar-alt"></i> <%= new Date(msg.created_at).toLocaleDateString(i18n.language, {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) %>
+                                </span>
                             </td>
-                            <td style="vertical-align: top; white-space: pre-wrap;">
-                                <div style="font-weight: bold; margin-bottom: 5px; color: var(--c-primary);">
-                                    <%= msg.subject %>
-                                </div>
-                                <%= msg.message %>
+
+                            <td data-label="Message" style="vertical-align: top; white-space: pre-wrap;">
+                                <% if (msg.subject) { %>
+                                    <div style="font-weight: 700; color: var(--c-primary); margin-bottom: 8px; border-left: 3px solid var(--c-border); padding-left: 10px;">
+                                        <%= msg.subject %>
+                                    </div>
+                                <% } %>
+                                <div style="color: var(--c-text);"><%= msg.message %></div>
                             </td>
-                            <td style="vertical-align: top;"></td>
+
+                            <td data-label="Actions" style="vertical-align: top; text-align: right;">
+                                <a href="mailto:<%= msg.email %>?subject=Re: <%= msg.subject || 'Contact' %>" 
+                                   class="btn-text" title="Répondre">
+                                    <i class="fas fa-reply"></i> Répondre
+                                </a>
+
+                                <form action="/admin/messages/delete/<%= msg.id %>" method="POST" 
+                                      data-confirm="Supprimer définitivement ce message de <%= msg.name %> ?" 
+                                      style="display: inline-block; margin-left: 10px;">
+                                    <button type="submit" class="btn-icon-danger" title="Supprimer">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                     <% }); %>
                 </tbody>
             </table>
         </div>
     <% } else { %>
-        <div style="text-align: center; padding: 3rem; color: var(--c-text-light);">
-            <i class="far fa-envelope-open fa-3x"></i>
-            <p>Aucun message reçu.</p>
+        <div style="text-align: center; padding: 4rem 2rem; color: var(--c-text-light); border: 2px dashed var(--c-border); border-radius: 12px;">
+            <i class="far fa-envelope-open fa-3x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
+            <p style="font-size: 1.2rem;">Votre boîte de réception est vide.</p>
         </div>
     <% } %>
 
-    <hr>
-    <nav><a href="/admin">Retour au Dashboard</a></nav>
+    <div style="margin-top: 2rem;">
+        <a href="/admin/dashboard" class="btn-text">&larr; Retour au Tableau de Bord</a>
+    </div>
 </div>
 
 <%- include('partials/footer') %>
