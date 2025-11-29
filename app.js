@@ -30,7 +30,8 @@ const { randomUUID } = require('crypto');
 const RSS = require('rss');
 const NodeCache = require('node-cache');
 const { error } = require('console');
-
+const compression = require('compression');
+const os = require('os');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -120,7 +121,8 @@ const myCache = new NodeCache();
 // 3. MIDDLEWARES
 // =================================================================
 
-// 1. Fichiers Statiques (CSS/JS/Images) -> TOUJOURS EN PREMIER
+app.use(compression());
+
 app.use(express.static('public'));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
@@ -179,7 +181,7 @@ app.use(session({
     saveUninitialized: false,
     store: new SQLiteStore({ db: 'sessions.db', dir: '.' }),
     cookie: { 
-        secure: /*process.env.NODE_ENV === 'production',*/ false,
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
         sameSite: 'strict',
         maxAge: 1000 * 60 * 60 * 24
@@ -1886,7 +1888,6 @@ app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
 app.get('/admin', isAuthenticated, (req, res) => {
     res.redirect('/admin/dashboard');
 });
-
 app.get('/admin/dashboard', isAuthenticated, (req, res) => {
     
     // 1. Stats par SEMAINE (Numéro de semaine)
@@ -1942,6 +1943,36 @@ app.get('/admin/dashboard', isAuthenticated, (req, res) => {
     }).catch(err => {
         console.error("Erreur Dashboard:", err);
         res.status(500).send("Erreur lors de la génération du tableau de bord.");
+    });
+});
+app.get('/admin/status', isAuthenticated, (req, res) => {
+
+    const uptimeSeconds = process.uptime();
+    const hours = Math.floor(uptimeSeconds / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    const seconds = Math.floor(uptimeSeconds % 60);
+    const uptimeString = `${hours}h ${minutes}m ${seconds}s`;
+
+    const usedMemory = process.memoryUsage().rss / 1024 / 1024;
+    const totalMemory = os.totalmem() / 1024 / 1024 / 1024;
+
+    const start = Date.now();
+    db.get('SELECT 1', [], (err) => {
+        const latency = Date.now() - start;
+
+        res.render('admin-status', {
+            pageTitle: 'État du Serveur',
+            activePage: 'admin',
+            systemInfo: {
+                uptime: uptimeString,
+                memory: `${Math.round(usedMemory)} MB`,
+                totalMem: `${totalMemory.toFixed(1)} GB`,
+                platform: os.type() + ' ' + os.release(),
+                nodeVersion: process.version,
+                dbLatency: `${latency} ms`,
+                dbStatus: err ? 'Erreur' : 'Connecté 🟢'
+            }
+        });
     });
 });
 app.get('/admin/audit', isAuthenticated, (req, res) => {

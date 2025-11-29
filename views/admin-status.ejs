@@ -1,0 +1,93 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1><i class="fas fa-heartbeat" style="color: var(--c-danger);"></i> État du Système</h1>
+        <a href="/admin/status" class="btn btn-secondary">
+            <i class="fas fa-sync-alt"></i> Actualiser
+        </a>
+    </div>
+
+    <p>Métriques en temps réel du serveur Node.js et de la base de données.</p>
+    <hr>
+
+    <div class="status-grid">
+
+        <div class="status-card">
+            <div class="icon"><i class="fas fa-clock"></i></div>
+            <div class="data">
+                <h3>Uptime</h3>
+                <p class="value"><%= systemInfo.uptime %></p>
+                <small>Temps depuis le dernier démarrage</small>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <div class="icon"><i class="fas fa-memory"></i></div>
+            <div class="data">
+                <h3>Mémoire (RAM)</h3>
+                <p class="value"><%= systemInfo.memory %></p>
+                <small>Utilisée par l'app (sur <%= systemInfo.totalMem %> total)</small>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <div class="icon"><i class="fas fa-database"></i></div>
+            <div class="data">
+                <h3>SQLite</h3>
+                <p class="value"><%= systemInfo.dbStatus %></p>
+                <small>Latence : <strong><%= systemInfo.dbLatency %></strong></small>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <div class="icon"><i class="fas fa-server"></i></div>
+            <div class="data">
+                <h3>Système</h3>
+                <p class="value"><%= systemInfo.platform %></p>
+                <small>Node.js <%= systemInfo.nodeVersion %></small>
+            </div>
+        </div>
+
+
+    </div>
+
+    <div style="margin-top: 2rem; text-align: center;">
+        <a href="/admin/dashboard" class="btn-text">&larr; Retour au Dashboard</a>
+    </div>
+</div>
+
+<style>
+    .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+    .status-card {
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
+    }
+    .status-card:hover { transform: translateY(-5px); border-color: var(--c-primary); }
+
+    .status-card .icon {
+        width: 50px; height: 50px;
+        background: rgba(0, 123, 255, 0.1);
+        color: var(--c-primary);
+        border-radius: 50%;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 1.5rem;
+    }
+    .status-card h3 { margin: 0; font-size: 0.9rem; color: var(--c-text-light); text-transform: uppercase; }
+    .status-card .value { margin: 5px 0; font-size: 1.5rem; font-weight: bold; color: var(--c-text); }
+    .status-card small { color: var(--c-text-light); font-size: 0.8rem; }
+</style>
+
+<%- include('partials/footer') %>
