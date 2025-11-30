@@ -52,6 +52,18 @@
     </ul>
 </footer>
 
+<div id="cmd-overlay" class="cmd-overlay">
+    <div class="cmd-modal">
+        <div class="cmd-header">
+            <i class="fas fa-search"></i>
+            <input type="text" id="cmd-input" placeholder="Tapez une commande..." autocomplete="off">
+            <span class="cmd-badge">ESC pour fermer</span>
+        </div>
+        <ul id="cmd-list" class="cmd-list">
+            </ul>
+    </div>
+</div>
+
     <script src="/js/main.js"></script>
     <script src="/js/theme-switcher.js"></script>
     
@@ -78,6 +90,8 @@
     <script src="/js/scroll-reveal.js"></script>
 
     <script src="/js/highlight-search.js"></script>
+
+    <script src="/js/command-palette.js"></script>
 
     <div id="lightbox-overlay" class="lightbox">
         <span class="lightbox-close">&times;</span>

@@ -2934,3 +2934,52 @@ body.theme-dark mark {
         color: var(--c-primary);
     }
 }
+
+/*
+=========================================
+--- 42. Command Palette (Ctrl + K) ---
+=========================================
+*/
+.cmd-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(3px);
+    z-index: 30000; /* Au-dessus de tout */
+    display: none; justify-content: center; align-items: flex-start;
+    padding-top: 10vh;
+}
+.cmd-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+
+.cmd-modal {
+    background: var(--c-surface); width: 100%; max-width: 600px;
+    border-radius: 12px; border: 1px solid var(--c-border);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3); overflow: hidden;
+}
+
+.cmd-header {
+    display: flex; align-items: center; padding: 15px 20px;
+    border-bottom: 1px solid var(--c-border);
+}
+.cmd-header i { color: var(--c-text-light); margin-right: 15px; font-size: 1.2rem; }
+.cmd-header input {
+    flex: 1; border: none; background: transparent; font-size: 1.1rem;
+    color: var(--c-text); outline: none;
+}
+.cmd-badge {
+    font-size: 0.7rem; background: var(--c-border); color: var(--c-text-light);
+    padding: 2px 6px; border-radius: 4px;
+}
+
+.cmd-list {
+    list-style: none; padding: 10px; margin: 0; max-height: 400px; overflow-y: auto;
+}
+.cmd-item {
+    padding: 10px 15px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; gap: 15px; color: var(--c-text);
+    transition: background 0.1s; font-size: 0.95rem;
+}
+.cmd-item i { width: 20px; text-align: center; color: var(--c-text-light); }
+.cmd-item:hover, .cmd-item.selected {
+    background-color: var(--c-primary); color: white;
+}
+.cmd-item:hover i, .cmd-item.selected i { color: white; }
+.cmd-item small { margin-left: auto; opacity: 0.7; font-size: 0.8rem; }

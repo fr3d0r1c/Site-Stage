@@ -203,10 +203,12 @@ app.use(async (req, res, next) => {
 
     res.locals.message = req.session.flashMessage;
 
-    // delete req.session.flashMessage;
-
     res.locals.cookies = req.cookies;
+
+    res.locals.theme = req.cookies.theme || 'system';
+
     res.locals.isGuest = !!req.cookies.guest_token;
+    res.locals.guest = null;
 
     if (req.cookies.guest_token) {
         try {
@@ -221,9 +223,7 @@ app.use(async (req, res, next) => {
                 guest.avatarUrl = `https://api.dicebear.com/7.x/${guest.avatar_style}/svg?seed=${seed}`;
                 res.locals.guest = guest;
             }
-        } catch (e) {
-            console.error("Erreur middleware guest:", e);
-        }
+        } catch (e) { console.error("Erreur middleware guest:", e); }
     }
 
     next();
@@ -2730,10 +2730,14 @@ app.use((req, res, next) => {
 
 // --- GESTION DES ERREURS SERVEUR (500) ---
 app.use((err, req, res, next) => {
-    console.error("💥 ERREUR SERVEUR :", err.stack); // Log l'erreur dans la console serveur
+    console.error("💥 ERREUR SERVEUR :", err.stack);
+
+    const currentTheme = req.cookies && req.cookies.theme ? req.cookies.theme : 'light';
+
     res.status(500).render('500', {
         pageTitle: 'Erreur Serveur',
-        activePage: ''
+        activePage: '',
+        theme: currentTheme
     });
 });
 
