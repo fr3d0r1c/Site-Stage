@@ -25,6 +25,16 @@
 
     <hr>
 
+    <div class="heatmap-container" style="margin: 2rem 0; background: var(--c-surface); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--c-border);">
+        <h3 style="margin-top: 0;"><i class="fas fa-th"></i> Activité (Derniers 365 jours)</h3>
+        
+        <div id="contribution-heatmap" class="heatmap-grid" data-activity='<%= activityMap %>'></div>
+        
+        <div class="heatmap-legend"></div>
+    </div>
+
+    <hr>
+
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 3rem;">
         
         <div>
@@ -95,5 +105,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="/js/dashboard-charts.js"></script>
+<script src="/js/dashboard-heatmap.js"></script>
 
 <%- include('partials/footer') %>

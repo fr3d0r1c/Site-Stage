@@ -1897,7 +1897,6 @@ app.get('/admin', isAuthenticated, (req, res) => {
 });
 app.get('/admin/dashboard', isAuthenticated, (req, res) => {
     
-    // 1. Stats par SEMAINE (Numéro de semaine)
     const sqlWeekly = `
         SELECT strftime('%Y-W%W', publication_date) as period, COUNT(*) as count
         FROM articles
@@ -1931,12 +1930,31 @@ app.get('/admin/dashboard', isAuthenticated, (req, res) => {
         FROM articles
     `;
 
+    const sqlHeatmap = `
+        SELECT date(activity_date) as date, COUNT(*) as count 
+        FROM (
+            SELECT publication_date as activity_date FROM articles
+            UNION ALL
+            SELECT created_at as activity_date FROM comments
+        ) 
+        WHERE activity_date > date('now', '-1 year')
+        GROUP BY date
+    `;
+
     Promise.all([
         new Promise((resolve, reject) => db.all(sqlWeekly, [], (err, rows) => err ? reject(err) : resolve(rows))),
         new Promise((resolve, reject) => db.all(sqlMonthly, [], (err, rows) => err ? reject(err) : resolve(rows))),
         new Promise((resolve, reject) => db.all(sqlTags, [], (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.get(sqlGlobal, [], (err, row) => err ? reject(err) : resolve(row)))
-    ]).then(([weeklyData, monthlyData, tagData, globalData]) => {
+        new Promise((resolve, reject) => db.get(sqlGlobal, [], (err, row) => err ? reject(err) : resolve(row))),
+        new Promise((resolve, reject) => db.all(sqlHeatmap, [], (err, rows) => err ? reject(err) : resolve(rows))),
+    ]).then(([weeklyData, monthlyData, tagData, globalData, heatmapData]) => {
+
+        const activityMap = {};
+        if (heatmapData) {
+            heatmapData.forEach(row => {
+                if (row.date) activityMap[row.date] = row.count;
+            });
+        }
         
         res.render('dashboard', {
             pageTitle: "Tableau de Bord",
@@ -1944,7 +1962,8 @@ app.get('/admin/dashboard', isAuthenticated, (req, res) => {
             weeklyData,
             monthlyData,
             tagData,
-            globalData
+            globalData,
+            activityMap: JSON.stringify(activityMap)
         });
 
     }).catch(err => {
