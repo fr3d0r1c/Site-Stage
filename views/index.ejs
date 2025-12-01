@@ -28,7 +28,14 @@
             <% } %>
             
             <div class="card-body">
-                <h2><a href="/entree/<%= entry.id %>"><%= entry.title %></a></h2>
+                <h2>
+                    <% if (entry.is_pinned) { %>
+                        <i class="fas fa-thumbtack" style="color: var(--c-primary); font-size: 0.8em; margin-right: 5px;" title="Épinglé"></i>
+                    <% } %>
+
+                    <a href="/entree/<%= entry.id %>"><%= entry.title %></a>
+                    
+                </h2>
                 <div style="font-size: 0.85rem; color: var(--c-text-light); margin-bottom: 10px;">
                     <i class="far fa-calendar-alt"></i> <%= new Date(entry.publication_date).toLocaleDateString(i18n.language) %>
                     &nbsp; | &nbsp;

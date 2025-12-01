@@ -93,6 +93,14 @@
     <%# Actions Admin sur l'article (Modifier / Supprimer) %>
     <% if (locals.username) { %>
         <div class="actions" style="margin-top: 1rem; border-top: 1px solid var(--c-border); padding-top: 1.5rem;">
+            <form action="/entree/<%= article.id %>/pin" method="POST" style="display: inline;">
+                <button type="submit" class="btn" 
+                        style="background-color: <%= article.is_pinned ? '#ffc107' : '#6c757d' %>; border-color: transparent;"
+                        title="<%= article.is_pinned ? 'Désépingler' : 'Épingler en haut' %>">
+                    <i class="fas fa-thumbtack"></i> <%= article.is_pinned ? 'Désépingler' : 'Épingler' %>
+                </button>
+            </form>
+            
             <a href="/entree/<%= article.id %>/edit" class="btn"><%= t('journal.edit') %></a>
             <form action="/entree/<%= article.id %>/delete" method="POST" 
                    data-confirm="<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>" 

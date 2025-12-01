@@ -777,13 +777,14 @@ app.get('/', cacheMiddleware(600), (req, res) => {
             a.summary_${lang} as summary, -- ON RÉINTÈGRE LE RÉSUMÉ
             a.content_${lang} as content,
             a.cover_image_url, a.publication_date,
+            a.is_pinned,
             GROUP_CONCAT(t.name_${lang}) as tags
         FROM articles a
         LEFT JOIN article_tags at ON a.id = at.article_id
         LEFT JOIN tags t ON at.tag_id = t.id
         WHERE status = 'published'
         GROUP BY a.id
-        ORDER BY a.publication_date DESC
+        ORDER BY a.is_pinned DESC, a.publication_date DESC
         LIMIT 3
     `;
 
@@ -873,10 +874,11 @@ app.get('/journal', cacheMiddleware(600), (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
 
     const sortOption = req.query.sort || 'date_desc';
-    let sortClause = 'ORDER BY a.publication_date DESC';
+    let sortClause = '';
 
     switch (sortOption) {
-        case 'date_asc': sortClause = 'ORDER BY a.publication_date ASC'; break;
+        case 'date_desc': sortClause = 'ORDER BY a.is_pinned DESC, a.publication_date DESC'; break;
+        case 'date_asc': sortClause = 'ORDER BY a.is_pinned DESC, a.publication_date ASC'; break;
         case 'alpha_asc': sortClause = `ORDER BY title_${lang} ASC`; break;
         case 'alpha_desc': sortClause = `ORDER BY title_${lang} DESC`; break;
         case 'tag_asc': sortClause = 'ORDER BY tags ASC'; break;
@@ -890,7 +892,9 @@ app.get('/journal', cacheMiddleware(600), (req, res) => {
             a.id, a.title_${lang} as title, 
             a.summary_${lang} as summary,
             a.content_${lang} as content,
-            a.cover_image_url, a.publication_date,
+            a.cover_image_url,
+            a.is_pinned,
+            a.publication_date,
             a.status, -- ON RÉCUPÈRE LE STATUT POUR L'AFFICHAGE
             GROUP_CONCAT(t.name_${lang}) as tags
         FROM articles a
@@ -2532,6 +2536,30 @@ app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
         if (typeof myCache !== 'undefined') myCache.flushAll();
 
         flashAndRedirect(req, res, 'success', 'Entrée supprimée avec succès.', '/journal');
+    });
+});
+app.post('/entree/:id/pin', isAuthenticated, (req, res) => {
+    const id = req.params.id;
+
+    db.get('SELECT is_pinned FROM articles WHERE id = ?', [id], (err, row) => {
+        if (err || !row) {
+            req.session.flashMessage = { type: 'error', text: 'Article introuvable.' };
+            return res.redirect('/');
+        }
+
+        const newState = row.is_pinned ? 0 : 1;
+
+        db.run('UPDATE articles SET is_pinned = ? WHERE id = ?', [newState, id], (errUpdate) => {
+            if (errUpdate) {
+                req.session.flashMessage = { type: 'error', text: 'Erreur technique.' };
+            } else {
+                const msg = newState ? 'Article épinglé en haut de liste ! 📌' : 'Article désépinglé.';
+                req.session.flashMessage = { type: 'success', text: msg };
+            }
+
+            if (typeof myCache !== 'undefined') myCache.flushAll();
+            res.redirect('/');
+        });
     });
 });
 app.post('/upload-image', isAuthenticated, apiLimiter, upload.single('image'), async (req, res) => {
