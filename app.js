@@ -1050,70 +1050,124 @@ app.get('/search', (req, res) => {
         });
     });
 });
+
 app.get('/tags/:tagName', (req, res) => {
     const tagName = req.params.tagName;
     const lang = req.language === 'en' ? 'en' : 'fr';
     const currentPage = parseInt(req.query.page) || 1;
     const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+    
     const message = req.session.flashMessage;
     req.session.flashMessage = null;
 
+    const sortOption = req.query.sort || 'date_desc';
+    let sortClause = 'ORDER BY a.is_pinned DESC, a.publication_date DESC';
+
+    switch (sortOption) {
+        case 'date_asc': sortClause = 'ORDER BY a.is_pinned DESC, a.publication_date ASC'; break;
+        case 'alpha_asc': sortClause = `ORDER BY title_${lang} ASC`; break;
+        case 'alpha_desc': sortClause = `ORDER BY title_${lang} DESC`; break;
+    }
+
+    const statusClause = req.session.userId ? "" : "AND a.status = 'published'";
+
     const sqlFindTag = `SELECT id FROM tags WHERE name_${lang} = ?`;
-    
+
     db.get(sqlFindTag, [tagName], (errTag, tag) => {
-        if (!tag) return res.render('journal', { articles: [], pageTitle: "Tag introuvable", activePage: 'journal', currentPage: 1, totalPages: 0, currentTag: tagName, message: message, currentSort: null });
-        
+        if (!tag) {
+            return res.render('journal', {
+                articles: [], 
+                pageTitle: `Tag introuvable : "${tagName}"`, 
+                activePage: 'journal', 
+                currentPage: 1, 
+                totalPages: 0, 
+                currentTag: tagName, 
+                message: message, 
+                currentSort: null
+            });
+        }
+
         const tagId = tag.id;
+
         const sqlEntries = `
             SELECT
-                a.id, a.title_${lang} as title, 
+                a.id, 
+                a.title_${lang} as title, 
                 a.summary_${lang} as summary,
                 a.content_${lang} as content,
-                a.cover_image_url, a.publication_date,
+                a.cover_image_url, 
+                a.publication_date,
+                a.status,
+                a.views,
+                a.likes,
+                a.is_pinned,
+                a.lat, a.lng,
                 GROUP_CONCAT(t.name_${lang}) as tags
             FROM articles a
             JOIN article_tags at ON a.id = at.article_id
             LEFT JOIN article_tags at_all ON a.id = at_all.article_id
             LEFT JOIN tags t ON at_all.tag_id = t.id
-            WHERE at.tag_id = ?
-            AND status = status = 'published'
+            WHERE at.tag_id = ? ${statusClause} -- Filtre par tag ET par statut
             GROUP BY a.id
-            ORDER BY a.publication_date DESC
+            ${sortClause}
             LIMIT ? OFFSET ?
         `;
-        
-        db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
-            // CORRECTION ICI
-            const articlesWithData = rows.map(article => {
-                const tagList = article.tags ? article.tags.split(',') : [];
-                let finalCoverImage = article.cover_image_url;
-                if (!finalCoverImage) {
-                    const match = article.content.match(/!\[.*?\]\((.*?)\)/);
-                    finalCoverImage = match ? match[1] : null;
-                }
-                let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
-                textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
-                const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
 
-                return { 
-                    ...article, 
-                    tags: tagList, 
-                    coverImage: finalCoverImage, 
-                    excerpt: plainContent.substring(0, 350),
-                    readingTime: getReadingTime(article.content) // <-- Utilisation de 'article'
-                };
-            });
-            
-            // ... (reste du code render) ...
-            res.render('journal', {
+        const sqlCount = `
+            SELECT COUNT(DISTINCT a.id) as totalCount 
+            FROM articles a
+            JOIN article_tags at ON a.id = at.article_id
+            WHERE at.tag_id = ? ${statusClause}
+        `;
+
+        db.all(sqlEntries, [tagId, ITEMS_PER_PAGE, offset], (err, rows) => {
+            if (err) { console.error(err); return res.status(500).send("Erreur BDD"); }
+
+            db.get(sqlCount, [tagId], (errCount, countResult) => {
+                const totalEntries = countResult ? countResult.totalCount : 0;
+                const totalPages = Math.ceil(totalEntries / ITEMS_PER_PAGE);
+
+                const articlesWithData = rows.map(article => {
+                    const tagList = article.tags ? article.tags.split(',') : [];
+
+                    let finalCoverImage = article.cover_image_url;
+                    if (!finalCoverImage) {
+                        const match = article.content.match(/!\[.*?\]\((.*?)\)/);
+                        finalCoverImage = match ? match[1] : null;
+                    }
+
+                    let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, ''); // Enlever images
+                    textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlever Titre H1
+
+                    const readingTime = getReadingTime(article.content);
+
+                    let excerpt = "";
+                    if (article.summary && article.summary.trim() !== '') {
+                        excerpt = article.summary;
+                    } else {
+                        const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlever Markdown
+                        excerpt = plainContent.substring(0, 350) + "...";
+                    }
+
+                    return { 
+                        ...article, 
+                        tags: tagList, 
+                        coverImage: finalCoverImage, 
+                        excerpt: excerpt, 
+                        readingTime: readingTime
+                    };
+                });
+
+                res.render('journal', {
                      articles: articlesWithData,
-                     pageTitle: `Tag : "${tagName}"`,
+                     pageTitle: `${req.t('page_titles.journal')} - Tag : "${tagName}"`,
                      activePage: 'journal',
                      currentPage: currentPage,
-                     totalPages: Math.ceil(1 / ITEMS_PER_PAGE), // Simplifié ici, à ajuster avec le vrai count
+                     totalPages: totalPages,
                      currentTag: tagName,
                      message: message,
-                     currentSort: null
+                     currentSort: sortOption
+                });
             });
         });
     });
@@ -1139,27 +1193,39 @@ app.post('/guest/login', async (req, res) => {
     let isNew = false;
 
     if (!guestId) {
-        guestId = crypto.randomUUID();
-        isNew = true;
+        const existingGuest = await new Promise((resolve) => {
+            db.get('SELECT * FROM guests WHERE email = ?', [email], (err, row) => resolve(row));
+        });
+
+        if (existingGuest) {
+            if (req.headers.accept && req.headers.accept.includes('application/json')) {
+                return res.status(409).json({ 
+                    success: false, 
+                    code: 'EMAIL_EXIST', 
+                    existingName: existingGuest.name,
+                    message: `L'email ${email} est déjà pris.`
+                });
+            }
+
+            flashAndRedirect(req, res, 'error', 'Cet email est déjà utilisé.', '/guest/login')
+        }
     }
 
-    if (isNew) {
-        db.run('INSERT INTO guests (id, name, email, avatar_style) VALUES (?, ?, ?, ?)', 
-            [guestId, name, email, avatar_style]);
+    if (!guestId) {
+        guestId = crypto.randomUUID();
+        isNew = true;
+        db.run('INSERT INTO guests (id, name, email, avatar_style) VALUES (?, ?, ?, ?)', [guestId, name, email, avatar_style]);
     } else {
-        db.run('UPDATE guests SET name = ?, email = ?, avatar_style = ? WHERE id = ?', 
-            [name, email, avatar_style, guestId]);
+        db.run('UPDATE guests SET name = ?, email = ?, avatar_style = ? WHERE id = ?', [name, email, avatar_style, guestId]);
     }
 
     res.cookie('guest_token', guestId, { maxAge: 31536000000, httpOnly: true });
-    
-    // Réponse JSON (pour la pop-up)
+
     if (req.headers.accept && req.headers.accept.includes('application/json')) {
         return res.json({ success: true, message: 'Profil configuré !' });
     }
 
-    // Réponse Classique (pour le formulaire page dédiée)
-    flashAndRedirect(req, res, 'success', `Profil invité ${isNew ? 'créé' : 'mis à jour'} !`, '/guest/dashboard');
+    flashAndRedirect(req, res, 'success', `Profil invité ${isNew ? 'créé' : 'mis à jour'} !`, '/guest/dashboard')
 });
 app.post('/guest/recover', (req, res) => {
     const { name, email } = req.body;
@@ -1830,9 +1896,7 @@ app.post('/connexion/2fa', authLimiter, (req, res) => {
             req.session.username = user.username;
             delete req.session.tempUserId;
 
-            req.session.flashMessage = { type: 'success', text: `Connexion sécurisée réussie !` };
-            // SAUVEGARDE AVANT REDIRECTION (Très important ici)
-            req.session.save(() => res.redirect('/'));
+            flashAndRedirect(req, res, 'success', `Connexion sécurisée réussie !`, 'back')
         } else {
             // ERREUR : On ré-affiche la page avec l'erreur
             // Ici on n'utilise pas flashMessage car on ne redirige pas, on fait un render
@@ -2059,16 +2123,13 @@ app.post('/admin/newsletter/send', isAuthenticated, async (req, res) => {
         try {
             if (transporter) {
                 await transporter.sendMail(mailOptions);
-                req.session.flashMessage = { type: 'success', text: `Newsletter envoyée à ${rows.length} abonnés !` };
                 flashAndRedirect(req, res, 'sucess', `Newsletter envoyée à ${rows.length} abonnés !`, '/admin/newsletter');
 
             } else {
-                req.session.flashMessage = { type: 'error', text: 'Serveur mail non configuré.' };
                 flashAndRedirect(req, res, 'error', 'Serveur mail non configuré.', '/admin/newsletter');
             }
         } catch (e) {
             console.error("Erreur envoi newsletter:", e);
-            req.session.flashMessage = { type: 'error', text: 'Erreur technique lors de l\'envoi.' };
             flashAndRedirect(req, res, 'error', 'Erreur technique lors de l\'envoi.', '/admin/newsletter');
         }
     });
@@ -2090,8 +2151,7 @@ app.get('/admin/backup', isAuthenticated, (req, res) => {
 });
 app.post('/admin/restore', isAuthenticated, upload.single('backup_file'), (req, res) => {
     if (!req.file) {
-        req.session.flashMessage = { type: 'error', text: 'Aucun fichier fourni.' };
-        return req.session.save(() => res.redirect('/admin/dashboard'));
+        flashAndRedirect(req, res, 'error', 'Aucun fichier fourni.', '/admin/dashboard')
     }
 
     const fs = require('fs');
@@ -2328,20 +2388,13 @@ app.post('/admin/2fa/enable', isAuthenticated, (req, res) => {
             db.run('UPDATE users SET two_fa_enabled = 1 WHERE id = ?', [userId], (err) => {
                 if (err) {
                     console.error(err);
-                    req.session.flashMessage = { type: 'error', text: 'Erreur lors de l\'activation.' };
-                    return req.session.save(() => res.redirect('/admin/2fa'));
+                    flashAndRedirect(req, res, 'error', 'Erreur lors de l\'activation.', '/admin/2fa');
                 }
 
-                req.session.flashMessage = { type: 'success', text: 'Double authentification activée avec succès !' };
-
-                req.session.save(() => {
-                    res.redirect('/');
-                });
+                flashAndRedirect(req, res, 'success', 'Double authentification activée avec succès !', 'back');
             });
         } else {
-            req.session.flashMessage = { type: 'error', text: 'Code incorrect. Recommencez la configuration.' };
-            // En cas d'erreur, on reste sur la page de config pour qu'il puisse réessayer
-            req.session.save(() => res.redirect('/admin/2fa'));
+            flashAndRedirect(req, res, 'error' ,'Code incorrect. Recommencez la configuration.', '/admin/2fa')
         }
     });
 });
@@ -2349,14 +2402,10 @@ app.post('/admin/2fa/disable', isAuthenticated, (req, res) => {
     db.run('UPDATE users SET two_fa_enabled = 0, two_fa_secret = NULL WHERE id = ?', [req.session.userId], (err) => {
         if (err) {
             console.error(err);
-            req.session.flashMessage = { type: 'error', text: 'Erreur lors de la désactivation.' };
+            flashAndRedirect(req, res, 'error', 'Erreur lors de la désactivation.', '/admin/2fa');
         } else {
-            req.session.flashMessage = { type: 'success', text: 'Double authentification désactivée.' };
+            flashAndRedirect(req, res, 'success', 'Double authentification désactivée.', '/admin/2fa');
         }
-
-        req.session.save(() => {
-            res.redirect('/admin/2fa');
-        });
     });
 });
 app.get('/admin/2fa/choice', isAuthenticated, (req, res) => {
@@ -2372,8 +2421,7 @@ app.post('/admin/2fa/skip', isAuthenticated, (req, res) => {
     const userId = req.session.userId;
     // On note qu'on a posé la question (prompted = 1)
     db.run('UPDATE users SET two_fa_prompted = 1 WHERE id = ?', [userId], (err) => {
-        req.session.flashMessage = { type: 'info', text: 'Vous pourrez activer la 2FA plus tard dans l\'administration.' };
-        res.redirect('/');
+        flashAndRedirect(req, res, 'info', 'Vous pourrez activer la 2FA plus tard dans l\'administration.', 'back');
     });
 });
 
@@ -2543,22 +2591,20 @@ app.post('/entree/:id/pin', isAuthenticated, (req, res) => {
 
     db.get('SELECT is_pinned FROM articles WHERE id = ?', [id], (err, row) => {
         if (err || !row) {
-            req.session.flashMessage = { type: 'error', text: 'Article introuvable.' };
-            return res.redirect('/');
+            flashAndRedirect(req, res, 'error', 'Article introuvable.', 'back');
         }
 
         const newState = row.is_pinned ? 0 : 1;
 
         db.run('UPDATE articles SET is_pinned = ? WHERE id = ?', [newState, id], (errUpdate) => {
             if (errUpdate) {
-                req.session.flashMessage = { type: 'error', text: 'Erreur technique.' };
+                flashAndRedirect(req, res, 'error', 'Erreur technique.', 'back');
             } else {
                 const msg = newState ? 'Article épinglé en haut de liste ! 📌' : 'Article désépinglé.';
-                req.session.flashMessage = { type: 'success', text: msg };
+                flashAndRedirect(req, res, 'success', msg, 'back');
             }
 
             if (typeof myCache !== 'undefined') myCache.flushAll();
-            res.redirect('/');
         });
     });
 });
@@ -2606,8 +2652,7 @@ app.post('/admin/tags/create', isAuthenticated, async (req, res) => {
 
     // On ne vérifie que name_fr
     if (!name_fr || name_fr.trim() === '') {
-        req.session.flashMessage = { type: 'error', text: 'Le nom français est requis.' };
-        return res.redirect('/admin/tags');
+        flashAndRedirect(req, res, 'error', 'Le nom français est requis.', '/admin/tags');
     }
 
     let name_en = name_fr.trim(); // Valeur par défaut si la traduction échoue
@@ -2636,20 +2681,17 @@ app.post('/admin/tags/create', isAuthenticated, async (req, res) => {
     // Insertion dans la base de données avec les deux noms
     const sql = 'INSERT INTO tags (name_fr, name_en) VALUES (?, ?)';
     db.run(sql, [name_fr_trimmed, name_en], function(err) {
-        let message;
         if (err) {
             console.error("Erreur BDD (POST /admin/tags/create):", err);
             // Gère l'erreur si un nom existe déjà (contrainte UNIQUE)
             if (err.message.includes('UNIQUE constraint failed')) {
-                message = { type: 'error', text: 'Un tag avec ce nom (FR ou EN) existe déjà.' };
+                flashAndRedirect(req, res, 'error', 'Un tag avec ce nom (FR ou EN) existe déjà.', '/admin/tags');
             } else {
-                message = { type: 'error', text: 'Erreur lors de la création du tag.' };
+                flashAndRedirect(req, res, 'error', 'Erreur lors de la création du tag.', '/admin/tags');
             }
         } else {
-            message = { type: 'success', text: `Tag "${name_fr_trimmed}" / "${name_en}" créé avec succès.` };
+            flashAndRedirect(req, res, 'success', `Tag "${name_fr_trimmed}" / "${name_en}" créé avec succès.`, '/admin/tags');
         }
-        req.session.flashMessage = message;
-        res.redirect('/admin/tags');
     })
 });
 app.post('/admin/tags/update/:id', isAuthenticated, (req, res) => {
@@ -2657,8 +2699,7 @@ app.post('/admin/tags/update/:id', isAuthenticated, (req, res) => {
     const { name_en } = req.body; // On récupère le nouveau nom anglais envoyé par le formulaire
 
     if (!name_en || name_en.trim() === '') {
-        req.session.flashMessage = { type: 'error', text: 'Le nom anglais ne peut pas être vide.' };
-        return res.redirect('/admin/tags');
+        flashAndRedirect(req, res, 'error', 'Le nom anglais ne peut pas être vide.', '/admin/tags');
     }
 
     const sql = 'UPDATE tags SET name_en = ? WHERE id = ?';
@@ -2666,11 +2707,10 @@ app.post('/admin/tags/update/:id', isAuthenticated, (req, res) => {
     db.run(sql, [name_en, id], function(err) {
         if (err) {
             console.error(`Erreur BDD (POST /admin/tags/update/${id}):`, err);
-            req.session.flashMessage = { type: 'error', text: 'Erreur lors de la mise à jour du tag.' };
+            flashAndRedirect(req, res, 'error', 'Erreur lors de la mise à jour du tag.', '/admin/tags');
         } else {
-            req.session.flashMessage = { type: 'success', text: `Tag #${id} mis à jour avec succès.` };
+            flashAndRedirect(req, res, 'success', `Tag #${id} mis à jour avec succès.`, '/admin/tags');
         }
-        res.redirect('/admin/tags');
     })
 })
 app.post('/admin/tags/delete/:id', isAuthenticated, (req, res) => {
@@ -2758,8 +2798,7 @@ app.get('/admin/messages', isAuthenticated, (req, res) => {
 
 app.post('/admin/messages/delete/:id', isAuthenticated, (req, res) => {
     db.run('DELETE FROM contact_messages WHERE id = ?', [req.params.id], (err) => {
-        req.session.flashMessage = { type: 'success', text: 'Message supprimé.' };
-        req.session.save(() => res.redirect('/admin/messages'));
+        flashAndRedirect(req, res, 'success', 'Message supprimé.', '/admin/messages');
     });
 });
 

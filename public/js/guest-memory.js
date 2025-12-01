@@ -93,13 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(url, {
                 method: 'POST',
                 headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json' // IMPORTANT : On demande du JSON au serveur
+                    'Content-Type': 'application/json', 
+                    'Accept': 'application/json' 
                 },
                 body: JSON.stringify(data)
             });
 
-            // On lit la réponse JSON du serveur
             const result = await response.json();
 
             if (response.ok && result.success) {
@@ -109,11 +108,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     text: successMessage,
                     timer: 1500,
                     showConfirmButton: false
-                }).then(() => {
-                    window.location.reload(); // On recharge pour afficher le profil connecté
+                }).then(() => window.location.reload());
+            }
+
+            else if (response.status === 409 && result.code === 'EMAIL_EXIST') {
+                Swal.fire({
+                    title: 'Compte existant détecté',
+                    html: `L'email <b>${data.email}</b> est déjà utilisé par <b>${result.existingName}</b>.<br><br>Est-ce vous ?`,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: `Oui, c'est moi (Récupérer)`,
+                    cancelButtonText: 'Non, changer d\'email',
+                    confirmButtonColor: 'var(--c-primary)'
+                }).then((choice) => {
+                    if (choice.isConfirmed) {
+                        sendData('/guest/recover', { name: result.existingName, email: data.email }, 'Compte récupéré !');
+                    } else {
+                        handleCreation();
+                    }
                 });
-            } else {
-                // Erreur envoyée par le serveur (ex: profil non trouvé)
+            }
+
+            else {
                 Swal.fire('Erreur', result.error || 'Une erreur est survenue.', 'error');
             }
         } catch (e) {
