@@ -5,38 +5,32 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.error("Erreur nettoyage flash:", err));
     };
 
-    const successMsg = document.querySelector('.feedback-message.success');
-    const errorMsg = document.querySelector('.error-message');
+    const flashElement = document.getElementById('flash-message-data');
 
-    const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-            toast.addEventListener('mouseenter', Swal.stopTimer)
-            toast.addEventListener('mouseleave', Swal.resumeTimer)
-        }
-    });
+    if (flashElement) {
+        const type = flashElement.getAttribute('data-type') || 'info'; // info par défaut
+        const text = flashElement.textContent.trim();
+        const detail = flashElement.getAttribute('data-detail');
 
-    if (successMsg) {
-        Toast.fire({
-            icon: 'success',
-            title: successMsg.textContent.trim() // Le texte du message
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
         });
-        successMsg.remove();
-        clearFlashServerSide();
-    }
 
-    if (errorMsg) {
-        const detail = errorMsg.getAttribute('data-detail');
         Toast.fire({
-            icon: 'error',
-            title: errorMsg.textContent.trim(),
+            icon: type,
+            title: text,
             text: detail || ''
         });
-        errorMsg.remove();
+
+        flashElement.remove();
         clearFlashServerSide();
     }
 

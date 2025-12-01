@@ -159,10 +159,13 @@
     <div class="container">
 
         <% if (locals.message) { %>
-            <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
-                style="display: none;"
+            <p id="flash-message-data" 
+                class="feedback-message <%= message.type %>" 
+                style="display: none;" 
+                data-type="<%= message.type %>"
                 data-detail="<%= message.detail || '' %>">
                 <%= message.text %>
             </p>
         <% } %>
+               
     

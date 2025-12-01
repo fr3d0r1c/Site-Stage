@@ -1,0 +1,30 @@
+<%- include('partials/header', { pageTitle: pageTitle }) %>
+
+<div class="static-page" style="text-align: center;">
+    <h1>🧪 Laboratoire de Test des Toasts</h1>
+    <p>Cliquez sur les boutons pour vérifier le style des notifications.</p>
+
+    <hr>
+
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem;">
+
+        <a href="/test-toasts?type=success" class="btn" style="background-color: #28a745; border-color: #28a745;">
+            <i class="fas fa-check-circle"></i> Test Succès
+        </a>
+
+        <a href="/test-toasts?type=error" class="btn" style="background-color: #dc3545; border-color: #dc3545;">
+            <i class="fas fa-exclamation-circle"></i> Test Erreur
+        </a>
+
+        <a href="/test-toasts?type=warning" class="btn" style="background-color: #ffc107; border-color: #ffc107; color: black;">
+            <i class="fas fa-exclamation-triangle"></i> Test Warning
+        </a>
+
+        <a href="/test-toasts?type=info" class="btn" style="background-color: #17a2b8; border-color: #17a2b8;">
+            <i class="fas fa-info-circle"></i> Test Info
+        </a>
+        
+    </div>
+</div>
+
+<%- include('partials/footer') %>

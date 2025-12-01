@@ -1173,6 +1173,35 @@ app.get('/tags/:tagName', (req, res) => {
     });
 });
 
+/*
+app.get('/test-toasts', (req, res) => {
+    const type = req.query.type;
+
+    if (type) {
+        let message = { type: type, text: `Ceci est un test de type ${type.toUpperCase()}` };
+
+        if (type === 'error') {
+            message.text = 'Une erreur critique est survenue.';
+            message.detail = 'Error: SQLITE_CONSTRAINT: UNIQUE constraint failed...';
+        } else if (type === 'warning') {
+            message.text = 'Attention, votre session va bientôt expirer.';
+        } else if (type === 'info') {
+            message.text = 'Nouvelle mise à jour disponible.';
+        }
+
+        req.session.flashMessage = message;
+        return req.session.save(() => {
+            res.redirect('/test-toasts');
+        });
+    }
+
+    res.render('test-toasts', { 
+        pageTitle: 'Test des Notifications', 
+        activePage: '' // Pas de menu actif
+    });
+});
+*/
+
 // --- Espace Invité ---
 app.get('/guest/login', (req, res) => {
     // Si l'invité est déjà connecté (cookie présent), on l'envoie au dashboard
