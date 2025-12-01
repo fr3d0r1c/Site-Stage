@@ -58,7 +58,7 @@ L'objectif était de créer une application **robuste**, **sécurisée** et **ac
 
 | Accueil (Mode Sombre) | Dashboard Admin | Mobile & PWA |
 |:---:|:---:|:---:|
-| ![Accueil](/public/screenshots/home.png) | ![Admin](/public/screenshots/admin.png) | ![Mobile](/public/screenshots/mobile.png) |
+| ![Accueil](https://github.com/user-attachments/assets/f527a521-67ee-4b4a-bf8c-a06426fba0b3) | ![Admin](https://github.com/user-attachments/assets/04a92e21-add5-4637-893b-cb3927323441) | ![Mobile](https://github.com/user-attachments/assets/08eb6842-b065-4f7c-8c00-15e671f9b767) |
 
 ---
 
