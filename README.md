@@ -116,4 +116,5 @@ npm test
 ## 👤 Auteur
 
 Frederic Alleron - Étudiant Ingénieur Informatique & Réseaux - ESAIP Angers
-Projet réalisé pour un stage à l'étranger
+
+Projet réalisé dans le cadre d'un futur stage à l'étranger
