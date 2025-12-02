@@ -2546,21 +2546,33 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
 });
 app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     const id = req.params.id;
-    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags, action, lat, lng} = req.body;
+    const { 
+        title_fr, title_en, 
+        summary_fr,
+        content_fr, content_en, 
+        cover_image_url, 
+        tags, 
+        action, 
+        lat, lng 
+    } = req.body;
+
     let summary_en = req.body.summary_en;
 
     const status = (action === 'draft') ? 'draft' : 'published';
-
+    
     let tagIds = tags;
     if (tagIds === undefined) { tagIds = []; }
     else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
-    tagIds = tagIds.map(tagId => parseInt(tagId, 10)).filter(tagId => !isNaN(tagId));
+    tagIds = tagIds.map(t => parseInt(t, 10)).filter(t => !isNaN(t));
+
+    const safeLat = lat && lat.trim() !== '' ? lat : null;
+    const safeLng = lng && lng.trim() !== '' ? lng : null;
 
     if (summary_fr && (!summary_en || summary_en.trim() === '') && translator) {
         try {
             const result = await translator.translateText(summary_fr, 'fr', 'en-GB');
-            summary_en = result.text;
-        } catch (error) { console.error("Erreur traduction résumé:", error); }
+            if (result && result.text) summary_en = result.text;
+        } catch (error) { console.error("Erreur traduction:", error); }
     }
 
     db.get('SELECT status FROM articles WHERE id = ?', [id], (errGet, oldArticle) => {
@@ -2568,12 +2580,34 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
 
         const sqlUpdateArticle = `
             UPDATE articles SET 
-            title_fr = ?, title_en = ?, summary_fr = ?, summary_en = ?, 
-            content_fr = ?, content_en = ?, cover_image_url = ?, status = ?, lat = ?, lng = ?
+            title_fr = ?, 
+            title_en = ?, 
+            summary_fr = ?, 
+            summary_en = ?, 
+            content_fr = ?, 
+            content_en = ?, 
+            cover_image_url = ?, 
+            status = ?, 
+            lat = ?, 
+            lng = ? 
             WHERE id = ?
         `;
 
-        db.run(sqlUpdateArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, cover_image_url, status, id, lat || null, lng || null, id], async function(err) {
+        const params = [
+            title_fr, 
+            title_en, 
+            summary_fr, 
+            summary_en, 
+            content_fr, 
+            content_en, 
+            cover_image_url, 
+            status, 
+            safeLat, // Utilise la version sécurisée (null si vide)
+            safeLng, // Utilise la version sécurisée (null si vide)
+            id       // Le WHERE id
+        ];
+
+        db.run(sqlUpdateArticle, params, async function(err) {
             if (err) {
                 console.error("Erreur Update:", err);
                 flashAndRedirect(req, res, 'error', 'Erreur lors de la modification.', `/entree/${id}/edit`, err.message);
