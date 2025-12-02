@@ -34,89 +34,84 @@
 </div>
 <hr>
 
-<%# Affiche le tag courant si on est sur une page de filtre par tag %>
-<% if (typeof currentTag !== 'undefined' && currentTag) { %>
-    <h2 style="border-bottom: none; margin-bottom: 1.5rem;">Entrées pour le tag : "<%= currentTag %>"</h2>
-<% } %>
-
-<% if (locals.message) { %>
-    <p class="<%= message.type === 'success' ? 'feedback-message success' : 'error-message' %>" 
-       style="display: none;"
-       data-detail="<%= message.detail || '' %>">
-        <%= message.text %>
-    </p>
-<% } %>
-
 <div class="entries-grid">
-    <% articles.forEach(entry => { %>
-        <article class="entry-card">
-            <%# Affiche l'image de couverture %>
-            <% if (entry.coverImage) { %>
-                <a href="/entree/<%= entry.id %>" class="card-image-link">
-                    <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image" loading="lazy">
-                </a>
-            <% } %>
-            
-            <div class="card-body">
-                <h2>
-                    <a href="/entree/<%= entry.id %>"><%= entry.title %></a>
+    <% if (articles.length > 0) { %>
+        <% articles.forEach(entry => { %>
+            <article class="entry-card reveal">
+                <% if (entry.coverImage) { %>
+                    <a href="/entree/<%= entry.id %>" class="card-image-link">
+                        <img src="<%= entry.coverImage %>" alt="<%= entry.title %>" class="cover-image" loading="lazy">
+                    </a>
+                <% } %>
+                <div class="card-body">
+                    <h2>
+                        <% if (entry.is_pinned) { %>
+                            <i class="fas fa-thumbtack" style="color: var(--c-primary); font-size: 0.8em; margin-right: 5px;" title="Épinglé"></i>
+                        <% } %>
+                        
+                        <a href="/entree/<%= entry.id %>"><%= entry.title %></a>
 
-                    <% if (entry.status === 'draft') { %>
-                        <span class="badge-draft"><i class="fas fa-pencil-ruler"></i> Brouillon</span>
+                        <% if (entry.status === 'draft') { %>
+                            <span class="badge-draft"><i class="fas fa-pencil-ruler"></i> Brouillon</span>
+                        <% } %>
+                    </h2>
+
+                    <div style="font-size: 0.85rem; color: var(--c-text-light); margin-bottom: 10px;">
+                        <i class="far fa-calendar-alt"></i> <%= new Date(entry.publication_date).toLocaleDateString(i18n.language) %>
+                        &nbsp; | &nbsp;
+                        <i class="far fa-clock"></i> <%= entry.readingTime %> <%= t('general.min_read') %>
+                    </div>
+                    
+                    <% if (entry.tags && entry.tags.length > 0) { %>
+                        <div class="tags-list">
+                            <% entry.tags.forEach(tag => { %>
+                                <a href="/tags/<%= tag %>" class="tag-item"><%= tag %></a>
+                            <% }); %>
+                        </div>
                     <% } %>
-                </h2>
-                <div style="font-size: 0.85rem; color: var(--c-text-light); margin-bottom: 10px;">
-                    <i class="far fa-calendar-alt"></i> <%= new Date(entry.publication_date).toLocaleDateString(i18n.language) %>
-                    &nbsp; | &nbsp;
-                    <i class="far fa-clock"></i> <%= entry.readingTime %> <%= t('general.min_read') %>
+                    
+                    <p><%= entry.excerpt %> <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
+
+                    <% if (locals.username) { %>
+                        <div class="actions">
+                            <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
+                            <form action="/entree/<%= entry.id %>/delete" method="POST" 
+                                  data-confirm="<%= t('admin_page.delete_confirm') %>"
+                                  style="display: inline;">
+                                <button type="submit"><%= t('journal.delete') %></button>
+                            </form>
+                        </div>
+                    <% } %>
                 </div>
-                
-                <%# Affiche les tags %>
-                <% if (entry.tags && entry.tags.length > 0) { %>
-                    <div class="tags-list">
-                        <% entry.tags.forEach(tag => { %>
-                            <a href="/tags/<%= tag %>" class="tag-item"><%= tag %></a>
-                        <% }); %>
-                    </div>
-                <% } %>
-                
-                <%# Affiche l'extrait de texte %>
-                <p><%= entry.excerpt %>... <a href="/entree/<%= entry.id %>"><%= t('journal.read_more') %></a></p>
-                
-                <%# Affiche les actions admin si connecté %>
-                <% if (locals.username) { %>
-                    <div class="actions">
-                        <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
-                        <form action="/entree/<%= entry.id %>/delete" method="POST"
-                            data-confirm="<%= t('admin_page.delete_confirm') %>"
-                            style="display: inline;">
-                            <button type="submit"><%= t('journal.delete') %></button>
-                        </form>
-                    </div>
-                <% } %>
-            </div>
-        </article>
-    <% }); %>
+            </article>
+        <% }); %>
+    <% } else { %>
+        <p>Aucune entrée trouvée.</p>
+    <% } %>
 </div>
 
 <% if (totalPages > 1) { %>
-    <nav class="pagination" aria-label="Pagination">
-        <ul>
-            <%# Construit l'URL de base pour la pagination (garde le filtre de tag si présent) %>
-            <% const baseUrl = typeof currentTag !== 'undefined' ? `/tags/${currentTag}?page=` : '/journal?page='; %>
-            
-            <% if (currentPage > 1) { %> <li><a href="<%= baseUrl %><%= currentPage - 1 %>">Précédent</a></li>
-            <% } else { %> <li class="disabled"><span>Précédent</span></li> <% } %>
-            
-            <% for (let i = 1; i <= totalPages; i++) { %>
-                <% if (i === currentPage) { %> <li class="active"><span><%= i %></span></li>
-                <% } else { %> <li><a href="<%= baseUrl %><%= i %>"><%= i %></a></li> <% } %>
+    <div class="pagination" aria-label="Pagination">
+        <ul></ul>
+            <% if (currentPage > 1) { %>
+                <li><a href="<%= baseUrl %>?page=<%= currentPage - 1 %><%= sortParam %>">&laquo;</a></li>
+            <% } else { %>
+                <li class="disabled"><span>&laquo;</span></li>
             <% } %>
-            
-            <% if (currentPage < totalPages) { %> <li><a href="<%= baseUrl %><%= currentPage + 1 %>">Suivant</a></li>
-            <% } else { %> <li class="disabled"><span>Suivant</span></li> <% } %>
+
+            <% for(let i = 1; i <= totalPages; i++) { %>
+                <li class="<%= currentPage === i ? 'active' : '' %>">
+                    <a href="<%= baseUrl %>?page=<%= i %><%= sortParam %>"><%= i %></a>
+                </li>
+            <% } %>
+
+            <% if (currentPage < totalPages) { %>
+                <li><a href="<%= baseUrl %>?page=<%= currentPage + 1 %><%= sortParam %>">&raquo;</a></li>
+            <% } else { %>
+                <li class="disabled"><span>&raquo;</span></li>
+            <% } %>
         </ul>
-    </nav>
+    </div>
 <% } %>
 
 <%- include('partials/footer') %>
