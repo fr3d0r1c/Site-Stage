@@ -86,6 +86,30 @@
         </div>
     </div>
 
+    <div class="backup-zone" style="margin-top: 2rem; padding: 1.5rem; background: var(--c-background); border: 1px solid var(--c-border); border-radius: 12px;">
+        <h3 style="margin-top: 0;"><i class="fas fa-music"></i> Musique du Site</h3>
+
+        <form action="/admin/music/update" method="POST" enctype="multipart/form-data" style="display: grid; gap: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label>Titre affiché :</label>
+                    <input type="text" name="music_title" value="<%= siteConfig.music_title %>" required>
+                </div>
+                <div>
+                    <label>URL du fichier (MP3) :</label>
+                    <input type="text" name="music_url_text" value="<%= siteConfig.music_url %>" placeholder="https://... ou laissez vide si upload">
+                </div>
+            </div>
+
+            <div>
+                <label>Ou uploader un fichier (remplace l'URL) :</label>
+                <input type="file" name="music_file" accept="audio/*">
+            </div>
+
+            <button type="submit" class="btn">Mettre à jour le Vinyle</button>
+        </form>
+    </div>
+
 </div>
 
 <style>

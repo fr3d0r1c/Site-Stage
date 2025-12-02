@@ -64,6 +64,27 @@
     </div>
 </div>
 
+<div id="music-widget" class="music-widget">
+    <div class="vinyl-container">
+        <div id="vinyl" class="vinyl-record">
+            <div class="vinyl-label" style="background-image: url('/images/logo.png');"></div>
+        </div>
+    </div>
+
+    <div class="music-controls">
+        <button id="play-pause-btn" class="btn-music" aria-label="Lire la musique">
+            <i class="fas fa-play"></i>
+        </button>
+        <div class="music-track-info">
+            <span class="scrolling-text"><%= siteConfig.music_title %></span>
+        </div>
+    </div>
+
+    <audio id="audio-player" loop>
+        <source src="<%= siteConfig.music_url %>" type="audio/mpeg">
+    </audio>
+</div>
+
     <script src="/js/main.js"></script>
     <script src="/js/theme-switcher.js"></script>
     
@@ -92,6 +113,8 @@
     <script src="/js/highlight-search.js"></script>
 
     <script src="/js/command-palette.js"></script>
+
+    <script src="/js/music-player.js"></script>
 
     <div id="lightbox-overlay" class="lightbox">
         <span class="lightbox-close">&times;</span>

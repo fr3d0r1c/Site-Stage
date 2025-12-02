@@ -3035,3 +3035,87 @@ body.theme-dark .heat-box.level-4 { background-color: #39d353; }
     /* On cache les jours trop vieux sur mobile via JS ou CSS si besoin, 
        mais ici ça fera juste plusieurs lignes, ce qui est ok */
 }
+
+/*
+=========================================
+--- 41. Widget Musique (Vinyle) ---
+=========================================
+*/
+.music-widget {
+    position: fixed;
+    top: 70px;
+    left: 30px; /* En bas à gauche */
+    z-index: 9995;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: var(--c-surface);
+    padding: 10px 15px;
+    border-radius: 50px;
+    border: 1px solid var(--c-border);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    transition: transform 0.3s;
+}
+
+/* Le Disque Vinyle */
+.vinyl-record {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #111; /* Noir vinyle */
+    background: radial-gradient(circle, #111 30%, #333 31%, #111 32%, #333 50%, #111 51%); /* Effet sillons */
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid var(--c-text);
+    
+    /* Animation définie mais en pause par défaut */
+    animation: spin 3s linear infinite;
+    animation-play-state: paused; 
+}
+
+/* Quand la musique joue, on fait tourner ! */
+.vinyl-record.spinning {
+    animation-play-state: running;
+}
+
+/* L'étiquette au centre */
+.vinyl-label {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid white;
+}
+
+/* Bouton Play/Pause */
+.btn-music {
+    background: none;
+    border: none;
+    color: var(--c-primary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex; align-items: center; justify-content: center;
+}
+
+/* Texte défilant (Marquee) */
+.music-track-info {
+    width: 100px;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    color: var(--c-text);
+}
+
+/* L'animation de rotation */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* En mode Zen, on peut le cacher ou le laisser (au choix) */
+/* body.zen-mode .music-widget { display: none; } */

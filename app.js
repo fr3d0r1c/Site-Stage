@@ -226,6 +226,23 @@ app.use(async (req, res, next) => {
         } catch (e) { console.error("Erreur middleware guest:", e); }
     }
 
+    try {
+        const settings = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM settings', [], (err, rows) => {
+                if (err) reject(err);
+                else {
+                    const config = {};
+                    rows.forEach(r => config[r.key] = r.value);
+                    resolve(config);
+                }
+            });
+        });
+        res.locals.siteConfig = settings;
+    } catch (e) {
+        console.error("Erreur settings:", e);
+        res.locals.siteConfig = { music_title: 'Erreur', music_url: '' };
+    }
+
     next();
 });
 
@@ -2452,6 +2469,29 @@ app.post('/admin/2fa/skip', isAuthenticated, (req, res) => {
     db.run('UPDATE users SET two_fa_prompted = 1 WHERE id = ?', [userId], (err) => {
         flashAndRedirect(req, res, 'info', 'Vous pourrez activer la 2FA plus tard dans l\'administration.', 'back');
     });
+});
+app.post('/admin/music/update', isAuthenticated, upload.single('music_file'), (req, res) => {
+    const { music_title, music_url_text } = req.body;
+
+    let finalUrl = music_url_text;
+
+    if (req.file) {
+        finalUrl = '/uploads/' + req.file.filename;
+    }
+
+    const updates = [
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [music_title, 'music_title']),
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [finalUrl, 'music_url'])
+    ];
+
+    Promise.all(updates)
+        .then(() => {
+            flashAndRedirect(req, res, 'success', 'Musique mise à jour !', '/admin/dashboard');
+        })
+        .catch(err => {
+            console.error(err);
+            flashAndRedirect(req, res, 'error', 'Erreur sauvegarde.', '/admin/dashboard');
+        });
 });
 
 app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
