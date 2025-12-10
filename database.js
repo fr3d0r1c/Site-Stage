@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Connexion à la BDD
-const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : 'blog.db';
+const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'blog.db');
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {

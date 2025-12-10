@@ -2467,7 +2467,7 @@ app.post('/admin/2fa/skip', isAuthenticated, (req, res) => {
     const userId = req.session.userId;
     // On note qu'on a posé la question (prompted = 1)
     db.run('UPDATE users SET two_fa_prompted = 1 WHERE id = ?', [userId], (err) => {
-        flashAndRedirect(req, res, 'info', 'Vous pourrez activer la 2FA plus tard dans l\'administration.', 'back');
+        flashAndRedirect(req, res, 'info', 'Vous pourrez activer la 2FA plus tard dans l\'administration.', '/');
     });
 });
 app.post('/admin/music/update', isAuthenticated, upload.single('music_file'), (req, res) => {
