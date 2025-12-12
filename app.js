@@ -1253,7 +1253,7 @@ app.post('/guest/login', async (req, res) => {
                 });
             }
 
-            flashAndRedirect(req, res, 'error', 'Cet email est déjà utilisé.', '/guest/login')
+            return flashAndRedirect(req, res, 'error', 'Cet email est déjà utilisé.', '/guest/login')
         }
     }
 

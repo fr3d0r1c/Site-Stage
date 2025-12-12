@@ -1,0 +1,88 @@
+# 1. Le Stockage Physique (Le dossier sur votre WSL)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: carnet-pv-volume
+spec:
+  storageClassName: "manuel" # Nom spécifique pour forcer le lien
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data" # Les données seront ici sur votre Linux
+---
+# 2. La Demande de Stockage (Le ticket)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: carnet-storage-pvc
+spec:
+  storageClassName: "manuel" # Doit être identique au PV
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# 3. Les Secrets (Vos mots de passe)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: carnet-secrets
+type: Opaque
+stringData:
+  # Mettez vos vraies infos ici si vous voulez tester l'envoi d'email
+  EMAIL_USER: "votre-email@gmail.com"
+  EMAIL_PASS: "votre-mot-de-passe"
+  DEEPL_KEY: "votre-cle-api"
+  DB_PATH: "/data/blog.db"
+---
+# 4. L'Application (Le Site)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carnet-stage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mon-site
+  template:
+    metadata:
+      labels:
+        app: mon-site
+    spec:
+      containers:
+      - name: site-container
+        # ▼▼▼ MODIFIEZ JUSTE EN DESSOUS ▼▼▼
+        image: fr3d0r1c/carnet-stage:v1 
+        # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+        imagePullPolicy: Always # Force le téléchargement depuis Docker Hub
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_PATH
+          valueFrom: { secretKeyRef: { name: carnet-secrets, key: DB_PATH } }
+        # Ajoutez les autres variables d'env ici si besoin (EMAIL_USER, etc.)
+        volumeMounts:
+        - mountPath: "/data"
+          name: mon-stockage
+      volumes:
+      - name: mon-stockage
+        persistentVolumeClaim:
+          claimName: carnet-storage-pvc
+---
+# 5. Le Réseau (Service)
+apiVersion: v1
+kind: Service
+metadata:
+  name: site-service
+spec:
+  type: NodePort
+  selector:
+    app: mon-site
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000

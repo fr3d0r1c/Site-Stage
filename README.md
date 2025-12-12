@@ -25,19 +25,23 @@ L'objectif était de créer une application **robuste**, **sécurisée** et **ac
 ---
 
 ## ✨ Fonctionnalités Clés
+
 ### 🛡️ Sécurité & Administration (Fort Knox)
+
 * **Double Authentification (2FA) :** Protection du compte admin via TOTP (Google Authenticator).
 * **Sécurité Web :** Configuration stricte CSP (Helmet), Rate Limiting, Protection Anti-Spam (Honeypot).
 * **Traçabilité :** Journal d'audit complet des actions sensibles.
 * **Sauvegardes :** Système de backup/restauration de la base de données via l'interface.
 
 ### 🚀 Expérience Utilisateur (UX)
+
 * **Progressive Web App (PWA) :** Installation sur mobile et fonctionnement **Hors-Ligne** (Service Workers).
 * **Navigation Fluide :** Recherche instantanée (AJAX), Palette de commandes (`Ctrl+K`).
 * **Confort de Lecture :** Mode "Zen", Estimation du temps de lecture, Sommaire automatique.
 * **Internationalisation :** Site entièrement bilingue (FR/EN) avec détection automatique.
 
 ### 💬 Social & Communauté
+
 * **Système Invité "Magic" :** Pas de mot de passe. Identification persistante via cookies sécurisés.
 * **Gamification :** Attribution automatique de badges (Premier commentaire, Fan, Expert...).
 * **Interactions :** Commentaires imbriqués, Likes (Toggle), Partage réseaux sociaux.
@@ -56,6 +60,7 @@ L'objectif était de créer une application **robuste**, **sécurisée** et **ac
 ---
 
 ## 📸 Aperçu
+
 | Accueil (Mode Sombre) | Dashboard Admin | Mobile & PWA |
 |:---:|:---:|:---:|
 | ![Accueil](https://github.com/user-attachments/assets/f527a521-67ee-4b4a-bf8c-a06426fba0b3) | ![Admin](https://github.com/user-attachments/assets/04a92e21-add5-4637-893b-cb3927323441) | ![Mobile](https://github.com/user-attachments/assets/08eb6842-b065-4f7c-8c00-15e671f9b767) |
@@ -65,6 +70,7 @@ L'objectif était de créer une application **robuste**, **sécurisée** et **ac
 ## ⚙️ Installation & Démarrage
 
 ### Option A : Via Docker (Recommandé)
+
 L'application est conteneurisée. Nous utilisons un volume pour assurer la persistance des données.
 
 ```bash
@@ -81,29 +87,35 @@ docker run -d -p 3000:3000 \
   -v $(pwd)/data:/data \
   carnet-stage
 ```
-Accédez à http://localhost:3000.
+
+Accédez à <http://localhost:3000>.
 
 ### Option B : Orchestration Kubernetes (Production)
 
 Architecture déployée avec succès sur un cluster **Kubeadm** (**Bare-metal/WSL2**). La configuration inclut : **PersistentVolume** (HostPath), Secrets (Env vars) et **Service** (NodePort).
 
 #### 1. Prérequis (Sur le Nœud)
+
 ```bash
 # Création du dossier de persistance sur l'hôte
 sudo mkdir -p /mnt/data && sudo chmod 777 /mnt/data
 ```
+
 #### 2. Déploiement
+
 ```bash
 # Appliquer la configuration complète
 kubectl apply -f carnet-app.yaml
 ```
+
 #### 3. Accès
+
 ```bash
 # Tunnel vers le service (si pas de LoadBalancer)
 kubectl port-forward service/site-service 8080:80 --address 0.0.0.0
 ```
 
-Accédez à http://localhost:8080.
+Accédez à <http://localhost:8080>.
 
 ---
 
@@ -140,6 +152,7 @@ Si vous testez ce projet sur un cluster Kubeadm via WSL2, l'IP de la VM change �
 ## ✅ Qualité du Code
 
 Le projet met un point d'honneur sur la stabilité et l'accessibilité.
+
 * Tests Automatisés : 24 tests d'intégration couvrant l'authentification, le CRUD et la sécurité.
 
 ```bash
@@ -151,5 +164,6 @@ npm test
 ---
 
 ## 👤 Auteur
+
 Frederic Alleron - Étudiant Ingénieur Informatique & Réseaux - ESAIP Angers
 Projet réalisé dans le cadre d'un futur stage à l'étranger.
