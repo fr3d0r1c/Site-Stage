@@ -1,0 +1,40 @@
+name: Node.js CI
+
+# Déclencheurs : Quand est-ce que ça tourne ?
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # On utilise une machine virtuelle Linux standard
+
+    strategy:
+      matrix:
+        node-version: [20.x] # On teste sur Node 20 (comme votre projet)
+
+    steps:
+    # 1. GitHub récupère votre code
+    - uses: actions/checkout@v3
+
+    # 2. On installe Node.js
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm' # Active le cache pour que l'installation soit plus rapide la prochaine fois
+
+    # 3. Installation propre des dépendances (mieux que npm install pour la CI)
+    - run: npm ci
+
+    # 4. Lancement des tests
+    # IMPORTANT : On garde --runInBand pour éviter le crash SQLite
+    # On injecte aussi les variables d'environnement bidons nécessaires aux tests
+    - run: npm test -- --runInBand
+      env:
+        CI: true
+        PORT: 3000
+        SESSION_SECRET: "secret_temporaire_pour_les_tests_ci"
+        # Pas besoin des vrais identifiants email/deepl pour que les tests passent
