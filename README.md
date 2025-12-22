@@ -2,168 +2,128 @@
 
 ![Node.js](https://img.shields.io/badge/Node.js-v20-green?style=flat&logo=node.js)
 ![Express](https://img.shields.io/badge/Express-4.x-lightgrey?style=flat&logo=express)
-![SQLite](https://img.shields.io/badge/SQLite-3-blue?style=flat&logo=sqlite)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-326ce5?style=flat&logo=kubernetes)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Scalable-326ce5?style=flat&logo=kubernetes)
+![Redis](https://img.shields.io/badge/Redis-Session_Store-DC382D?style=flat&logo=redis)
+![CI Status](https://github.com/fr3d0r1c/Site-Stage/actions/workflows/node.js.yml/badge.svg)
 ![Tests](https://img.shields.io/badge/Tests-24%2F24_Passed-success?style=flat&logo=jest)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-> Une plateforme de blogging **Full Stack**, sécurisée et progressive (PWA), développée "from scratch" pour documenter mon expérience d'ingénieur à l'international.
+> Une plateforme de blogging **Full Stack**, sécurisée, distribuée et progressive (PWA), développée "from scratch" pour documenter mon expérience d'ingénieur.
 
 ---
 
 ## 📖 À Propos
 
-Ce projet n'est pas un simple blog. C'est un **CMS (Content Management System) complet** conçu pour démontrer la maîtrise des concepts fondamentaux du développement web moderne, sans dépendre de frameworks lourds.
+Ce projet dépasse le simple blog. C'est un démonstrateur technique d'une **architecture Web moderne et scalable**.
+Il est conçu pour être déployé dans un cluster Kubernetes, capable de gérer une forte charge grâce à la répartition de trafic et la gestion centralisée des sessions.
 
-L'objectif était de créer une application **robuste**, **sécurisée** et **accessible**, capable de fonctionner hors-ligne et de gérer une communauté, tout en étant déployable sur une infrastructure conteneurisée complexe.
+### 🏗️ Architecture Distribuée (Cloud Native)
 
-### 🔗 Démo en ligne
+L'application ne tourne pas sur un seul serveur, mais en **Cluster Haute Disponibilité** :
 
-👉 **[Accéder au site (Render)](https://my-internship.onrender.com)**
+* **Ingress Controller (Nginx) :** Route le trafic via un nom de domaine (`carnet.local`).
+* **Load Balancing :** Le trafic est réparti sur **3 Répliques (Pods)** de l'application.
+* **Stateful Session (Redis) :** Les sessions utilisateurs sont stockées dans une base **Redis** partagée, permettant à l'utilisateur de passer d'un serveur à l'autre sans être déconnecté.
+* **Persistance :** La base de données SQLite et les uploads sont stockés sur des volumes persistants (PV/PVC).
 
 ---
 
 ## ✨ Fonctionnalités Clés
 
-### 🛡️ Sécurité & Administration (Fort Knox)
-
-* **Double Authentification (2FA) :** Protection du compte admin via TOTP (Google Authenticator).
-* **Sécurité Web :** Configuration stricte CSP (Helmet), Rate Limiting, Protection Anti-Spam (Honeypot).
-* **Traçabilité :** Journal d'audit complet des actions sensibles.
-* **Sauvegardes :** Système de backup/restauration de la base de données via l'interface.
+### 🛡️ Sécurité & DevOps
+* **CI/CD (GitHub Actions) :** Pipeline d'intégration continue qui lance automatiquement 24 tests unitaires/intégration à chaque push.
+* **Double Authentification (2FA) :** Protection du compte admin via TOTP.
+* **Protection Web :** Helmet (CSP strict), Rate Limiting, Honeypot anti-spam.
 
 ### 🚀 Expérience Utilisateur (UX)
 
-* **Progressive Web App (PWA) :** Installation sur mobile et fonctionnement **Hors-Ligne** (Service Workers).
-* **Navigation Fluide :** Recherche instantanée (AJAX), Palette de commandes (`Ctrl+K`).
-* **Confort de Lecture :** Mode "Zen", Estimation du temps de lecture, Sommaire automatique.
-* **Internationalisation :** Site entièrement bilingue (FR/EN) avec détection automatique.
-
-### 💬 Social & Communauté
-
-* **Système Invité "Magic" :** Pas de mot de passe. Identification persistante via cookies sécurisés.
-* **Gamification :** Attribution automatique de badges (Premier commentaire, Fan, Expert...).
-* **Interactions :** Commentaires imbriqués, Likes (Toggle), Partage réseaux sociaux.
+* **Progressive Web App (PWA) :** Installation locale et fonctionnement Hors-Ligne.
+* **Internationalisation :** Traduction automatique (API DeepL) et détection de langue.
+* **Interactions :** Commentaires temps réel, Likes, Recherche AJAX.
 
 ---
 
 ## 🛠️ Stack Technique
-
 * **Backend :** Node.js, Express.js.
-* **Base de Données :** SQLite (avec système de migrations personnalisé).
-* **Frontend :** EJS (Templating), CSS3 Natif (Responsive, Thèmes Clair/Sombre/Sépia).
-* **DevOps :** Docker, GitHub Actions (CI/CD).
-* **Orchestration :** Kubernetes (Kubeadm sur Debian/WSL2), Gestion des PV/PVC (Persistance), Secrets.
-* **Outils :** Chart.js (Dashboard), Leaflet (Cartes), Highlight.js (Code), PDFKit.
-
+* **Données :** SQLite (Data), Redis (Sessions & Caching).
+* **Frontend :** EJS, CSS3 Natif (Mode Sombre/Clair), Vanilla JS.
+* **Infra & Déploiement :**
+    * Docker & Docker Hub.
+    * Kubernetes (Kubeadm sur Bare-metal/WSL2).
+    * Nginx Ingress Controller.
+ 
 ---
 
-## 📸 Aperçu
+## 🚀 Déploiement sur Kubernetes (Production)
 
-| Accueil (Mode Sombre) | Dashboard Admin | Mobile & PWA |
-|:---:|:---:|:---:|
-| ![Accueil](https://github.com/user-attachments/assets/f527a521-67ee-4b4a-bf8c-a06426fba0b3) | ![Admin](https://github.com/user-attachments/assets/04a92e21-add5-4637-893b-cb3927323441) | ![Mobile](https://github.com/user-attachments/assets/08eb6842-b065-4f7c-8c00-15e671f9b767) |
+C'est la méthode recommandée pour profiter de l'architecture distribuée (Redis + 3 Répliques).
 
----
+### 1. Prérequis
+* Un cluster Kubernetes actif (Kubeadm, Minikube, ou Cloud).
+* L'image Docker poussée sur le Hub (ex: `votre-pseudo/carnet-stage:v3`).
 
-## ⚙️ Installation & Démarrage
+### 2. Installation de l'Infrastructure
 
-### Option A : Via Docker (Recommandé)
-
-L'application est conteneurisée. Nous utilisons un volume pour assurer la persistance des données.
-
+Lancez les services dans l'ordre :
 ```bash
-# 1. Construire l'image
-docker build -t carnet-stage .
+# 1. Base de données Redis (Pour les sessions partagées)
+kubectl apply -f redis.yaml
 
-# 2. Créer un dossier pour les données persistantes
-mkdir -p data
+# 2. L'Application (3 Répliques + Volume Persistant)
+kubectl apply -f carnet-app.yaml
 
-# 3. Lancer le conteneur (Port 3000)
+# 3. Le Contrôleur d'Entrée (Routage DNS)
+kubectl apply -f ingress.yaml
+```
+
+### 3. Accès au site
+
+L'application est configurée pour répondre au domaine carnet.local.
+
+1. Récupérez le port de l'Ingress : kubectl get svc -n ingress-nginx
+2. Ajoutez l'IP du cluster dans votre fichier hosts (Windows/Linux) : 172.x.x.x carnet.local
+3. Accédez à : http://carnet.local:PORT
+
+---
+
+## 🧪 Tests & Qualité (CI)
+
+Le projet intègre une suite de tests complète avec Jest et Supertest.
+* Automatisé : GitHub Actions lance les tests à chaque commit.
+* Manuel : Lancer les tests en local (avec base de données isolée) :
+```bash
+npm test -- --runInBand
+```
+
+---
+
+## 🐳 Option Docker Simple (Développement)
+
+Pour tester rapidement sans Kubernetes :
+```bash
+# Lancer l'app seule (Stockage local SQLite)
 docker run -d -p 3000:3000 \
-  --name carnet-app \
   -e DB_PATH="/data/blog.db" \
   -v $(pwd)/data:/data \
   carnet-stage
 ```
 
-Accédez à <http://localhost:3000>.
-
-### Option B : Orchestration Kubernetes (Production)
-
-Architecture déployée avec succès sur un cluster **Kubeadm** (**Bare-metal/WSL2**). La configuration inclut : **PersistentVolume** (HostPath), Secrets (Env vars) et **Service** (NodePort).
-
-#### 1. Prérequis (Sur le Nœud)
-
-```bash
-# Création du dossier de persistance sur l'hôte
-sudo mkdir -p /mnt/data && sudo chmod 777 /mnt/data
-```
-
-#### 2. Déploiement
-
-```bash
-# Appliquer la configuration complète
-kubectl apply -f carnet-app.yaml
-```
-
-#### 3. Accès
-
-```bash
-# Tunnel vers le service (si pas de LoadBalancer)
-kubectl port-forward service/site-service 8080:80 --address 0.0.0.0
-```
-
-Accédez à <http://localhost:8080>.
-
 ---
 
-### Option C : Installation Locale (Node.js)
+## 🆘 Dépannage (Environnement WSL2 / Kubeadm)
 
-```bash
-# 1. Cloner et Installer
-git clone [https://github.com/fr3d0r1c/Site-Stage](https://github.com/fr3d0r1c/Site-Stage)
-cd Site-Stage
-npm install
+Si vous utilisez ce projet sur WSL2, l'IP de la VM change à chaque redémarrage de Windows, ce qui casse le cluster Kubernetes.
 
-# 2. Configurer (.env)
-echo "PORT=3000" > .env
-echo "SESSION_SECRET=votre_secret" >> .env
-
-# 3. Démarrer
-npm start
-```
-
----
-
-## 🆘 Note technique : Kubernetes sur WSL2
-
-Si vous testez ce projet sur un cluster Kubeadm via WSL2, l'IP de la VM change à chaque redémarrage de Windows, ce qui nécessite une réinitialisation du cluster.
-
-### Procédure de maintenance WSL2
-
-1. `sudo kubeadm reset -f`
-2. `sudo kubeadm init ...`
-3. `kubectl apply -f ...` (Vos données dans `/mnt/data` seront conservées)
-
----
-
-## ✅ Qualité du Code
-
-Le projet met un point d'honneur sur la stabilité et l'accessibilité.
-
-* Tests Automatisés : 24 tests d'intégration couvrant l'authentification, le CRUD et la sécurité.
-
-```bash
-npm test
-```
-
-* Accessibilité : Score Lighthouse de 100/100. (Navigation clavier, contrastes, ARIA labels).
+### Procédure de réparation rapide ("Routine du Matin") :
+1. Reset : sudo kubeadm reset -f && rm -rf $HOME/.kube
+2. Init : sudo kubeadm init --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=Swap
+3. Config : Copier les fichiers admin.conf (commandes données par l'init).
+4. Réseau : kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/calico.yaml
+5. Taint : kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+6. Ingress : Réinstaller le contrôleur Nginx Baremetal.
+7. Redéployer : kubectl apply -f redis.yaml && kubectl apply -f carnet-app.yaml && kubectl apply -f ingress.yaml
 
 ---
 
 ## 👤 Auteur
-
 Frederic Alleron - Étudiant Ingénieur Informatique & Réseaux - ESAIP Angers
-Projet réalisé dans le cadre d'un futur stage à l'étranger.
