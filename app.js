@@ -29,9 +29,10 @@ const cookieParser = require('cookie-parser');
 const { randomUUID } = require('crypto');
 const RSS = require('rss');
 const NodeCache = require('node-cache');
-const { error } = require('console');
 const compression = require('compression');
 const os = require('os');
+const { SitemapStream, streamToPromise } = require('sitemap');
+const { Readable } = require('stream');
 
 // =================================================================
 // 2. INITIALISATION ET CONFIGURATION D'EXPRESS
@@ -57,8 +58,33 @@ const storage = multer.diskStorage({
     }
 });
 
-// Initialisation de l'upload avec cette configuration
-const upload = multer({ storage: storage });
+// Uploads d'images (avatar, éditeur) : images raster uniquement, 5 Mo max.
+// (pas de SVG/HTML : ils pourraient exécuter du JavaScript depuis notre propre domaine)
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const ok = /^image\/(jpeg|png|webp|gif)$/.test(file.mimetype);
+        cb(ok ? null : new Error('Type de fichier non autorisé.'), ok);
+    }
+});
+
+// Upload de la musique d'ambiance : fichiers audio uniquement, 20 Mo max.
+const audioUpload = multer({
+    storage: storage,
+    limits: { fileSize: 20 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const ok = /^audio\/(mpeg|mp3|ogg|wav|x-wav|webm|aac|mp4)$/.test(file.mimetype);
+        cb(ok ? null : new Error('Type de fichier non autorisé.'), ok);
+    }
+});
+
+// Upload d'une sauvegarde : stockée dans le dossier temporaire du système, JAMAIS dans public/
+// (sinon la base de données complète serait téléchargeable par n'importe qui pendant l'upload).
+const restoreUpload = multer({
+    dest: path.join(os.tmpdir(), 'carnet-restore'),
+    limits: { fileSize: 100 * 1024 * 1024 }
+});
 
 // --- CONFIGURATION i18n (TRADUCTION INTERFACE + DÉTECTION) ---
 i18next
@@ -175,13 +201,33 @@ app.use(express.json());
 app.use(cookieParser());
 
 // 3. Session
+// Le secret de session doit venir de l'environnement (.env / Secret Kubernetes), jamais du code.
+const sessionSecret = process.env.SESSION_SECRET || (process.env.NODE_ENV === 'test' ? 'test-secret' : null);
+if (!sessionSecret) {
+    throw new Error("SESSION_SECRET manquant dans les variables d'environnement.");
+}
+if (process.env.NODE_ENV === 'production' && (sessionSecret.length < 32 || /^CHANGEZ/i.test(sessionSecret))) {
+    throw new Error("SESSION_SECRET trop court ou resté à sa valeur d'exemple : utilisez une valeur aléatoire d'au moins 32 caractères.");
+}
+
+// Derrière un proxy (Render, Ingress Nginx...) : sans ça, req.ip est l'IP du proxy (tous les visiteurs
+// partagent les mêmes limiteurs de débit) et le cookie "secure" n'est jamais posé.
+// Valeur = nombre de proxys devant l'appli. Ne l'activer que si c'est vraiment le cas :
+// sinon n'importe qui peut falsifier son IP avec l'en-tête X-Forwarded-For.
+if (process.env.TRUST_PROXY) {
+    app.set('trust proxy', /^\d+$/.test(process.env.TRUST_PROXY) ? parseInt(process.env.TRUST_PROXY, 10) : process.env.TRUST_PROXY);
+} else if (process.env.RENDER) {
+    app.set('trust proxy', 1); // Render définit RENDER=true et place un proxy devant l'appli
+}
+
 app.use(session({
-    secret: 'Z6*31121Mt',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    store: new SQLiteStore({ db: 'sessions.db', dir: '.' }),
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production',
+    store: new SQLiteStore({ db: 'sessions.db', dir: process.env.SESSIONS_DIR || '.' }),
+    cookie: {
+        // Cookie "secure" en production, sauf si le site est servi en HTTP simple (ex: NodePort Kubernetes)
+        secure: process.env.NODE_ENV === 'production' && process.env.INSECURE_COOKIES !== 'true',
         httpOnly: true,
         sameSite: 'strict',
         maxAge: 1000 * 60 * 60 * 24
@@ -191,7 +237,7 @@ app.use(session({
 // 4. Middleware "PONT" (Global)
 app.use(async (req, res, next) => {
 
-    if (req.query.lng) {
+    if (req.query.lng === 'fr' || req.query.lng === 'en') {
         res.cookie('i18next', req.query.lng, {
             maxAge: 365 * 24 * 60 * 60 * 1000,
             httpOnly: false
@@ -219,8 +265,7 @@ app.use(async (req, res, next) => {
             });
 
             if (guest) {
-                const seed = encodeURIComponent(guest.name);
-                guest.avatarUrl = `https://api.dicebear.com/7.x/${guest.avatar_style}/svg?seed=${seed}`;
+                guest.avatarUrl = avatarUrlFor(guest.avatar_style, guest.name);
                 res.locals.guest = guest;
             }
         } catch (e) { console.error("Erreur middleware guest:", e); }
@@ -257,7 +302,9 @@ filter.addWords(...frenchBadWordsList);
 filter.addWords('testbad');
 
 app.use((req, res, next) => {
-    console.log(`➡️ Requête reçue : ${req.method} ${req.url}`);
+    // On ne journalise pas la query string, ni les jetons de réinitialisation présents dans l'URL
+    const safePath = req.path.replace(/^(\/reset-password\/).+$/, '$1[jeton]');
+    console.log(`➡️ Requête reçue : ${req.method} ${safePath}`);
     next();
 });
 
@@ -318,6 +365,18 @@ const authLimiter = rateLimit({
     message: { error: 'Trop de tentatives de connexion/reset depuis cette IP, veuillez réessayer après 15 minutes.' }
 });
 
+// Limiteur dédié à la connexion : le compteur est remis à zéro après une connexion réussie
+// (les échecs de login renvoient une redirection, donc skipSuccessfulRequests ne marcherait pas ici)
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+        res.status(429).send('Trop de tentatives de connexion depuis cette IP, veuillez réessayer dans 15 minutes.');
+    }
+});
+
 const contactLimiter = rateLimit({
      windowMs: 60 * 60 * 1000,
      max: 10,
@@ -345,11 +404,14 @@ const commentLimiter = rateLimit({
 });
 
 const cacheMiddleware = (duration) => (req, res, next) => {
-    if (req.method !== 'GET' || req.session.userId || res.locals.message || req.session.flashMessage) {
+    // Pas de cache pour l'admin, les invités identifiés (la page contient leur nom/avatar/email)
+    // ni quand un message flash doit être affiché.
+    if (req.method !== 'GET' || req.session.userId || req.cookies.guest_token || res.locals.message || req.session.flashMessage) {
         return next();
     }
 
-    const key = '__express__' + (req.originalUrl || req.url);
+    // La clé tient compte de la langue et du thème : ils changent le HTML de la page.
+    const key = `__express__${req.language}|${req.cookies.theme || 'system'}|${req.originalUrl || req.url}`;
 
     const cachedBody = myCache.get(key);
 
@@ -375,6 +437,122 @@ const db = require('./database');
 // =================================================================
 // 5. FONCTION HELPER
 // =================================================================
+
+// --- Utilitaires de sécurité / validation ---
+
+// Échappe le HTML avant de l'insérer dans un email
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// URL publique du site : jamais déduite de l'en-tête Host (falsifiable)
+function getBaseUrl() {
+    return process.env.RENDER_EXTERNAL_URL || process.env.SITE_URL || `http://localhost:${port}`;
+}
+
+// Texte venant d'un formulaire : force une chaîne, retire les espaces, coupe à maxLen
+function cleanStr(value, maxLen = 255) {
+    return String(value ?? '').trim().slice(0, maxLen);
+}
+
+function isValidEmail(email) {
+    return typeof email === 'string' && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+// Identifiant numérique (id d'article, de commentaire...) ou null s'il est invalide
+function parseId(value) {
+    return /^\d{1,12}$/.test(String(value)) ? parseInt(value, 10) : null;
+}
+
+// Styles d'avatar DiceBear autorisés : la valeur est insérée dans une URL, elle ne doit jamais être libre.
+const AVATAR_STYLES = new Set([
+    'adventurer', 'adventurer-neutral', 'avataaars', 'avataaars-neutral', 'big-ears', 'big-ears-neutral',
+    'big-smile', 'bottts', 'bottts-neutral', 'croodles', 'croodles-neutral', 'fun-emoji', 'icons',
+    'identicon', 'initials', 'lorelei', 'lorelei-neutral', 'micah', 'miniavs', 'notionists',
+    'notionists-neutral', 'open-peeps', 'personas', 'pixel-art', 'pixel-art-neutral', 'rings', 'shapes', 'thumbs'
+]);
+function safeAvatarStyle(style) {
+    return AVATAR_STYLES.has(style) ? style : 'bottts';
+}
+function avatarUrlFor(style, seed) {
+    return `https://api.dicebear.com/7.x/${safeAvatarStyle(style)}/svg?seed=${encodeURIComponent(seed)}`;
+}
+
+// Redirection interne uniquement : accepte "/chemin" mais refuse "//site.com", "/\site.com", "http://..."
+function safeLocalPath(target, fallback = '/') {
+    if (typeof target !== 'string' || !target.startsWith('/') || target.startsWith('//') || target.startsWith('/\\')) {
+        return fallback;
+    }
+    return target;
+}
+
+// Markdown -> HTML assaini : on garde la mise en forme et les vidéos YouTube/Vimeo,
+// mais les <script>, les attributs onclick=... et les liens javascript: sont supprimés.
+const sanitizeHtml = require('sanitize-html');
+const SANITIZE_OPTIONS = {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2', 'figure', 'figcaption', 'iframe', 'details', 'summary', 'del', 'sup', 'sub']),
+    allowedAttributes: {
+        a: ['href', 'name', 'target', 'rel', 'title'],
+        img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
+        iframe: ['src', 'width', 'height', 'allowfullscreen', 'frameborder', 'allow'],
+        h1: ['id'], h2: ['id'], h3: ['id'], h4: ['id'], h5: ['id'], h6: ['id'],
+        code: ['class'], pre: ['class'], span: ['class'], div: ['class'],
+        th: ['align'], td: ['align']
+    },
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowedSchemesByTag: { img: ['http', 'https', 'data'] },
+    allowedIframeHostnames: ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com'],
+    transformTags: {
+        a: (tagName, attribs) => ({ tagName, attribs: { ...attribs, rel: 'noopener noreferrer' } })
+    }
+};
+function renderMarkdown(markdown) {
+    return sanitizeHtml(marked.parse(String(markdown ?? '')), SANITIZE_OPTIONS);
+}
+
+// Crée une nouvelle session (nouvel identifiant) puis y copie les données données.
+// Évite la fixation de session : l'ID présenté avant la connexion n'est plus valide après.
+function startFreshSession(req, data, cb) {
+    req.session.regenerate((err) => {
+        if (err) return cb(err);
+        Object.assign(req.session, data);
+        req.session.save(cb);
+    });
+}
+
+// Le jeton de réinitialisation envoyé par email n'est jamais stocké en clair : seulement son empreinte SHA-256.
+const hashResetToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
+
+// --- Chiffrement des secrets 2FA en base (AES-256-GCM) ---
+// Clé dédiée TWO_FA_KEY (recommandé). À défaut, dérivée de SESSION_SECRET : dans ce cas,
+// changer SESSION_SECRET rendrait les secrets 2FA illisibles.
+if (!process.env.TWO_FA_KEY && process.env.NODE_ENV !== 'test') {
+    console.warn("⚠️ TWO_FA_KEY absente : la clé de chiffrement 2FA est dérivée de SESSION_SECRET.");
+}
+const twoFaKey = crypto.createHash('sha256').update('two-fa:' + (process.env.TWO_FA_KEY || sessionSecret)).digest();
+const ENC_PREFIX = 'enc:v1:';
+
+function encryptSecret(plain) {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', twoFaKey, iv);
+    const data = Buffer.concat([cipher.update(String(plain), 'utf8'), cipher.final()]);
+    return ENC_PREFIX + [iv, cipher.getAuthTag(), data].map(b => b.toString('base64')).join('.');
+}
+
+function decryptSecret(stored) {
+    if (!stored) return null;
+    if (!stored.startsWith(ENC_PREFIX)) return stored; // ancien secret enregistré en clair : toujours lisible
+    try {
+        const [iv, tag, data] = stored.slice(ENC_PREFIX.length).split('.').map(p => Buffer.from(p, 'base64'));
+        const decipher = crypto.createDecipheriv('aes-256-gcm', twoFaKey, iv);
+        decipher.setAuthTag(tag);
+        return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
+    } catch (e) {
+        console.error("Impossible de déchiffrer le secret 2FA (clé modifiée ?).");
+        return null;
+    }
+}
+
 async function processTags(articleId, tagIds) {
     const validIds = Array.isArray(tagIds)
         ? tagIds.map(id => parseInt(id)).filter(id => !isNaN(id))
@@ -418,9 +596,7 @@ async function sendAdminNotification(req, articleId, commentId, authorName, comm
         const articleTitle = article ? article.title_fr : "un article"; // Fallback
 
         // 2. Construire un lien direct vers la page de modération
-        const protocol = req.protocol; // http ou https
-        const host = req.get('host'); // localhost:3000 ou ton-site.onrender.com
-        const moderationLink = `${protocol}://${host}/admin/comments`;
+        const moderationLink = `${getBaseUrl()}/admin/comments`;
 
         // 3. Préparer l'email
         const mailOptions = {
@@ -431,11 +607,11 @@ async function sendAdminNotification(req, articleId, commentId, authorName, comm
                   `Contenu:\n${commentContent}\n\n` +
                   `Approuvez-le ici : ${moderationLink}\n`,
             html: `
-                <p>Un nouveau commentaire (ID: <strong>${commentId}</strong>) a été posté par <strong>${authorName}</strong> sur l'article "${articleTitle}".</p>
+                <p>Un nouveau commentaire (ID: <strong>${commentId}</strong>) a été posté par <strong>${escapeHtml(authorName)}</strong> sur l'article "${escapeHtml(articleTitle)}".</p>
                 <hr>
                 <p><strong>Contenu :</strong></p>
                 <blockquote style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px; font-style: italic;">
-                    ${commentContent.replace(/\n/g, '<br>')}
+                    ${escapeHtml(commentContent).replace(/\n/g, '<br>')}
                 </blockquote>
                 <hr>
                 <p>Veuillez le modérer dans votre <a href="${moderationLink}">panneau d'administration</a>.</p>
@@ -456,7 +632,8 @@ async function sendAdminNotification(req, articleId, commentId, authorName, comm
 function logAction(req, action, details = '') {
     const userId = req.session ? req.session.userId : null;
     const username = req.session ? req.session.username : 'Anonyme/Système';
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    // req.ip tient compte de "trust proxy" ; X-Forwarded-For brut est falsifiable par n'importe quel visiteur
+    const ip = req.ip || req.socket.remoteAddress;
 
     const sql = `INSERT INTO audit_logs (user_id, username, action, details, ip_address) VALUES (?, ?, ?, ?, ?)`;
 
@@ -496,10 +673,10 @@ function insertComment(req, res, articleId, parentId, author_name, author_email,
     const parentIdValue = parentId ? parseInt(parentId) : null;
     const deleteToken = isAdmin ? null : crypto.randomUUID();
 
-    db.run(sql, [articleId, parentIdValue, guestId, author_name, author_email, author_avatar, content, isApproved, isAdmin], function(err) {
-        if (err) { 
+    db.run(sql, [articleId, parentIdValue, guestId, author_name, author_email, author_avatar, content, isApproved, isAdmin, deleteToken], function(err) {
+        if (err) {
             console.error("Erreur BDD:", err);
-            flashAndRedirect(req, res, 'error', 'Erreur technique lors de l\'enregistrement.', 'back', err.message);
+            return flashAndRedirect(req, res, 'error', 'Erreur technique lors de l\'enregistrement.', `/entree/${articleId}`);
         }
         
         // 1. Gamification (Invité)
@@ -540,8 +717,7 @@ async function sendNewPostNotification(articleId, title, summary) {
     db.all(sql, [], async (err, rows) => {
         if (err || !rows || rows.length === 0) return;
 
-        const siteUrl = process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
-        const articleUrl = `${siteUrl}/entree/${articleId}`;
+        const articleUrl = `${getBaseUrl()}/entree/${articleId}`;
 
         // Liste des destinataires (en copie cachée BCC pour la confidentialité)
         const recipients = rows.map(r => r.email).join(', ');
@@ -556,8 +732,8 @@ async function sendNewPostNotification(articleId, title, summary) {
                     <p>Bonjour,</p>
                     <p>Un nouvel article vient d'être publié sur mon carnet de stage :</p>
                     <hr>
-                    <h3>${title}</h3>
-                    <p><em>${summary || 'Cliquez ci-dessous pour découvrir le contenu...'}</em></p>
+                    <h3>${escapeHtml(title)}</h3>
+                    <p><em>${escapeHtml(summary) || 'Cliquez ci-dessous pour découvrir le contenu...'}</em></p>
                     <p style="text-align: center; margin: 30px 0;">
                         <a href="${articleUrl}" style="background-color: #0056b3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
                             Lire l'article
@@ -626,22 +802,21 @@ async function sendReplyNotification(articleId, parentId, replierName, replyCont
 
         if (parent.author_name === replierName) return;
 
-        const siteUrl = process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000';
-        const link = `${siteUrl}/entree/${articleId}#comment-${parentId}`; // Ancre vers le commentaire
+        const link = `${getBaseUrl()}/entree/${articleId}#comment-${parentId}`; // Ancre vers le commentaire
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: recipientEmail,
-            subject: `Nouvelle réponse de ${replierName} sur "${parent.article_title}"`,
+            subject: `Nouvelle réponse de ${String(replierName).replace(/[\r\n]+/g, ' ')} sur "${String(parent.article_title).replace(/[\r\n]+/g, ' ')}"`,
             html: `
                 <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px;">
                     <h2 style="color: #0056b3;">Quelqu'un a répondu à votre commentaire !</h2>
-                    <p>Bonjour <strong>${parent.author_name}</strong>,</p>
-                    <p><strong>${replierName}</strong> vient de répondre à votre message sur l'article <em>"${parent.article_title}"</em>.</p>
-                    
+                    <p>Bonjour <strong>${escapeHtml(parent.author_name)}</strong>,</p>
+                    <p><strong>${escapeHtml(replierName)}</strong> vient de répondre à votre message sur l'article <em>"${escapeHtml(parent.article_title)}"</em>.</p>
+
                     <div style="background: #f9f9f9; border-left: 4px solid #0056b3; padding: 10px; margin: 15px 0;">
                         <strong>Le message :</strong><br>
-                        "${replyContent}"
+                        "${escapeHtml(replyContent).replace(/\n/g, '<br>')}"
                     </div>
 
                     <p style="text-align: center; margin-top: 20px;">
@@ -662,7 +837,19 @@ async function sendReplyNotification(articleId, parentId, replierName, replyCont
     }
 }
 
+// Retourne le chemin de la page d'où vient la requête, si elle appartient bien à ce site (sinon "/").
+// Évite de renvoyer l'utilisateur vers un site externe via l'en-tête Referer.
+function refererPath(req) {
+    try {
+        const ref = new URL(req.get('Referrer') || '');
+        if (ref.host === req.get('host')) return safeLocalPath(ref.pathname + ref.search, '/');
+    } catch (e) { /* pas de Referer valide */ }
+    return '/';
+}
+
 function flashAndRedirect(req, res, type, text, redirectUrl, detail = null) {
+    if (res.headersSent) return; // sécurité : ne jamais répondre deux fois
+
     req.session.flashMessage = {
         type: type,
         text: text,
@@ -672,11 +859,7 @@ function flashAndRedirect(req, res, type, text, redirectUrl, detail = null) {
     req.session.save((err) => {
         if (err) console.error("Erreur lors de la sauvegarde de session (Flash):", err);
 
-        if (redirectUrl === 'back') {
-            res.redirect(req.get('Referrer') || '/');
-        } else {
-            res.redirect(redirectUrl);
-        }
+        res.redirect(redirectUrl === 'back' ? refererPath(req) : safeLocalPath(redirectUrl, '/'));
     });
 }
 
@@ -684,41 +867,36 @@ function flashAndRedirect(req, res, type, text, redirectUrl, detail = null) {
 // 6. ROUTES (Le Cœur de l'Application)
 // =================================================================
 
-app.get('/debug-write', (req, res) => {
-    console.log('1. [Debug] Écriture du message...');
-    req.session.flashMessage = { type: 'success', text: 'Le message survit !' };
-
-    req.session.save((err) => {
-        if (err) return res.send('Erreur Save: ' + err);
-        console.log('2. [Debug] Sauvegarde OK. Redirection...');
-        res.redirect('/debug-read');
-    });
-});
-
-app.get('/debug-read', (req, res) => {
-    console.log('3. [Debug] Lecture session sur la nouvelle page...');
-    console.log('   Contenu Session:', req.session);
-    console.log('   Message Flash (via Middleware) :', res.locals.message);
-
-    if (res.locals.message) {
-        res.send(`<h1 style="color:green">SUCCÈS !</h1><p>Message reçu : ${res.locals.message.text}</p>`);
-    } else {
-        res.send(`<h1 style="color:red">ÉCHEC</h1><p>Le message a disparu en route.</p>`);
-    }
-});
+// (Les routes de debug /debug-write, /debug-read et /test-helper ont été supprimées :
+//  elles n'ont rien à faire sur un site en ligne.)
 
 // ROUTES PUBLIQUES (Accessibles à tous)
 
 // --- SEO & RSS ---
 app.get('/sitemap.xml', async (req, res) => {
-    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}`;
+    const baseUrl = getBaseUrl();
     try {
-        const staticLinks = [ /* ... (liens statiques) ... */ ];
-        const sql = 'SELECT id, publication_date FROM articles ORDER BY publication_date DESC';
+        const staticLinks = [
+            { url: '/', changefreq: 'daily', priority: 1.0 },
+            { url: '/journal', changefreq: 'daily', priority: 0.9 },
+            { url: '/chronologie', changefreq: 'weekly', priority: 0.6 },
+            { url: '/profil/qui-suis-je', changefreq: 'monthly', priority: 0.5 },
+            { url: '/profil/parcours-scolaire', changefreq: 'monthly', priority: 0.5 },
+            { url: '/profil/parcours-pro', changefreq: 'monthly', priority: 0.5 },
+            { url: '/stage/l-entreprise', changefreq: 'monthly', priority: 0.5 },
+            { url: '/stage/mes-missions', changefreq: 'monthly', priority: 0.5 },
+            { url: '/contact', changefreq: 'yearly', priority: 0.3 }
+        ];
+        const sql = "SELECT id, publication_date FROM articles WHERE status = 'published' ORDER BY publication_date DESC";
         const entries = await new Promise((resolve, reject) => {
             db.all(sql, [], (err, rows) => err ? reject(err) : resolve(rows));
         });
-        const dynamicLinks = entries.map(entry => ({ /* ... */ }));
+        const dynamicLinks = entries.map(entry => ({
+            url: `/entree/${entry.id}`,
+            lastmod: new Date(entry.publication_date).toISOString(),
+            changefreq: 'monthly',
+            priority: 0.8
+        }));
         const allLinks = staticLinks.concat(dynamicLinks);
         const stream = new SitemapStream({ hostname: baseUrl });
         const xml = await streamToPromise(Readable.from(allLinks).pipe(stream));
@@ -758,7 +936,7 @@ app.get('/feed.xml', (req, res) => {
 
         rows.forEach(article => {
             let cleanContent = article.content_fr.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
-            let htmlContent = marked.parse(cleanContent);
+            let htmlContent = renderMarkdown(cleanContent);
 
             let imageUrl = null;
             if (article.cover_image_url) {
@@ -1232,9 +1410,17 @@ app.get('/guest/login', (req, res) => {
         activePage: 'guest' 
     });
 });
-app.post('/guest/login', async (req, res) => {
-    const { name, email, avatar_style } = req.body;
-    
+app.post('/guest/login', apiLimiter, async (req, res) => {
+    const name = cleanStr(req.body.name, 50);
+    const email = cleanStr(req.body.email, 254);
+    const avatar_style = safeAvatarStyle(req.body.avatar_style);
+    const wantsJson = !!(req.headers.accept && req.headers.accept.includes('application/json'));
+
+    if (!name || !isValidEmail(email)) {
+        if (wantsJson) return res.status(400).json({ success: false, message: 'Nom et email valides requis.' });
+        return flashAndRedirect(req, res, 'error', 'Nom et email valides requis.', '/guest/login');
+    }
+
     let guestId = req.cookies.guest_token;
     let isNew = false;
 
@@ -1273,8 +1459,9 @@ app.post('/guest/login', async (req, res) => {
 
     flashAndRedirect(req, res, 'success', `Profil invité ${isNew ? 'créé' : 'mis à jour'} !`, '/guest/dashboard')
 });
-app.post('/guest/recover', (req, res) => {
-    const { name, email } = req.body;
+app.post('/guest/recover', authLimiter, (req, res) => {
+    const name = cleanStr(req.body.name, 50);
+    const email = cleanStr(req.body.email, 254);
 
     db.get('SELECT * FROM guests WHERE name = ? AND email = ?', [name, email], (err, guest) => {
         if (guest) {
@@ -1316,8 +1503,7 @@ app.get('/guest/dashboard', (req, res) => {
         `;
 
         db.all(sqlComments, [guestId], (errComm, comments) => {
-            const seed = encodeURIComponent(guest.name);
-            const avatarUrl = `https://api.dicebear.com/7.x/${guest.avatar_style}/svg?seed=${seed}`;
+            const avatarUrl = avatarUrlFor(guest.avatar_style, guest.name);
 
             res.render('guest-dashboard', {
                 pageTitle: 'Mon Tableau de Bord',
@@ -1335,7 +1521,8 @@ app.get('/guest/logout', (req, res) => {
 
 // --- Lecture Article & Interactions ---
 app.get('/entree/:id', (req, res) => {
-    const id = req.params.id;
+    const id = parseId(req.params.id);
+    if (id === null) { return res.status(404).render('404', { pageTitle: 'Article introuvable', activePage: '' }); }
     const lang = req.language === 'en' ? 'en' : 'fr';
 
     // Identifiants actuels (pour les checks)
@@ -1414,7 +1601,7 @@ app.get('/entree/:id', (req, res) => {
 
             article.readingTime = getReadingTime(contentRaw);
 
-            article.content = marked.parse(contentRaw);
+            article.content = renderMarkdown(contentRaw);
 
             const commentsTree = nestComments(flatComments);
 
@@ -1424,7 +1611,7 @@ app.get('/entree/:id', (req, res) => {
             const ogDescription = (article[`summary_${lang}`] || plainText) + '...';
             let ogImage = article.cover_image_url;
             if (ogImage && !ogImage.startsWith('http')) {
-                ogImage = (process.env.RENDER_EXTERNAL_URL || 'http://localhost:3000') + ogImage;
+                ogImage = getBaseUrl() + ogImage;
             }
 
             res.render('entry_detail', {
@@ -1451,62 +1638,94 @@ app.get('/entree/:id', (req, res) => {
     });
 });
 app.post('/article/:id/comment', commentLimiter, async (req, res) => {
-    const articleId = req.params.id;
-    let { author_name, author_email, content, parent_id, author_avatar_style } = req.body;
+    const articleId = parseId(req.params.id);
+    if (articleId === null) return res.status(404).render('404', { pageTitle: 'Article introuvable', activePage: '' });
+
+    // On force des chaînes de longueur raisonnable (le body peut contenir des tableaux/objets)
+    let author_name = cleanStr(req.body.author_name, 50);
+    const author_email = cleanStr(req.body.author_email, 254);
+    const content = cleanStr(req.body.content, 2000);
+    const parent_id = req.body.parent_id;
+    const author_avatar_style = safeAvatarStyle(req.body.author_avatar_style);
 
     const guestId = req.cookies.guest_token || null;
 
-    // 1. HONEYPOT (Protection Anti-robot)
-    if (req.body.website_field) return res.redirect('back');
+    // 1. HONEYPOT (Protection Anti-robot) : faux succès silencieux
+    if (req.body.website_field) return res.redirect(`/entree/${articleId}`);
 
     // 2. VALIDATION (Champs requis pour les visiteurs)
-    if (!req.session.userId && (!author_name || !author_email || !content)) {
-        flashAndRedirect(req, res, 'info', 'Nom, Email et Message sont requis.', `/entree/${articleId}`);
+    if (!req.session.userId && (!author_name || !isValidEmail(author_email) || !content)) {
+        return flashAndRedirect(req, res, 'info', 'Nom, Email valide et Message sont requis.', `/entree/${articleId}`);
+    }
+    if (req.session.userId && !content) {
+        return flashAndRedirect(req, res, 'info', 'Le message est vide.', `/entree/${articleId}`);
     }
 
-    // 3. MODÉRATION AUTOMATIQUE (Bad-words)
+    // 3. L'article doit exister (et être publié, sauf pour l'admin) ; la réponse doit viser un commentaire du même article
+    const article = await new Promise(resolve => db.get('SELECT id, status FROM articles WHERE id = ?', [articleId], (e, r) => resolve(r)));
+    if (!article || (article.status !== 'published' && !req.session.userId)) {
+        return flashAndRedirect(req, res, 'error', 'Article introuvable.', '/journal');
+    }
+    let parentId = null;
+    if (parent_id) {
+        const pid = parseId(parent_id);
+        const parent = pid === null ? null : await new Promise(resolve => db.get('SELECT id FROM comments WHERE id = ? AND article_id = ?', [pid, articleId], (e, r) => resolve(r)));
+        if (!parent) return flashAndRedirect(req, res, 'error', 'Le commentaire auquel vous répondez est introuvable.', `/entree/${articleId}`);
+        parentId = pid;
+    }
+
+    // 4. MODÉRATION AUTOMATIQUE (Bad-words)
     if (filter.isProfane(content) || filter.isProfane(author_name)) {
-        flashAndRedirect(req, res, 'error', 'Langage inapproprié détecté.', 'back');
+        return flashAndRedirect(req, res, 'error', 'Langage inapproprié détecté.', `/entree/${articleId}`);
     }
 
-    // 4. CALCUL DE L'AVATAR
+    // 5. CALCUL DE L'AVATAR
     let author_avatar = '';
     if (req.session.userId) {
         const user = await new Promise(resolve => db.get('SELECT avatar_url FROM users WHERE id = ?', [req.session.userId], (err, r) => resolve(r)));
         author_avatar = user ? user.avatar_url : '';
     } else {
-        const seed = encodeURIComponent(author_name);
-        const style = author_avatar_style || 'bottts';
-        author_avatar = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+        author_avatar = avatarUrlFor(author_avatar_style, author_name);
     }
 
     // 5. LOGIQUE DE TRAITEMENT
 
     // --- CAS A : ADMIN ---
     if (req.session.userId && req.session.username) {
-        return insertComment(req, res, articleId, parent_id, req.session.username, 'admin@internal', author_avatar, content, 1, 1, null);
+        return insertComment(req, res, articleId, parentId, req.session.username, 'admin@internal', author_avatar, content, 1, 1, null);
     }
 
-    // --- CAS B : VISITEUR (Déduplication Intelligente) ---
-    const sqlCheck = `SELECT author_name, author_email FROM comments WHERE author_name = ? OR author_name LIKE ?`;
+    // --- CAS B : VISITEUR ---
+    // Un visiteur ne peut pas se faire passer pour l'administrateur
+    const adminRow = await new Promise(resolve => db.get('SELECT 1 AS taken FROM users WHERE lower(username) = lower(?)', [author_name], (e, r) => resolve(r)));
+    if (adminRow) {
+        return flashAndRedirect(req, res, 'error', 'Ce pseudo est réservé.', `/entree/${articleId}`);
+    }
 
-    db.all(sqlCheck, [author_name, `${author_name} %`], (err, rows) => {
+    // Déduplication intelligente
+    // LIKE : on échappe % et _ pour que le pseudo soit pris au pied de la lettre
+    const likeName = author_name.replace(/[\\%_]/g, '\\$&') + ' %';
+    const sqlCheck = `SELECT author_name, author_email FROM comments WHERE author_name = ? OR author_name LIKE ? ESCAPE '\\'`;
+
+    db.all(sqlCheck, [author_name, likeName], (err, rows) => {
         if (!err) {
             const existingUser = rows.find(row => row.author_name.toLowerCase() === author_name.toLowerCase());
 
             if (existingUser && existingUser.author_email !== author_email) {
                 let counter = 1;
                 let newName = `${author_name} ${counter}`;
-                while (rows.some(row => row.author_name.toLowerCase() === newName.toLowerCase())) counter++;
+                while (rows.some(row => row.author_name.toLowerCase() === newName.toLowerCase())) {
+                    counter++;
+                    newName = `${author_name} ${counter}`;
+                }
                 author_name = newName;
                 req.session.flashMessage = { type: 'info', text: `Pseudo pris. Vous publiez en tant que "${author_name}".` };
-                
-                const seed = encodeURIComponent(author_name);
-                author_avatar = `https://api.dicebear.com/7.x/${author_avatar_style || 'bottts'}/svg?seed=${seed}`;
+
+                author_avatar = avatarUrlFor(author_avatar_style, author_name);
             }
         }
 
-        insertComment(req, res, articleId, parent_id, author_name, author_email, author_avatar, content, 1, 0, guestId);
+        insertComment(req, res, articleId, parentId, author_name, author_email, author_avatar, content, 1, 0, guestId);
     });
 });
 
@@ -1521,94 +1740,105 @@ app.get('/contact', (req, res) => {
         ogImage: null
     });
 });
-app.post('/contact', (req, res) => {
-    const { name, email, subject, message } = req.body;
+app.post('/contact', contactLimiter, (req, res) => {
+    const renderContact = (status, messageSent, errorKey) => res.status(status).render('contact', {
+        pageTitle: req.t('page_titles.contact'),
+        activePage: 'contact',
+        messageSent: messageSent,
+        error: errorKey ? req.t(errorKey) : null
+    });
+
+    // Honeypot : faux succès silencieux
+    if (req.body.website_field) {
+        console.warn("Honeypot (contact) déclenché ! Rejet silencieux.");
+        return renderContact(200, true, null);
+    }
+
+    // Validation (on force des chaînes de longueur raisonnable)
+    const name = cleanStr(req.body.name, 100).replace(/[\r\n]+/g, ' ');
+    const email = cleanStr(req.body.email, 254);
+    const subject = cleanStr(req.body.subject, 150).replace(/[\r\n]+/g, ' ');
+    const message = cleanStr(req.body.message, 5000);
+    if (!name || !subject || !message || !isValidEmail(email)) {
+        return renderContact(400, false, 'contact.error_message');
+    }
 
     const sql = 'INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)';
 
     db.run(sql, [name, email, subject, message], async function(err) {
         if (err) {
             console.error("Erreur sauvegarde contact:", err);
+            return renderContact(500, false, 'contact.error_message');
         }
 
         if (transporter) {
             const mailOptions = {
-                from: `"${name}" <${process.env.EMAIL_USER}>`,
-                
-                to: process.env.EMAIL_TO,
-
-                replyTo: email,
-                // Le sujet du mail devient le sujet saisi par l'utilisateur (avec un préfixe)
+                from: process.env.EMAIL_USER,
+                to: process.env.EMAIL_TO || process.env.EMAIL_USER,
+                replyTo: `"${name.replace(/"/g, '')}" <${email}>`,
                 subject: `[Contact Site] ${subject}`,
-
                 html: `
                     <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
                         <h2 style="color: #0056b3; margin-top: 0;">Nouveau message de contact</h2>
-                        <p><strong>De :</strong> ${name} (<a href="mailto:${email}">${email}</a>)</p>
-                        <p><strong>Objet :</strong> ${subject}</p>
+                        <p><strong>De :</strong> ${escapeHtml(name)} (${escapeHtml(email)})</p>
+                        <p><strong>Objet :</strong> ${escapeHtml(subject)}</p>
                         <hr>
-                        <p style="white-space: pre-wrap; font-size: 1.1em;">${message}</p>
+                        <p style="white-space: pre-wrap; font-size: 1.1em;">${escapeHtml(message)}</p>
                     </div>
                 `
             };
-            
-            try { 
-                await transporter.sendMail(mailOptions); 
-            } catch (mailErr) { 
-                console.error("Erreur mail:", mailErr); 
+
+            try {
+                await transporter.sendMail(mailOptions);
+            } catch (mailErr) {
+                // Le message est de toute façon enregistré en base (/admin/messages)
+                console.error("Erreur mail:", mailErr);
             }
         }
 
-        res.render('contact', { 
-            pageTitle: req.t('page_titles.contact'), 
-            activePage: 'contact', 
-            messageSent: true 
-        });
+        renderContact(200, true, null);
     });
 });
 
 // --- Newsletter ---
 app.post('/newsletter/subscribe', (req, res) => {
-    const email = req.body.email;
-    
-    // Validation simple
-    if (!email || !email.includes('@')) {
-        flashAndRedirect(req, res, 'error', 'Email invalide.', 'back');
+    const email = cleanStr(req.body.email, 254);
+
+    if (!isValidEmail(email)) {
+        return flashAndRedirect(req, res, 'error', 'Email invalide.', 'back');
     }
 
     const sql = 'INSERT INTO subscribers (email) VALUES (?)';
-    
+
     db.run(sql, [email], function(err) {
         if (err) {
             if (err.message.includes('UNIQUE')) {
-                flashAndRedirect(req, res, 'info', 'Vous êtes déjà inscrit !', 'back');
-            } else {
-                console.error("Erreur newsletter:", err);
-                flashAndRedirect(req, res, 'error', 'Erreur technique.', 'back');
+                return flashAndRedirect(req, res, 'info', 'Vous êtes déjà inscrit !', 'back');
             }
-        } else {
-            flashAndRedirect(req, res, 'success', 'Inscription réussie ! Merci.', '/');
+            console.error("Erreur newsletter:", err);
+            return flashAndRedirect(req, res, 'error', 'Erreur technique.', 'back');
         }
+        flashAndRedirect(req, res, 'success', 'Inscription réussie ! Merci.', '/');
     });
 });
 
 // API (AJAX - Doit être avant les erreurs)
 app.get('/api/search', async (req, res) => {
-    const query = req.query.q;
+    const query = cleanStr(req.query.q, 100);
     const lang = req.language === 'en' ? 'en' : 'fr'; // Utilise la langue détectée
 
     // Si la recherche est vide, on renvoie une liste vide
-    if (!query || query.trim() === '') {
+    if (!query) {
         return res.json([]);
     }
 
     const searchTerm = `%${query}%`;
 
-    // Requête simplifiée pour la recherche rapide (Titre ou Contenu)
+    // Requête simplifiée pour la recherche rapide (Titre ou Contenu) : seulement les articles publiés
     const sql = `
         SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date
         FROM articles
-        WHERE title_fr LIKE ? OR title_en LIKE ? OR content_fr LIKE ? OR content_en LIKE ?
+        WHERE status = 'published' AND (title_fr LIKE ? OR title_en LIKE ? OR content_fr LIKE ? OR content_en LIKE ?)
         ORDER BY publication_date DESC
         LIMIT 10
     `;
@@ -1666,15 +1896,20 @@ app.post('/api/translate', isAuthenticated, async (req, res) => {
     }
 });
 app.post('/api/entree/:id/like', async (req, res) => {
-    const articleId = req.params.id;
+    const articleId = parseId(req.params.id);
+    if (articleId === null) return res.status(400).json({ error: "Identifiant invalide" });
     const userId = req.session.userId || null;
     const guestId = req.cookies.guest_token || null;
 
     if (!userId && !guestId) return res.status(401).json({ error: "Identification requise" });
 
+    // L'article doit exister et être publié (sauf pour l'admin)
+    const target = await new Promise(resolve => db.get('SELECT status FROM articles WHERE id = ?', [articleId], (e, r) => resolve(r)));
+    if (!target || (target.status !== 'published' && !userId)) return res.status(404).json({ error: "Article introuvable" });
+
     // 1. On vérifie si le like existe DÉJÀ
     let sqlCheck, params;
-    
+
     if (userId) {
         sqlCheck = 'SELECT id FROM article_likes WHERE article_id = ? AND user_id = ?';
         params = [articleId, userId];
@@ -1715,11 +1950,12 @@ app.post('/api/entree/:id/like', async (req, res) => {
     });
 });
 app.post('/api/tags/create', isAuthenticated, async (req, res) => {
-    const { name_fr, name_en_auto } = req.body;
+    const name_fr = cleanStr(req.body.name_fr, 50);
+    const name_en_auto = req.body.name_en_auto;
     if (!name_fr) {
         return res.status(400).json({ error: 'Le nom français est requis.' });
     }
-    let name_en = req.body.name_en; // Récupère le nom EN manuel
+    let name_en = cleanStr(req.body.name_en, 50); // Récupère le nom EN manuel
 
     if (name_en_auto && translator) { // Si auto-traduction demandée ET DeepL dispo
         try {
@@ -1777,77 +2013,81 @@ app.get('/connexion', (req, res) => {
         });
     });
 });
-app.post('/connexion', authLimiter, (req, res) => {
-    const { username, password } = req.body;
+// Hash factice : on fait toujours un bcrypt.compare, même si l'utilisateur n'existe pas,
+// pour que le temps de réponse ne révèle pas quels noms d'utilisateur existent.
+const DUMMY_HASH = bcrypt.hashSync('mot-de-passe-factice', 10);
 
-    // 1. On cherche l'utilisateur
-    const sql = 'SELECT * FROM users WHERE username = ?';
+app.post('/connexion', loginLimiter, (req, res) => {
+    const username = cleanStr(req.body.username, 100);
+    const password = String(req.body.password || '');
+    const BAD_CREDENTIALS = 'Identifiants incorrects.';
 
-    db.get(sql, [username], (err, user) => {
+    db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
         if (err) {
             console.error("Erreur BDD (POST /connexion):", err);
-            flashAndRedirect(req, res, 'error', 'Erreur serveur.', '/connexion');
+            return flashAndRedirect(req, res, 'error', 'Erreur serveur.', '/connexion');
         }
 
-        // 2. Utilisateur introuvable
-        if (!user) { 
-            flashAndRedirect(req, res, 'error', 'Identifiants incorrects.', '/connexion');
-        }
-
-        // 3. Vérification du mot de passe
-        bcrypt.compare(password, user.password, (errCompare, result) => {
-
-            if (result) {
-
-                logAction(req, 'LOGIN_SUCCESS', `Utilisateur: ${user.username}`);
-
-                if (user.two_fa_enabled === 1) {
-                    req.session.tempUserId = user.id;
-                    return req.session.save(() => res.redirect('/connexion/2fa'));
-                }
-
-                req.session.userId = user.id;
-                req.session.username = user.username;
-
-                if (user.two_fa_prompted === 0) {
-                    return req.session.save(() => res.redirect('/admin/2fa/choice'));
-                }
-
-                flashAndRedirect(req, res, 'success', `Ravi de vous revoir, ${user.username} !`, '/');
-                
-            } else {
-                logAction(req, 'LOGIN_FAILED', `Tentative échouée pour: ${username}`);
-                flashAndRedirect(req, res, 'error', 'Identifiants incorrects.', '/connexion');
+        bcrypt.compare(password, user ? user.password : DUMMY_HASH, (errCompare, result) => {
+            if (errCompare) {
+                console.error("Erreur bcrypt:", errCompare);
+                return flashAndRedirect(req, res, 'error', 'Erreur serveur.', '/connexion');
             }
+
+            // --- ÉCHEC : utilisateur inconnu ou mot de passe incorrect ---
+            if (!user || !result) {
+                logAction(req, 'LOGIN_FAILED', `Tentative échouée pour: ${username.slice(0, 50)}`);
+                return flashAndRedirect(req, res, 'error', BAD_CREDENTIALS, '/connexion');
+            }
+
+            // --- 2FA activée : on ne connecte PAS encore, on attend le code ---
+            if (user.two_fa_enabled === 1) {
+                return startFreshSession(req, { tempUserId: user.id }, (errSave) => {
+                    if (errSave) { console.error("Erreur session 2FA:", errSave); return res.redirect('/connexion'); }
+                    res.redirect('/connexion/2fa');
+                });
+            }
+
+            // --- Mot de passe correct, pas de 2FA : connexion complète (nouvelle session) ---
+            const needsOnboarding = user.two_fa_prompted === 0;
+            const sessionData = { userId: user.id, username: user.username };
+            if (!needsOnboarding) {
+                sessionData.flashMessage = { type: 'success', text: `Ravi de vous revoir, ${user.username} !`, detail: null };
+            }
+
+            startFreshSession(req, sessionData, (errSave) => {
+                if (errSave) { console.error("Erreur session login:", errSave); return res.redirect('/connexion'); }
+                loginLimiter.resetKey(req.ip); // connexion réussie : on efface les échecs précédents
+                logAction(req, 'LOGIN_SUCCESS', `Utilisateur: ${user.username}`);
+                res.redirect(needsOnboarding ? '/admin/2fa/choice' : '/');
+            });
         });
     });
 });
 app.get('/inscription', checkAdminExists, (req, res) => { res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); });
 app.post('/inscription', checkAdminExists, authLimiter, upload.single('avatar'), (req, res) => {
-    const { username, password, email, avatar_style } = req.body;
+    const username = cleanStr(req.body.username, 50);
+    const email = cleanStr(req.body.email, 254);
+    const password = String(req.body.password || '');
+    const avatar_style = safeAvatarStyle(req.body.avatar_style);
 
     // Validation basique
-    if (!email || !email.includes('@')) {
-        flashAndRedirect(req, res, 'error', 'Email invalide.', '/inscription');
+    if (!username) {
+        return flashAndRedirect(req, res, 'error', "Le nom d'utilisateur est requis.", '/inscription');
     }
-    if (!password || password.length < 8) {
-        flashAndRedirect(req, res, 'error', 'Le mot de passe doit faire 8 caractères min.', '/inscription');
+    if (!isValidEmail(email)) {
+        return flashAndRedirect(req, res, 'error', 'Email invalide.', '/inscription');
     }
-
-    let avatarUrl = null;
-    if (req.file) {
-        avatarUrl = '/uploads/' + req.file.filename;
-    } else {
-        const style = avatar_style || 'bottts';
-        const seed = encodeURIComponent(username);
-        avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+    if (password.length < 8 || password.length > 72) { // 72 octets : limite de bcrypt
+        return flashAndRedirect(req, res, 'error', 'Le mot de passe doit faire entre 8 et 72 caractères.', '/inscription');
     }
 
-    const saltRounds = 10;
-    bcrypt.hash(password, saltRounds, (errHash, hash) => {
+    const avatarUrl = req.file ? '/uploads/' + req.file.filename : avatarUrlFor(avatar_style, username);
+
+    bcrypt.hash(password, 10, (errHash, hash) => {
         if (errHash) {
             console.error(errHash);
-            flashAndRedirect(req, res, 'error', 'Erreur technique.', '/inscription');
+            return flashAndRedirect(req, res, 'error', 'Erreur technique.', '/inscription');
         }
 
         const sql = 'INSERT INTO users (username, password, email, avatar_url) VALUES (?, ?, ?, ?)';
@@ -1855,7 +2095,7 @@ app.post('/inscription', checkAdminExists, authLimiter, upload.single('avatar'),
         db.run(sql, [username, hash, email, avatarUrl], function(errInsert) {
             if (errInsert) {
                 console.error(errInsert);
-                flashAndRedirect(req, res, 'error', 'Ce nom ou cet email est déjà pris.', '/inscription');
+                return flashAndRedirect(req, res, 'error', 'Ce nom ou cet email est déjà pris.', '/inscription');
             }
 
             flashAndRedirect(req, res, 'success', 'Compte administrateur créé ! Connectez-vous.', '/connexion');
@@ -1863,57 +2103,77 @@ app.post('/inscription', checkAdminExists, authLimiter, upload.single('avatar'),
     });
 });
 app.get('/deconnexion', (req, res) => {
-    req.session.userId = null;
-    req.session.username = null;
-
-    flashAndRedirect(req, res, 'info', 'Vous avez été déconnecté avec succès.', '/');
+    // On détruit réellement la session (avant, on vidait seulement userId/username)
+    req.session.destroy((err) => {
+        if (err) console.error("Erreur déconnexion:", err);
+        res.clearCookie('connect.sid');
+        res.redirect('/');
+    });
 });
 app.get('/forgot-password', (req, res) => { res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: null, info: null }); });
-app.post('/forgot-password', authLimiter, async (req, res) => {
-    const email = req.body.email;
-    if (!email) { return res.render('forgot-password', { /* ... error: 'Email requis' ... */ }); }
-    if (!transporter) { return res.render('forgot-password', { /* ... error: 'Service email non configuré' ... */ }); }
-    const sqlFindUser = 'SELECT * FROM users WHERE email = ?';
-    db.get(sqlFindUser, [email], async (err, user) => {
-        const infoMsg = 'Si un compte avec cet email existe, un lien de réinitialisation a été envoyé.';
+app.post('/forgot-password', authLimiter, (req, res) => {
+    const renderForgot = (status, error, info) => res.status(status).render('forgot-password', {
+        pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: error, info: info
+    });
+    const email = cleanStr(req.body.email, 254);
+    if (!email) { return renderForgot(400, 'Email requis.', null); }
+    if (!transporter) { return renderForgot(503, 'Service email non configuré.', null); }
+
+    // Même réponse que le compte existe ou non (évite de révéler quels emails sont inscrits)
+    const infoMsg = 'Si un compte avec cet email existe, un lien de réinitialisation a été envoyé.';
+
+    db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
         if (err) { console.error("Erreur BDD (POST /forgot-password findUser):", err); }
-        if (!err && user) {
-            const token = crypto.randomBytes(32).toString('hex');
-            const expires = Date.now() + 3600000; // 1 heure
-            const sqlUpdateToken = 'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?';
-            db.run(sqlUpdateToken, [token, expires, user.id], (errUpdate) => {
-                if (errUpdate) { /* ... gestion erreur ... */ }
-                const resetLink = `${req.protocol}://${req.get('host')}/reset-password/${token}`;
-                const mailOptions = { /* ... (détails email) ... */ text: `Cliquez ici: ${resetLink} (expire dans 1h)` };
-                transporter.sendMail(mailOptions, (errMail) => {
-                    if (errMail) { /* ... gestion erreur ... */ }
-                    res.render('forgot-password', { /* ... info: infoMsg ... */ });
-                });
+        if (err || !user) { return renderForgot(200, null, infoMsg); }
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const expires = Date.now() + 3600000; // 1 heure
+        db.run('UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?', [hashResetToken(token), expires, user.id], (errUpdate) => {
+            if (errUpdate) {
+                console.error("Erreur BDD (POST /forgot-password updateToken):", errUpdate);
+                return renderForgot(200, null, infoMsg);
+            }
+            const resetLink = `${getBaseUrl()}/reset-password/${token}`;
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: user.email,
+                subject: 'Réinitialisation de votre mot de passe - Carnet de Stage',
+                text: `Pour choisir un nouveau mot de passe, cliquez ici : ${resetLink}\n\nCe lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.`,
+                html: `<p>Pour choisir un nouveau mot de passe, <a href="${resetLink}">cliquez ici</a>.</p><p>Ce lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`
+            };
+            transporter.sendMail(mailOptions, (errMail) => {
+                if (errMail) { console.error("Erreur envoi email reset:", errMail); }
+                renderForgot(200, null, infoMsg);
             });
-        } else { res.render('forgot-password', { /* ... info: infoMsg ... */ }); }
+        });
     });
 });
 app.get('/reset-password/:token', (req, res) => {
     const token = req.params.token;
-    const sqlFindToken = 'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?';
-    db.get(sqlFindToken, [token, Date.now()], (err, user) => {
-        if (err || !user) { return res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: 'Lien invalide ou expiré.', info: null }); }
+    db.get('SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?', [hashResetToken(token), Date.now()], (err, user) => {
+        if (err || !user) { return res.status(400).render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: 'Lien invalide ou expiré.', info: null }); }
         res.render('reset-password', { pageTitle: 'Réinitialiser Mot de Passe', activePage: 'admin', token: token, error: null });
     });
 });
 app.post('/reset-password/:token', authLimiter, (req, res) => {
     const token = req.params.token;
-    const { newPassword, confirmPassword } = req.body;
-    if (newPassword !== confirmPassword || newPassword.length < 8) { return res.render('reset-password', { /* ... error: 'Mots de passe invalides' ... */ }); }
-    const sqlFindToken = 'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?';
-    db.get(sqlFindToken, [token, Date.now()], (err, user) => {
-        if (err || !user) { return res.render('forgot-password', { /* ... error: 'Lien invalide ou expiré.' ... */ }); }
-        const saltRounds = 10;
-        bcrypt.hash(newPassword, saltRounds, (errHash, newHash) => {
-            if (errHash) { return res.render('reset-password', { /* ... error: 'Erreur hachage.' ... */ }); }
-            const sqlUpdatePass = 'UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?';
-            db.run(sqlUpdatePass, [newHash, user.id], (errUpdate) => {
-                if (errUpdate) { return res.render('reset-password', { /* ... error: 'Erreur mise à jour.' ... */ }); }
+    const newPassword = String(req.body.newPassword || '');
+    const confirmPassword = String(req.body.confirmPassword || '');
+    const renderReset = (status, error) => res.status(status).render('reset-password', {
+        pageTitle: 'Réinitialiser Mot de Passe', activePage: 'admin', token: token, error: error
+    });
+
+    if (newPassword !== confirmPassword) { return renderReset(400, 'Les mots de passe ne correspondent pas.'); }
+    if (newPassword.length < 8 || newPassword.length > 72) { return renderReset(400, 'Le mot de passe doit faire entre 8 et 72 caractères.'); }
+
+    db.get('SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > ?', [hashResetToken(token), Date.now()], (err, user) => {
+        if (err || !user) { return res.status(400).render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: 'Lien invalide ou expiré.', info: null }); }
+        bcrypt.hash(newPassword, 10, (errHash, newHash) => {
+            if (errHash) { console.error("Erreur hachage (reset):", errHash); return renderReset(500, 'Erreur serveur.'); }
+            // Le jeton est à usage unique : on l'efface en même temps qu'on change le mot de passe
+            db.run('UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?', [newHash, user.id], (errUpdate) => {
+                if (errUpdate) { console.error("Erreur BDD (reset update):", errUpdate); return renderReset(500, 'Erreur serveur.'); }
+                logAction(req, 'PASSWORD_RESET', `Mot de passe réinitialisé pour l'utilisateur #${user.id}`);
                 res.redirect('/connexion?reset=success');
             });
         });
@@ -1923,30 +2183,42 @@ app.get('/connexion/2fa', (req, res) => {
     if (!req.session.tempUserId) return res.redirect('/connexion'); // Sécurité
     res.render('login-2fa', { pageTitle: 'Vérification 2FA', activePage: 'admin', error: null });
 });
-app.post('/connexion/2fa', authLimiter, (req, res) => {
-    const { token } = req.body;
+app.post('/connexion/2fa', loginLimiter, (req, res) => {
+    const token = String(req.body.token || '').trim();
     const userId = req.session.tempUserId; // ID temporaire stocké à l'étape précédente
 
     if (!userId) return res.redirect('/connexion');
 
     db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
+        const plainSecret = (err || !user) ? null : decryptSecret(user.two_fa_secret);
+        if (!plainSecret) return res.redirect('/connexion');
+
         const verified = speakeasy.totp.verify({
-            secret: user.two_fa_secret,
+            secret: plainSecret,
             encoding: 'base32',
             token: token
         });
 
         if (verified) {
-            // SUCCÈS !
-            req.session.userId = user.id;
-            req.session.username = user.username;
-            delete req.session.tempUserId;
-
-            flashAndRedirect(req, res, 'success', `Connexion sécurisée réussie !`, 'back')
+            // Migration : un secret encore en clair est chiffré à la première connexion réussie
+            if (!user.two_fa_secret.startsWith(ENC_PREFIX)) {
+                db.run('UPDATE users SET two_fa_secret = ? WHERE id = ?', [encryptSecret(plainSecret), user.id]);
+            }
+            // SUCCÈS : nouvelle session (l'ancienne, avec tempUserId, est détruite)
+            startFreshSession(req, {
+                userId: user.id,
+                username: user.username,
+                flashMessage: { type: 'success', text: 'Connexion sécurisée réussie !', detail: null }
+            }, (errSave) => {
+                if (errSave) { console.error("Erreur session 2FA:", errSave); return res.redirect('/connexion'); }
+                loginLimiter.resetKey(req.ip);
+                logAction(req, 'LOGIN_SUCCESS', `Utilisateur: ${user.username} (2FA)`);
+                res.redirect('/');
+            });
         } else {
             // ERREUR : On ré-affiche la page avec l'erreur
-            // Ici on n'utilise pas flashMessage car on ne redirige pas, on fait un render
-            res.render('login-2fa', {
+            logAction(req, 'LOGIN_2FA_FAILED', `Code 2FA incorrect pour l'utilisateur #${user.id}`);
+            res.status(401).render('login-2fa', {
                 pageTitle: 'Vérification 2FA',
                 activePage: 'admin',
                 error: 'Code incorrect.'
@@ -1956,53 +2228,49 @@ app.post('/connexion/2fa', authLimiter, (req, res) => {
 });
 app.get('/change-password', isAuthenticated, (req, res) => { res.render('change-password', { pageTitle: 'Changer Mot de Passe', activePage: 'admin', error: null, success: null }); });
 app.post('/change-password', isAuthenticated, authLimiter, async (req, res) => {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const currentPassword = String(req.body.currentPassword || '');
+    const newPassword = String(req.body.newPassword || '');
+    const confirmPassword = String(req.body.confirmPassword || '');
     const userId = req.session.userId;
-    const pageTitle = "Changer le Mot de Passe";
-    const activePage = "admin";
 
     if (newPassword !== confirmPassword) {
-        flashAndRedirect(req, res, 'error', 'Les mots de passe ne correspondent pas.', '/change-password');
+        return flashAndRedirect(req, res, 'error', 'Les mots de passe ne correspondent pas.', '/change-password');
     }
 
-    if (newPassword.length < 8) {
-        flashAndRedirect(req, res, 'error', 'Le mot de passe est trop court.', '/change-password');
-     }
+    if (newPassword.length < 8 || newPassword.length > 72) {
+        return flashAndRedirect(req, res, 'error', 'Le mot de passe doit faire entre 8 et 72 caractères.', '/change-password');
+    }
 
-     // Récupère l'utilisateur actuel pour vérifier son mot de passe
-     const sqlGetUser = 'SELECT * FROM users WHERE id = ?';
-     db.get(sqlGetUser, [userId], (err, user) => {
+    // Récupère l'utilisateur actuel pour vérifier son mot de passe
+    db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
         if (err || !user) {
-            flashAndRedirect(req, res, 'error', 'Utilisateur non trouvé ou erreur serveur.', '/change-password');
+            return flashAndRedirect(req, res, 'error', 'Utilisateur non trouvé ou erreur serveur.', '/change-password');
         }
 
         // Compare le mot de passe actuel fourni avec celui haché dans la BDD
         bcrypt.compare(currentPassword, user.password, (errCompare, result) => {
             if (errCompare || !result) {
-                flashAndRedirect(req, res, 'error', 'Le mot de passe actuel est incorrect.', '/change-password');
+                return flashAndRedirect(req, res, 'error', 'Le mot de passe actuel est incorrect.', '/change-password');
             }
 
             // Si le mot de passe actuel est correct, on hache le nouveau
-            const saltRounds = 10;
-            bcrypt.hash(newPassword, saltRounds, (errHash, newHash) => {
+            bcrypt.hash(newPassword, 10, (errHash, newHash) => {
                 if (errHash) {
-                    flashAndRedirect(req, res, 'error', 'Erreur de hachage.', '/change-password');
+                    return flashAndRedirect(req, res, 'error', 'Erreur de hachage.', '/change-password');
                 }
 
                 // Met à jour le mot de passe dans la base de données
-                const sqlUpdatePass = 'UPDATE users SET password = ? WHERE id = ?';
-                db.run(sqlUpdatePass, [newHash, userId], (errUpdate) => {
+                db.run('UPDATE users SET password = ? WHERE id = ?', [newHash, userId], (errUpdate) => {
                     if (errUpdate) {
                         console.error(errUpdate);
-                        flashAndRedirect(req, res, 'error', 'Erreur lors de la mise à jour.', '/change-password');
-                    } else {
-                        logAction(req, 'PASSWORD_CHANGED', 'Mot de passe administrateur modifié');
-                        flashAndRedirect(req, res, 'sucess', 'Votre mot de passe a été mis à jour.', '/admin-dashboard');
+                        return flashAndRedirect(req, res, 'error', 'Erreur lors de la mise à jour.', '/change-password');
                     }
+                    logAction(req, 'PASSWORD_CHANGED', 'Mot de passe administrateur modifié');
+                    flashAndRedirect(req, res, 'success', 'Votre mot de passe a été mis à jour.', '/admin/dashboard');
                 });
             });
         });
-     });
+    });
 });
 
 // ROUTES PROTÉGÉES (Admin - isAuthenticated)
@@ -2139,16 +2407,17 @@ app.get('/admin/newsletter', isAuthenticated, (req, res) => {
     });
 });
 app.post('/admin/newsletter/send', isAuthenticated, async (req, res) => {
-    const { subject, message } = req.body;
-    
+    const subject = cleanStr(req.body.subject, 150).replace(/[\r\n]+/g, ' ');
+    const message = cleanStr(req.body.message, 10000);
+
     if (!subject || !message) {
-        flashAndRedirect(req, res, 'info', 'Sujet et message requis.', '/admin/newsletter');
+        return flashAndRedirect(req, res, 'info', 'Sujet et message requis.', '/admin/newsletter');
     }
 
     // 1. Récupérer tous les emails
     db.all('SELECT email FROM subscribers', [], async (err, rows) => {
         if (err || rows.length === 0) {
-            flashAndRedirect(req, res, 'warning', 'Aucun abonné trouvé ou erreur BDD.', '/admin/newsletter');
+            return flashAndRedirect(req, res, 'warning', 'Aucun abonné trouvé ou erreur BDD.', '/admin/newsletter');
         }
 
         // 2. Préparer les destinataires (BCC)
@@ -2160,7 +2429,7 @@ app.post('/admin/newsletter/send', isAuthenticated, async (req, res) => {
             subject: subject,
             html: `<div style="font-family: sans-serif; padding: 20px; color: #333;">
                     <h2 style="color: #0056b3;">Bonjour !</h2>
-                    <p style="font-size: 1.1em; white-space: pre-wrap;">${message}</p>
+                    <p style="font-size: 1.1em; white-space: pre-wrap;">${escapeHtml(message)}</p>
                     <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
                     <small style="color: #888;">Vous recevez cet email car vous êtes abonné au Carnet de Stage.</small>
                    </div>`
@@ -2169,7 +2438,7 @@ app.post('/admin/newsletter/send', isAuthenticated, async (req, res) => {
         try {
             if (transporter) {
                 await transporter.sendMail(mailOptions);
-                flashAndRedirect(req, res, 'sucess', `Newsletter envoyée à ${rows.length} abonnés !`, '/admin/newsletter');
+                flashAndRedirect(req, res, 'success', `Newsletter envoyée à ${rows.length} abonnés !`, '/admin/newsletter');
 
             } else {
                 flashAndRedirect(req, res, 'error', 'Serveur mail non configuré.', '/admin/newsletter');
@@ -2180,33 +2449,76 @@ app.post('/admin/newsletter/send', isAuthenticated, async (req, res) => {
         }
     });
 });
-app.get('/admin/backup', isAuthenticated, (req, res) => {
-    const dbFile = path.join(__dirname, 'blog.db');
+app.get('/admin/backup', isAuthenticated, async (req, res) => {
     const date = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
     const filename = `backup-blog-${date}.db`;
+    const run = (database, sql) => new Promise((resolve, reject) => database.run(sql, (e) => e ? reject(e) : resolve()));
 
-    res.download(dbFile, filename, (err) => {
-        if (err) {
-            console.error("Erreur lors du téléchargement du backup:", err);
-            // Si le téléchargement échoue (ex: fichier introuvable), on essaie d'afficher une erreur
-            if (!res.headersSent) {
-                res.status(500).send("Erreur : Impossible de télécharger la base de données.");
+    let tmpDir;
+    try {
+        // 1. Copie cohérente de la base (VACUUM INTO), même si le site écrit pendant ce temps
+        tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'backup-'));
+        const tmpFile = path.join(tmpDir, filename);
+        await run(db, `VACUUM INTO '${tmpFile.replace(/'/g, "''")}'`);
+
+        // 2. On retire de la copie les jetons de réinitialisation de mot de passe (inutiles et sensibles).
+        //    Les secrets 2FA y sont chiffrés ; les hachages de mots de passe restent (nécessaires à une restauration).
+        const copy = new sqlite3.Database(tmpFile);
+        await run(copy, 'UPDATE users SET reset_token = NULL, reset_token_expires = NULL');
+        await new Promise((resolve) => copy.close(resolve));
+
+        logAction(req, 'BACKUP_DOWNLOAD', filename);
+        res.download(tmpFile, filename, (err) => {
+            if (err) {
+                console.error("Erreur lors du téléchargement du backup:", err);
+                if (!res.headersSent) res.status(500).send("Erreur : Impossible de télécharger la base de données.");
             }
-        }
-    });
+            // 3. La copie temporaire est supprimée dans tous les cas
+            fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+        });
+    } catch (error) {
+        console.error("Erreur création backup:", error);
+        if (tmpDir) fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+        res.status(500).send("Erreur : Impossible de créer la sauvegarde.");
+    }
 });
-app.post('/admin/restore', isAuthenticated, upload.single('backup_file'), (req, res) => {
+
+// Vérifie qu'un fichier est bien une base SQLite saine contenant les tables du site.
+async function validateBackupFile(filePath) {
+    const header = Buffer.alloc(16);
+    const fd = await fs.promises.open(filePath, 'r');
+    try { await fd.read(header, 0, 16, 0); } finally { await fd.close(); }
+    if (header.toString('latin1') !== 'SQLite format 3\u0000') return false;
+
+    const candidate = new sqlite3.Database(filePath, sqlite3.OPEN_READONLY);
+    const all = (sql) => new Promise((resolve, reject) => candidate.all(sql, (e, rows) => e ? reject(e) : resolve(rows)));
+    try {
+        const integrity = await all('PRAGMA integrity_check');
+        if (integrity.length !== 1 || integrity[0].integrity_check !== 'ok') return false;
+        const tables = (await all("SELECT name FROM sqlite_master WHERE type = 'table'")).map(r => r.name);
+        return ['users', 'articles', 'comments'].every(t => tables.includes(t));
+    } catch (e) {
+        return false;
+    } finally {
+        await new Promise((resolve) => candidate.close(resolve));
+    }
+}
+
+app.post('/admin/restore', isAuthenticated, restoreUpload.single('backup_file'), async (req, res) => {
     if (!req.file) {
-        flashAndRedirect(req, res, 'error', 'Aucun fichier fourni.', '/admin/dashboard')
+        return flashAndRedirect(req, res, 'error', 'Aucun fichier fourni.', '/admin/dashboard');
     }
 
-    const fs = require('fs');
-    const path = require('path');
-
     const uploadedFilePath = req.file.path;
-    const dbPath = path.join(__dirname, 'blog.db');
+    const dbPath = db.filePath;
 
     try {
+        // On refuse tout fichier qui n'est pas une vraie base du site (sinon on écraserait la base par n'importe quoi)
+        if (!(await validateBackupFile(uploadedFilePath))) {
+            fs.promises.rm(uploadedFilePath, { force: true }).catch(() => {});
+            return flashAndRedirect(req, res, 'error', 'Ce fichier n\'est pas une sauvegarde valide du site.', '/admin/dashboard');
+        }
+
         fs.copyFileSync(uploadedFilePath, dbPath);
         fs.unlinkSync(uploadedFilePath);
 
@@ -2289,7 +2601,7 @@ app.post('/admin/restore', isAuthenticated, upload.single('backup_file'), (req, 
 
     } catch (error) {
         console.error("Erreur restauration:", error);
-        flashAndRedirect(req, res, 'error', 'Erreur critique lors de la restauration.', '/admin/dashboard');
+        return flashAndRedirect(req, res, 'error', 'Erreur critique lors de la restauration.', '/admin/dashboard');
     }
 });
 app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
@@ -2317,7 +2629,7 @@ app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
                 let cleanContent = art.content.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim(); // Enlève titre H1
                 return {
                     ...art,
-                    content: marked.parse(cleanContent)
+                    content: renderMarkdown(cleanContent)
                 };
             });
 
@@ -2337,18 +2649,21 @@ app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
                 headless: 'new',
                 args: ['--no-sandbox'] // Nécessaire pour certains environnements serveurs
             });
-            const page = await browser.newPage();
+            let pdfBuffer;
+            try {
+                const page = await browser.newPage();
 
-            // On définit le contenu et on attend que les images soient chargées
-            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+                // On définit le contenu et on attend que les images soient chargées
+                await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-            const pdfBuffer = await page.pdf({
-                format: 'A4',
-                printBackground: true,
-                margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' }
-            });
-
-            await browser.close();
+                pdfBuffer = await page.pdf({
+                    format: 'A4',
+                    printBackground: true,
+                    margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' }
+                });
+            } finally {
+                await browser.close(); // toujours fermer Chrome, même en cas d'erreur
+            }
 
             // 4. Envoyer le fichier
             res.set({
@@ -2378,54 +2693,51 @@ app.get('/admin/2fa', isAuthenticated, (req, res) => {
         });
     });
 });
-app.post('/admin/2fa/setup', isAuthenticated, (req, res) => {
+// Génère un nouveau secret 2FA (chiffré en base) et affiche le QR code.
+// Refuse d'écraser le secret d'une 2FA déjà active (sinon l'admin se verrouille hors de son compte).
+function startTwoFactorSetup(req, res, markPrompted) {
     const userId = req.session.userId;
-    const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
 
-    // On sauvegarde le secret mais ON NE L'ACTIVE PAS ENCORE (enabled = 0)
-    db.run('UPDATE users SET two_fa_secret = ? WHERE id = ?', [secret.base32, userId], (err) => {
-        if (err) return res.status(500).send('Erreur sauvegarde secret');
+    db.get('SELECT two_fa_enabled FROM users WHERE id = ?', [userId], (errGet, current) => {
+        if (errGet || !current) return res.status(500).send('Erreur serveur');
+        if (current.two_fa_enabled) return res.redirect('/admin/2fa');
 
-        QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
-            // On affiche la page en mode "setup"
-            res.render('admin-2fa', { 
-                pageTitle: 'Configuration 2FA', 
-                activePage: 'admin',
-                step: 'setup', // Mode configuration
-                qrCodeUrl: data_url, 
-                secret: secret.base32 
+        const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
+        const sql = markPrompted
+            ? 'UPDATE users SET two_fa_secret = ?, two_fa_prompted = 1 WHERE id = ?'
+            : 'UPDATE users SET two_fa_secret = ? WHERE id = ?'; // ON NE L'ACTIVE PAS ENCORE (enabled = 0)
+
+        db.run(sql, [encryptSecret(secret.base32), userId], (err) => {
+            if (err) {
+                console.error("Erreur setup 2FA:", err);
+                return res.status(500).send('Erreur serveur');
+            }
+
+            QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
+                res.render('admin-2fa', {
+                    pageTitle: 'Configuration 2FA',
+                    activePage: 'admin',
+                    step: 'setup',
+                    qrCodeUrl: data_url,
+                    secret: secret.base32
+                });
             });
         });
     });
-});
-app.get('/admin/2fa/setup-start', isAuthenticated, (req, res) => {
-    const userId = req.session.userId;
-    const secret = speakeasy.generateSecret({ name: "Carnet de Stage (" + req.session.username + ")" });
-
-    db.run('UPDATE users SET two_fa_secret = ?, two_fa_prompted = 1 WHERE id = ?', [secret.base32, userId], (err) => {
-        if (err) {
-            console.error("Erreur setup 2FA:", err);
-            return res.status(500).send('Erreur serveur');
-        }
-
-        QRCode.toDataURL(secret.otpauth_url, (errQR, data_url) => {
-            res.render('admin-2fa', { 
-                pageTitle: 'Configuration 2FA', 
-                activePage: 'admin', 
-                step: 'setup',
-                qrCodeUrl: data_url, 
-                secret: secret.base32 
-            });
-        });
-    });
-});
+}
+app.post('/admin/2fa/setup', isAuthenticated, (req, res) => startTwoFactorSetup(req, res, false));
+app.get('/admin/2fa/setup-start', isAuthenticated, (req, res) => startTwoFactorSetup(req, res, true));
 app.post('/admin/2fa/enable', isAuthenticated, (req, res) => {
-    const { token } = req.body;
+    const token = String(req.body.token || '').trim();
     const userId = req.session.userId;
 
     db.get('SELECT two_fa_secret FROM users WHERE id = ?', [userId], (err, user) => {
+        const plainSecret = (err || !user) ? null : decryptSecret(user.two_fa_secret);
+        if (!plainSecret) {
+            return flashAndRedirect(req, res, 'error', 'Configurez d\'abord la 2FA.', '/admin/2fa');
+        }
         const verified = speakeasy.totp.verify({
-            secret: user.two_fa_secret,
+            secret: plainSecret,
             encoding: 'base32',
             token: token
         });
@@ -2434,10 +2746,10 @@ app.post('/admin/2fa/enable', isAuthenticated, (req, res) => {
             db.run('UPDATE users SET two_fa_enabled = 1 WHERE id = ?', [userId], (err) => {
                 if (err) {
                     console.error(err);
-                    flashAndRedirect(req, res, 'error', 'Erreur lors de l\'activation.', '/admin/2fa');
+                    return flashAndRedirect(req, res, 'error', 'Erreur lors de l\'activation.', '/admin/2fa');
                 }
 
-                flashAndRedirect(req, res, 'success', 'Double authentification activée avec succès !', 'back');
+                flashAndRedirect(req, res, 'success', 'Double authentification activée avec succès !', '/admin/2fa');
             });
         } else {
             flashAndRedirect(req, res, 'error' ,'Code incorrect. Recommencez la configuration.', '/admin/2fa')
@@ -2470,21 +2782,24 @@ app.post('/admin/2fa/skip', isAuthenticated, (req, res) => {
         flashAndRedirect(req, res, 'info', 'Vous pourrez activer la 2FA plus tard dans l\'administration.', '/');
     });
 });
-app.post('/admin/music/update', isAuthenticated, upload.single('music_file'), (req, res) => {
-    const { music_title, music_url_text } = req.body;
-
-    let finalUrl = music_url_text;
+app.post('/admin/music/update', isAuthenticated, audioUpload.single('music_file'), (req, res) => {
+    const music_title = cleanStr(req.body.music_title, 100);
+    let finalUrl = cleanStr(req.body.music_url_text, 500);
 
     if (req.file) {
         finalUrl = '/uploads/' + req.file.filename;
     }
 
-    const updates = [
-        db.run('UPDATE settings SET value = ? WHERE key = ?', [music_title, 'music_title']),
-        db.run('UPDATE settings SET value = ? WHERE key = ?', [finalUrl, 'music_url'])
-    ];
+    // L'adresse doit être un chemin du site ou une URL http(s) : pas de javascript:, data:, etc.
+    if (finalUrl && !/^(\/(?!\/)|https?:\/\/)/.test(finalUrl)) {
+        return flashAndRedirect(req, res, 'error', 'Adresse de la musique invalide.', '/admin/dashboard');
+    }
 
-    Promise.all(updates)
+    const setSetting = (key, value) => new Promise((resolve, reject) => {
+        db.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', [key, value], (err) => err ? reject(err) : resolve());
+    });
+
+    Promise.all([setSetting('music_title', music_title), setSetting('music_url', finalUrl)])
         .then(() => {
             flashAndRedirect(req, res, 'success', 'Musique mise à jour !', '/admin/dashboard');
         })
@@ -2507,9 +2822,43 @@ app.get('/journal/nouvelle', isAuthenticated, (req, res) => {
         });
     });
 });
+// Nettoie et valide les champs d'un article (création ou modification). Retourne { error } ou { data }.
+function parseArticleBody(body) {
+    const data = {
+        title_fr: cleanStr(body.title_fr, 200),
+        title_en: cleanStr(body.title_en, 200),
+        summary_fr: cleanStr(body.summary_fr, 1000),
+        summary_en: cleanStr(body.summary_en, 1000),
+        content_fr: String(body.content_fr ?? '').slice(0, 200000),
+        content_en: String(body.content_en ?? '').slice(0, 200000),
+        cover_image_url: cleanStr(body.cover_image_url, 500) || null,
+        lat: null, lng: null
+    };
+    if (!data.title_fr || !data.title_en || !data.content_fr.trim() || !data.content_en.trim()) {
+        return { error: 'Titres et contenus (FR et EN) sont requis.' };
+    }
+    // L'image de couverture : chemin du site ou URL http(s) (pas de javascript:, data:...)
+    if (data.cover_image_url && !/^(\/(?!\/)|https?:\/\/)/.test(data.cover_image_url)) {
+        return { error: 'Adresse de l\'image de couverture invalide.' };
+    }
+    // Coordonnées : nombres valides ou vides
+    for (const key of ['lat', 'lng']) {
+        const raw = cleanStr(body[key], 30);
+        if (raw === '') continue;
+        const num = Number(raw);
+        const limit = key === 'lat' ? 90 : 180;
+        if (!Number.isFinite(num) || Math.abs(num) > limit) return { error: 'Coordonnées invalides.' };
+        data[key] = num;
+    }
+    return { data };
+}
+
 app.post('/journal', isAuthenticated, async (req, res) => {
-    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, tags, action, lat, lng } = req.body;
-    let summary_en = req.body.summary_en;
+    const parsed = parseArticleBody(req.body);
+    if (parsed.error) return flashAndRedirect(req, res, 'error', parsed.error, '/journal/nouvelle');
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, lat, lng } = parsed.data;
+    const { tags, action } = req.body;
+    let summary_en = parsed.data.summary_en;
     const userId = req.session.userId;
 
     const status = (action === 'draft') ? 'draft' : 'published';
@@ -2533,9 +2882,9 @@ app.post('/journal', isAuthenticated, async (req, res) => {
     `;
 
     db.run(sqlInsertArticle, [title_fr, title_en, summary_fr, summary_en, content_fr, content_en, userId, cover_image_url, status, lat || null, lng || null], async function(err) {
-        if (err) { 
+        if (err) {
             console.error("Erreur BDD (Insert):", err);
-            flashAndRedirect(req, res, 'error', 'Erreur lors de la création.', '/journal/nouvelle');
+            return flashAndRedirect(req, res, 'error', 'Erreur lors de la création.', '/journal/nouvelle');
         }
 
         const articleId = this.lastID;
@@ -2585,18 +2934,14 @@ app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
     });
 });
 app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
-    const id = req.params.id;
-    const { 
-        title_fr, title_en, 
-        summary_fr,
-        content_fr, content_en, 
-        cover_image_url, 
-        tags, 
-        action, 
-        lat, lng 
-    } = req.body;
+    const id = parseId(req.params.id);
+    if (id === null) return flashAndRedirect(req, res, 'error', 'Article introuvable.', '/journal');
 
-    let summary_en = req.body.summary_en;
+    const parsed = parseArticleBody(req.body);
+    if (parsed.error) return flashAndRedirect(req, res, 'error', parsed.error, `/entree/${id}/edit`);
+    const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url } = parsed.data;
+    const { tags, action } = req.body;
+    let summary_en = parsed.data.summary_en;
 
     const status = (action === 'draft') ? 'draft' : 'published';
     
@@ -2605,8 +2950,8 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     else if (!Array.isArray(tagIds)) { tagIds = [tagIds]; }
     tagIds = tagIds.map(t => parseInt(t, 10)).filter(t => !isNaN(t));
 
-    const safeLat = lat && lat.trim() !== '' ? lat : null;
-    const safeLng = lng && lng.trim() !== '' ? lng : null;
+    const safeLat = parsed.data.lat;
+    const safeLng = parsed.data.lng;
 
     if (summary_fr && (!summary_en || summary_en.trim() === '') && translator) {
         try {
@@ -2650,7 +2995,7 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
         db.run(sqlUpdateArticle, params, async function(err) {
             if (err) {
                 console.error("Erreur Update:", err);
-                flashAndRedirect(req, res, 'error', 'Erreur lors de la modification.', `/entree/${id}/edit`, err.message);
+                return flashAndRedirect(req, res, 'error', 'Erreur lors de la modification.', `/entree/${id}/edit`);
             }
 
             try {
@@ -2673,15 +3018,16 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
     });
 });
 app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
-    const id = req.params.id;
+    const id = parseId(req.params.id);
+    if (id === null) return flashAndRedirect(req, res, 'error', 'Article introuvable.', '/journal');
     const sql = 'DELETE FROM articles WHERE id = ?';
-    
+
     logAction(req, 'ARTICLE_DELETE', `ID: ${id}`);
 
     db.run(sql, [id], function(err) {
         if (err) {
             console.error(`Erreur Delete:`, err);
-            flashAndRedirect(req, res, 'error', 'Erreur suppression.', `/entree/${id}`, err.message);
+            return flashAndRedirect(req, res, 'error', 'Erreur suppression.', `/entree/${id}`);
         }
 
         if (typeof myCache !== 'undefined') myCache.flushAll();
@@ -2694,20 +3040,19 @@ app.post('/entree/:id/pin', isAuthenticated, (req, res) => {
 
     db.get('SELECT is_pinned FROM articles WHERE id = ?', [id], (err, row) => {
         if (err || !row) {
-            flashAndRedirect(req, res, 'error', 'Article introuvable.', 'back');
+            return flashAndRedirect(req, res, 'error', 'Article introuvable.', 'back');
         }
 
         const newState = row.is_pinned ? 0 : 1;
 
         db.run('UPDATE articles SET is_pinned = ? WHERE id = ?', [newState, id], (errUpdate) => {
             if (errUpdate) {
-                flashAndRedirect(req, res, 'error', 'Erreur technique.', 'back');
-            } else {
-                const msg = newState ? 'Article épinglé en haut de liste ! 📌' : 'Article désépinglé.';
-                flashAndRedirect(req, res, 'success', msg, 'back');
+                return flashAndRedirect(req, res, 'error', 'Erreur technique.', 'back');
             }
 
-            if (typeof myCache !== 'undefined') myCache.flushAll();
+            myCache.flushAll(); // avant la réponse : la page rechargée doit déjà refléter le changement
+            const msg = newState ? 'Article épinglé en haut de liste ! 📌' : 'Article désépinglé.';
+            flashAndRedirect(req, res, 'success', msg, 'back');
         });
     });
 });
@@ -2751,11 +3096,11 @@ app.get('/admin/tags', isAuthenticated, (req, res) => {
     });
 });
 app.post('/admin/tags/create', isAuthenticated, async (req, res) => {
-    const name_fr = req.body.name_fr; // On récupère seulement le nom FR
+    const name_fr = cleanStr(req.body.name_fr, 50); // On récupère seulement le nom FR
 
     // On ne vérifie que name_fr
-    if (!name_fr || name_fr.trim() === '') {
-        flashAndRedirect(req, res, 'error', 'Le nom français est requis.', '/admin/tags');
+    if (!name_fr) {
+        return flashAndRedirect(req, res, 'error', 'Le nom français est requis.', '/admin/tags');
     }
 
     let name_en = name_fr.trim(); // Valeur par défaut si la traduction échoue
@@ -2798,11 +3143,11 @@ app.post('/admin/tags/create', isAuthenticated, async (req, res) => {
     })
 });
 app.post('/admin/tags/update/:id', isAuthenticated, (req, res) => {
-    const id = req.params.id;
-    const { name_en } = req.body; // On récupère le nouveau nom anglais envoyé par le formulaire
+    const id = parseId(req.params.id);
+    const name_en = cleanStr(req.body.name_en, 50); // On récupère le nouveau nom anglais envoyé par le formulaire
 
-    if (!name_en || name_en.trim() === '') {
-        flashAndRedirect(req, res, 'error', 'Le nom anglais ne peut pas être vide.', '/admin/tags');
+    if (id === null || !name_en) {
+        return flashAndRedirect(req, res, 'error', 'Le nom anglais ne peut pas être vide.', '/admin/tags');
     }
 
     const sql = 'UPDATE tags SET name_en = ? WHERE id = ?';
@@ -2857,26 +3202,31 @@ app.get('/admin/comments', isAuthenticated, (req, res) => {
     });
 });
 app.post('/admin/comments/delete/:id', async (req, res) => {
-    const commentId = req.params.id;
-    const returnTo = req.query.returnTo || '/admin/comments';
+    const commentId = parseId(req.params.id);
+    // Redirection interne uniquement (évite qu'un lien piégé renvoie vers un autre site)
+    const returnTo = safeLocalPath(req.query.returnTo, '/admin/comments');
+    if (commentId === null) return flashAndRedirect(req, res, 'error', 'Commentaire introuvable.', returnTo);
 
     const userId = req.session.userId;
     const guestId = req.cookies.guest_token;
 
-    // 1. Récupérer le commentaire pour vérifier le token
-    db.get('SELECT guest_id FROM comments WHERE id = ?', [commentId], (err, comment) => {
+    // 1. Récupérer le commentaire pour vérifier les droits
+    db.get('SELECT guest_id, delete_token FROM comments WHERE id = ?', [commentId], (err, comment) => {
         if (err || !comment) {
-            flashAndRedirect(req, res, 'error', 'Commentaire introuvable.', returnTo);
+            return flashAndRedirect(req, res, 'error', 'Commentaire introuvable.', returnTo);
         }
 
-        // 2. VÉRIFICATION DES DROITS
-        const isOwner = guestId && (guestId === comment.guest_id);
-        
-        if (userId || isOwner) {
+        // 2. VÉRIFICATION DES DROITS : admin, invité auteur du commentaire, ou porteur du jeton de suppression
+        const isOwner = !!guestId && guestId === comment.guest_id;
+        const cookieToken = req.cookies[`can_delete_${commentId}`];
+        const hasToken = !!comment.delete_token && !!cookieToken && cookieToken === comment.delete_token;
+
+        if (userId || isOwner || hasToken) {
             db.run('DELETE FROM comments WHERE id = ?', [commentId], (errDel) => {
                 if (errDel) {
-                    flashAndRedirect(req, res, 'error', 'Erreur technique.', returnTo);
+                    return flashAndRedirect(req, res, 'error', 'Erreur technique.', returnTo);
                 }
+                if (hasToken) res.clearCookie(`can_delete_${commentId}`);
                 flashAndRedirect(req, res, 'success', 'Commentaire supprimé.', returnTo);
             });
         } else {
@@ -2903,10 +3253,6 @@ app.post('/admin/messages/delete/:id', isAuthenticated, (req, res) => {
     db.run('DELETE FROM contact_messages WHERE id = ?', [req.params.id], (err) => {
         flashAndRedirect(req, res, 'success', 'Message supprimé.', '/admin/messages');
     });
-});
-
-app.get('/test-helper', (req, res) => {
-    flashAndRedirect(req, res, 'success', 'Le Helper fonctionne à merveille !', '/');
 });
 
 // GESTION ERREUR 404 (TOUJOURS EN DERNIER)

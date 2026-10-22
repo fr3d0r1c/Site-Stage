@@ -18,11 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 modalImg.src = this.src;      // Récupère l'URL de l'image cliquée
                 
                 // Si l'image a un texte alternatif (alt), on l'affiche en légende
-                if (this.alt) {
-                    captionText.innerHTML = this.alt;
-                } else {
-                    captionText.innerHTML = "";
-                }
+                // textContent (pas innerHTML) : l'alt est du texte, jamais du HTML
+                captionText.textContent = this.alt || "";
             });
         });
 

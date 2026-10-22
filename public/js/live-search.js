@@ -49,13 +49,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Les données viennent de la base : on échappe tout avant de les mettre dans le HTML
+        const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
         articles.forEach(entry => {
+            const id = encodeURIComponent(entry.id);
+
             // Logique image
             let imageHtml = '';
             if (entry.image) {
                 imageHtml = `
-                    <a href="/entree/${entry.id}" class="card-image-link">
-                        <img src="${entry.image}" alt="${entry.title}" class="cover-image">
+                    <a href="/entree/${id}" class="card-image-link">
+                        <img src="${esc(entry.image)}" alt="${esc(entry.title)}" class="cover-image">
                     </a>`;
             }
 
@@ -63,9 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <article class="entry-card">
                     ${imageHtml}
                     <div class="card-body">
-                        <h2><a href="/entree/${entry.id}">${entry.title}</a></h2>
-                        <small>Publié le: ${entry.date}</small>
-                        <p>${entry.excerpt} <a href="/entree/${entry.id}">Lire la suite</a></p>
+                        <h2><a href="/entree/${id}">${esc(entry.title)}</a></h2>
+                        <small>Publié le: ${esc(entry.date)}</small>
+                        <p>${esc(entry.excerpt)} <a href="/entree/${id}">Lire la suite</a></p>
                     </div>
                 </article>
             `;

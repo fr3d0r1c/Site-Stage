@@ -40,14 +40,14 @@
         <div>
             <h2 style="text-align: center;"><%= t('dashboard.weekly_title') %></h2>
             <div style="height: 300px;">
-                <canvas id="weeklyChart" data-stats='<%- JSON.stringify(weeklyData || []) %>'></canvas>
+                <canvas id="weeklyChart" data-stats="<%= JSON.stringify(weeklyData || []) %>"></canvas>
             </div>
         </div>
 
         <div>
             <h2 style="text-align: center;">Suivi Mensuel</h2>
             <div style="height: 300px;">
-                <canvas id="monthlyChart" data-stats='<%- JSON.stringify(monthlyData || []) %>'></canvas>
+                <canvas id="monthlyChart" data-stats="<%= JSON.stringify(monthlyData || []) %>"></canvas>
             </div>
         </div>
     </div>
@@ -56,7 +56,7 @@
 
     <h2 style="text-align: center;">Répartition par Sujets (Tags)</h2>
     <div style="height: 400px; max-width: 600px; margin: 0 auto;">
-        <canvas id="tagsChart" data-stats='<%- JSON.stringify(tagData || []) %>'></canvas>
+        <canvas id="tagsChart" data-stats="<%= JSON.stringify(tagData || []) %>"></canvas>
     </div>
 
     <hr>
