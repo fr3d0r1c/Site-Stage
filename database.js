@@ -3,7 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 // Connexion à la BDD
-const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : './blog.db';
+// DB_PATH permet de placer la base sur un volume persistant (ex: /data/blog.db sous Kubernetes/Docker).
+// Sans lui, la base est dans le dossier du projet, qui est effacé à chaque nouveau conteneur.
+const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : (process.env.DB_PATH || './blog.db');
 
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
@@ -55,4 +57,5 @@ async function migrate() {
 
 migrate().catch(err => console.error("FATAL : Erreur migration", err));
 
+db.filePath = dbPath; // utilisé par la sauvegarde / restauration dans app.js
 module.exports = db;

@@ -35,8 +35,17 @@ stringData:
   # Mettez vos vraies infos ici si vous voulez tester l'envoi d'email
   EMAIL_USER: "votre-email@gmail.com"
   EMAIL_PASS: "votre-mot-de-passe"
-  DEEPL_KEY: "votre-cle-api"
+  EMAIL_TO: "votre-email@gmail.com"   # destinataire des messages de contact et notifications
+  DEEPL_API_KEY: "votre-cle-api"      # (le code lit DEEPL_API_KEY ; l'ancien nom DEEPL_KEY n'était pas lu)
   DB_PATH: "/data/blog.db"
+  # OBLIGATOIRES : l'application refuse de démarrer sans SESSION_SECRET.
+  # Générez deux valeurs différentes avec :  openssl rand -hex 48
+  SESSION_SECRET: "CHANGEZ-MOI"
+  TWO_FA_KEY: "CHANGEZ-MOI"           # clé de chiffrement des secrets 2FA : à conserver, sinon la 2FA devient illisible
+  # Si un Ingress/reverse-proxy est devant l'appli, décommentez (nombre de proxys) :
+  # TRUST_PROXY: "1"
+  # Si le site est servi en HTTP simple (NodePort sans TLS), le cookie "secure" empêcherait la connexion :
+  # INSECURE_COOKIES: "true"
 ---
 # 4. L'Application (Le Site)
 apiVersion: apps/v1
@@ -61,10 +70,11 @@ spec:
         imagePullPolicy: Always # Force le téléchargement depuis Docker Hub
         ports:
         - containerPort: 3000
-        env:
-        - name: DB_PATH
-          valueFrom: { secretKeyRef: { name: carnet-secrets, key: DB_PATH } }
-        # Ajoutez les autres variables d'env ici si besoin (EMAIL_USER, etc.)
+        # Toutes les clés du Secret "carnet-secrets" deviennent des variables d'environnement
+        # (DB_PATH, SESSION_SECRET, EMAIL_USER, ...). Avant, seul DB_PATH était transmis.
+        envFrom:
+        - secretRef:
+            name: carnet-secrets
         volumeMounts:
         - mountPath: "/data"
           name: mon-stockage

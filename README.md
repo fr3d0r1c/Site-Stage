@@ -97,6 +97,27 @@ npm test -- --runInBand
 
 ---
 
+## 🔐 Variables d'environnement
+
+| Variable | Obligatoire | Rôle |
+|---|---|---|
+| `SESSION_SECRET` | **Oui** | Signe les cookies de session. L'appli refuse de démarrer sans. Générez-la avec `openssl rand -hex 48`. |
+| `TWO_FA_KEY` | Recommandée | Clé de chiffrement des secrets 2FA en base. **À conserver** : sans elle la 2FA devient illisible. |
+| `DB_PATH` | Non | Emplacement de la base SQLite (ex: `/data/blog.db` sur un volume persistant). |
+| `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_TO` | Non | Envoi d'emails (contact, notifications, mot de passe oublié). |
+| `DEEPL_API_KEY` | Non | Traduction automatique FR → EN. |
+| `SITE_URL` | Non | URL publique du site, utilisée dans les liens des emails (sinon `RENDER_EXTERNAL_URL`, sinon localhost). |
+| `TRUST_PROXY` | Non | Nombre de proxys devant l'appli (`1` derrière un Ingress/Nginx). À ne définir que si c'est vrai. |
+| `INSECURE_COOKIES` | Non | `true` si le site est servi en HTTP simple en production (sinon le cookie « secure » bloque la connexion). |
+
+Pour le développement local, créez un fichier `.env` (jamais commité) :
+```bash
+SESSION_SECRET=une-longue-valeur-aleatoire
+TWO_FA_KEY=une-autre-valeur-aleatoire
+```
+
+---
+
 ## 🐳 Option Docker Simple (Développement)
 
 Pour tester rapidement sans Kubernetes :
@@ -104,9 +125,14 @@ Pour tester rapidement sans Kubernetes :
 # Lancer l'app seule (Stockage local SQLite)
 docker run -d -p 3000:3000 \
   -e DB_PATH="/data/blog.db" \
+  -e SESSION_SECRET="$(openssl rand -hex 48)" \
+  -e TWO_FA_KEY="$(openssl rand -hex 48)" \
+  -e INSECURE_COOKIES=true \
   -v $(pwd)/data:/data \
   carnet-stage
 ```
+> ⚠️ Avec `SESSION_SECRET` généré à chaque lancement, vous serez déconnecté à chaque redémarrage ; et `TWO_FA_KEY` doit rester la même
+> d'un lancement à l'autre si la 2FA est activée. Pour un usage durable, mettez ces valeurs dans un fichier `--env-file`.
 
 ---
 

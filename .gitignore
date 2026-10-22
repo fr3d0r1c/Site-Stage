@@ -4,12 +4,12 @@ node_modules
 # Fichiers de base de données locaux
 *.db
 
-# Dossier des uploads (la structure est sur GitHub, mais pas les fichiers dedans)
-./public/uploads/
+# Dossier des uploads : la structure est sur GitHub (.gitkeep), les nouveaux fichiers ne le sont pas
+public/uploads/*
+!public/uploads/.gitkeep
 
 # Fichiers système
 .DS_Store
 
+# Secrets
 .env
-
-./views/test-toasts.ejs
