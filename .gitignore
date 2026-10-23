@@ -13,3 +13,7 @@ public/uploads/*
 
 # Secrets
 .env
+
+# Secrets Kubernetes locaux (ne jamais versionner)
+.env.k8s
+*.secrets.yaml
