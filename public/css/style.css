@@ -3119,3 +3119,46 @@ body.theme-dark .heat-box.level-4 { background-color: #39d353; }
 
 /* En mode Zen, on peut le cacher ou le laisser (au choix) */
 /* body.zen-mode .music-widget { display: none; } */
+
+/* =================================================================
+   FINITIONS : accessibilité clavier, confort de lecture, mobile
+   (n'utilise que les variables des thèmes : fonctionne en clair, sombre et sépia)
+   ================================================================= */
+html { scroll-behavior: smooth; }
+
+::selection { background: var(--c-primary); color: var(--c-button-text); }
+
+/* Contour visible quand on navigue au clavier (Tab) : absent jusqu'ici sur les liens et boutons.
+   Les champs de formulaire ont déjà leur propre halo au focus. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+    outline: 3px solid var(--c-primary);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+/* Contenu des articles : rien ne doit déborder de l'écran */
+.article-content pre { overflow-x: auto; max-width: 100%; }
+.article-content table { display: block; max-width: 100%; overflow-x: auto; }
+.article-content iframe, .article-content video { max-width: 100%; }
+.article-content { overflow-wrap: anywhere; }
+
+/* Zones de toucher plus grandes sur téléphone (recommandation : au moins ~44 px) */
+@media (max-width: 768px) {
+    .nav-toggle { width: 44px; height: 44px; }
+    .language-switcher a { padding: 6px; display: inline-flex; }
+    .footer-links a { display: inline-block; padding: 6px 4px; }
+    .theme-switcher button { min-width: 40px; min-height: 40px; }
+}
+
+/* Respect du réglage « réduire les animations » du système (vestibulaire, migraines) */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

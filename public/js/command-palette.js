@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { title: 'Admin : Gérer les Tags', icon: 'fa-tags', type: 'Admin', action: () => window.location.href = '/admin/tags' },
             { title: 'Admin : Déconnexion', icon: 'fa-sign-out-alt', type: 'Admin', action: () => window.location.href = '/deconnexion' },
         ] : [
-            { title: 'Admin : Connexion', icon: 'fa-lock', action: () => window.location.href = '/connexion' }
+            // Pas d'entrée « Connexion » pour les visiteurs : la page admin reste cachée (Konami code)
         ])
     ];
 
