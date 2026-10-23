@@ -1,27 +1,5 @@
 // public/js/form-validation.js
 
-// --- 1. Initialisation de la traduction (Edit page) ---
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        const contentFrEditor = document.getElementById('content-editor-fr');
-        const titleFrInput = document.getElementById('title_fr');
-        
-        if (typeof window.translateText !== 'function') return;
-
-        // Traduction contenu
-        if (contentFrEditor && contentFrEditor.value.trim()) {
-            const initialContent = contentFrEditor.value;
-            if(initialContent.trim()) window.translateText(initialContent, 'en-GB', 'content');
-        }
-        // Traduction titre
-        if (titleFrInput && titleFrInput.value.trim()) {
-            const initialTitle = titleFrInput.value;
-            if (initialTitle.trim()) window.translateText(initialTitle, 'en-GB', 'title');
-        }
-    }, 500);
-});
-
-
 // --- 2. Validation du formulaire avec SweetAlert2 ---
 document.addEventListener('easyMDEReady', (e) => {
     console.log("EasyMDE prêt, validation active.");
@@ -94,6 +72,8 @@ document.addEventListener('easyMDEReady', (e) => {
 
             // 3. Si tout est bon, on envoie le formulaire !
             if (!errorFound) {
+                // form.submit() ne déclenche pas l'événement "submit" : on prévient les autres scripts nous-mêmes
+                document.dispatchEvent(new CustomEvent('entry:submitting'));
                 form.submit();
             }
         });

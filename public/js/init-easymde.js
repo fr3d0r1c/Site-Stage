@@ -102,12 +102,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // 3. Traduction EN (Debounce)
              clearTimeout(contentDebounceTimer);
              if (markdownText.trim()) {
+                 // 1,5 s après la dernière frappe : évite de consommer le quota de traduction à chaque lettre
                  contentDebounceTimer = setTimeout(() => {
                      if (typeof window.translateText === 'function') {
                          window.translateText(markdownText, 'en-GB', 'content');
                      }
-                 }, 500);
-             } else {
+                 }, 1500);
+             } else if (!(window.enState && window.enState.touched.content)) {
+                 // Contenu français vidé : on vide l'anglais seulement s'il n'a pas été écrit à la main
                  const previewEnDiv = document.getElementById('preview_en');
                  if (previewEnDiv) previewEnDiv.innerHTML = '';
                  const contentEnTextarea = document.getElementById('content_en');

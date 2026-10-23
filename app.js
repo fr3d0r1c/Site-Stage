@@ -54,7 +54,9 @@ const storage = multer.diskStorage({
     filename: function (req, file, cb) {
         // On génère un nom unique MAIS on garde l'extension d'origine (ex: .jpg)
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+        // « avatar- » seulement pour les avatars ; images d'articles et musique reçoivent un nom neutre
+        const prefix = file.fieldname === 'avatar' ? 'avatar-' : 'upload-';
+        cb(null, prefix + uniqueSuffix + path.extname(file.originalname));
     }
 });
 
@@ -128,7 +130,8 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
 }
 
 // --- DEEPL INITIALIZATION --- (Vérifie bien ceci)
-const deeplApiKey = process.env.DEEPL_API_KEY;
+// Jamais de DeepL pendant les tests : pas d'appel réseau, pas de quota consommé, résultats prévisibles
+const deeplApiKey = process.env.NODE_ENV === 'test' ? null : process.env.DEEPL_API_KEY;
 let translator = null; // Défini avec 'let' dans le scope global du module
 if (deeplApiKey) {
     try {
@@ -820,7 +823,7 @@ async function sendReplyNotification(articleId, parentId, replierName, replyCont
         const sql = `
             SELECT c.author_name, c.author_email, c.is_admin, a.title_fr as article_title 
             FROM comments c
-            JOIN articles a ON c.article_id = a.id
+            JOIN articles a ON c.article_id = a.id AND a.deleted_at IS NULL
             WHERE c.id = ?
         `;
 
@@ -925,7 +928,7 @@ app.get('/sitemap.xml', async (req, res) => {
             { url: '/stage/mes-missions', changefreq: 'monthly', priority: 0.5 },
             { url: '/contact', changefreq: 'yearly', priority: 0.3 }
         ];
-        const sql = "SELECT id, publication_date FROM articles WHERE status = 'published' ORDER BY publication_date DESC";
+        const sql = "SELECT id, publication_date FROM articles WHERE status = 'published' AND deleted_at IS NULL ORDER BY publication_date DESC";
         const entries = await new Promise((resolve, reject) => {
             db.all(sql, [], (err, rows) => err ? reject(err) : resolve(rows));
         });
@@ -960,8 +963,7 @@ app.get('/feed.xml', (req, res) => {
     });
 
     const sql = `
-        SELECT * FROM articles 
-        WHERE status = 'published' 
+        SELECT * FROM articles WHERE status = 'published' AND deleted_at IS NULL 
         ORDER BY publication_date DESC 
         LIMIT 20
     `;
@@ -1015,7 +1017,7 @@ app.get('/', cacheMiddleware(600), (req, res) => {
         FROM articles a
         LEFT JOIN article_tags at ON a.id = at.article_id
         LEFT JOIN tags t ON at.tag_id = t.id
-        WHERE status = 'published'
+        WHERE status = 'published' AND a.deleted_at IS NULL
         GROUP BY a.id
         ORDER BY a.is_pinned DESC, a.publication_date DESC
         LIMIT 3
@@ -1089,7 +1091,7 @@ app.get('/chronologie', (req, res) => {
     const lang = req.language === 'en' ? 'en' : 'fr';
 
     // Récupère tous les articles publiés, triés par date (le plus vieux en premier pour une frise logique)
-    const sql = `SELECT id, title_${lang} as title, publication_date, cover_image_url, summary_${lang} as summary, lat, lng FROM articles WHERE status = 'published' ORDER BY publication_date ASC`;
+    const sql = `SELECT id, title_${lang} as title, publication_date, cover_image_url, summary_${lang} as summary, lat, lng FROM articles WHERE status = 'published' AND deleted_at IS NULL ORDER BY publication_date ASC`;
 
     db.all(sql, [], (err, rows) => {
         res.render('timeline-journal', {
@@ -1118,7 +1120,7 @@ app.get('/journal', cacheMiddleware(600), (req, res) => {
         case 'tag_desc': sortClause = 'ORDER BY tags DESC'; break;
     }
 
-    const statusClause = req.session.userId ? "" : "WHERE status = 'published'";
+    const statusClause = req.session.userId ? "WHERE a.deleted_at IS NULL" : "WHERE status = 'published' AND a.deleted_at IS NULL";
 
     const sqlEntries = `
         SELECT
@@ -1140,8 +1142,8 @@ app.get('/journal', cacheMiddleware(600), (req, res) => {
     `;
     
     const sqlCount = req.session.userId
-        ? `SELECT COUNT(*) as totalCount FROM articles`
-        : `SELECT COUNT(*) as totalCount FROM articles WHERE status = 'published'`;
+        ? `SELECT COUNT(*) as totalCount FROM articles WHERE deleted_at IS NULL`
+        : `SELECT COUNT(*) as totalCount FROM articles WHERE status = 'published' AND deleted_at IS NULL`;
 
     db.all(sqlEntries, [ITEMS_PER_PAGE, offset], (err, rows) => {
         if (err) { console.error("Erreur BDD:", err); return res.status(500).send("Erreur serveur."); }
@@ -1244,7 +1246,7 @@ app.get('/search', (req, res) => {
             LEFT JOIN article_tags at_display ON a.id = at_display.article_id
             LEFT JOIN tags t ON at_display.tag_id = t.id
             ${tagId ? 'JOIN article_tags at_filter ON a.id = at_filter.article_id' : ''}
-            WHERE ${whereClauses.join(' AND ')} AND status = 'published'
+            WHERE ${whereClauses.join(' AND ')} AND status = 'published' AND a.deleted_at IS NULL
             GROUP BY a.id
             ${sortClause}
         `;
@@ -1302,7 +1304,7 @@ app.get('/tags/:tagName', (req, res) => {
         case 'alpha_desc': sortClause = `ORDER BY title_${lang} DESC`; break;
     }
 
-    const statusClause = req.session.userId ? "" : "AND a.status = 'published'";
+    const statusClause = req.session.userId ? "AND a.deleted_at IS NULL" : "AND a.status = 'published' AND a.deleted_at IS NULL";
 
     const sqlFindTag = `SELECT id FROM tags WHERE name_${lang} = ?`;
 
@@ -1535,7 +1537,7 @@ app.get('/guest/dashboard', (req, res) => {
         const sqlComments = `
             SELECT c.*, a.title_fr as article_title 
             FROM comments c
-            JOIN articles a ON c.article_id = a.id
+            JOIN articles a ON c.article_id = a.id AND a.deleted_at IS NULL
             WHERE c.guest_id = ?
             ORDER BY c.created_at DESC
         `;
@@ -1575,7 +1577,7 @@ app.get('/entree/:id', (req, res) => {
         if (!article) { return res.status(404).render('404', { pageTitle: 'Article introuvable', activePage: '' }); }
 
         // SÉCURITÉ : Si brouillon et pas admin -> 404
-        if (article.status === 'draft' && !currentUserId) {
+        if ((article.status === 'draft' && !currentUserId) || article.deleted_at) {
             return res.status(404).render('404', { pageTitle: 'Article non disponible', activePage: '' });
         }
 
@@ -1587,7 +1589,7 @@ app.get('/entree/:id', (req, res) => {
 
         // --- PRÉPARATION DES REQUÊTES PARALLÈLES ---
         const currentPublicationDate = article.publication_date;
-        const statusFilter = currentUserId ? "" : "AND status = 'published'";
+        const statusFilter = currentUserId ? "AND deleted_at IS NULL" : "AND status = 'published' AND deleted_at IS NULL";
 
         // A. Tags de l'article
         const sqlTags = `SELECT t.name_${lang} as name FROM tags t JOIN article_tags at ON t.id = at.tag_id WHERE at.article_id = ?`;
@@ -1654,6 +1656,7 @@ app.get('/entree/:id', (req, res) => {
 
             res.render('entry_detail', {
                 article: article,
+                shareUrl: `${getBaseUrl()}/entree/${article.id}`,
                 pageTitle: article.title,
                 activePage: 'journal',
                 
@@ -1700,8 +1703,8 @@ app.post('/article/:id/comment', commentLimiter, async (req, res) => {
     }
 
     // 3. L'article doit exister (et être publié, sauf pour l'admin) ; la réponse doit viser un commentaire du même article
-    const article = await new Promise(resolve => db.get('SELECT id, status FROM articles WHERE id = ?', [articleId], (e, r) => resolve(r)));
-    if (!article || (article.status !== 'published' && !req.session.userId)) {
+    const article = await new Promise(resolve => db.get('SELECT id, status, deleted_at FROM articles WHERE id = ?', [articleId], (e, r) => resolve(r)));
+    if (!article || article.deleted_at || (article.status !== 'published' && !req.session.userId)) {
         return flashAndRedirect(req, res, 'error', 'Article introuvable.', '/journal');
     }
     let parentId = null;
@@ -1876,7 +1879,7 @@ app.get('/api/search', async (req, res) => {
     const sql = `
         SELECT id, title_${lang} as title, content_${lang} as content, cover_image_url, publication_date
         FROM articles
-        WHERE status = 'published' AND (title_fr LIKE ? OR title_en LIKE ? OR content_fr LIKE ? OR content_en LIKE ?)
+        WHERE status = 'published' AND deleted_at IS NULL AND (title_fr LIKE ? OR title_en LIKE ? OR content_fr LIKE ? OR content_en LIKE ?)
         ORDER BY publication_date DESC
         LIMIT 10
     `;
@@ -1942,8 +1945,8 @@ app.post('/api/entree/:id/like', async (req, res) => {
     if (!userId && !guestId) return res.status(401).json({ error: "Identification requise" });
 
     // L'article doit exister et être publié (sauf pour l'admin)
-    const target = await new Promise(resolve => db.get('SELECT status FROM articles WHERE id = ?', [articleId], (e, r) => resolve(r)));
-    if (!target || (target.status !== 'published' && !userId)) return res.status(404).json({ error: "Article introuvable" });
+    const target = await new Promise(resolve => db.get('SELECT status, deleted_at FROM articles WHERE id = ?', [articleId], (e, r) => resolve(r)));
+    if (!target || target.deleted_at || (target.status !== 'published' && !userId)) return res.status(404).json({ error: "Article introuvable" });
 
     // 1. On vérifie si le like existe DÉJÀ
     let sqlCheck, params;
@@ -2338,6 +2341,7 @@ app.get('/admin/dashboard', isAuthenticated, (req, res) => {
     const sqlWeekly = `
         SELECT strftime('%Y-W%W', publication_date) as period, COUNT(*) as count
         FROM articles
+        WHERE deleted_at IS NULL
         GROUP BY period
         ORDER BY period ASC
     `;
@@ -2346,6 +2350,7 @@ app.get('/admin/dashboard', isAuthenticated, (req, res) => {
     const sqlMonthly = `
         SELECT strftime('%Y-%m', publication_date) as period, COUNT(*) as count
         FROM articles
+        WHERE deleted_at IS NULL
         GROUP BY period
         ORDER BY period ASC
     `;
@@ -2365,13 +2370,13 @@ app.get('/admin/dashboard', isAuthenticated, (req, res) => {
             (SELECT COUNT(*) FROM comments) as totalComments,
             (SELECT COUNT(*) FROM tags) as totalTags,
             (SELECT COUNT(*) FROM contact_messages) as totalMessages -- AJOUT ICI
-        FROM articles
+        FROM articles WHERE deleted_at IS NULL
     `;
 
     const sqlHeatmap = `
         SELECT date(activity_date) as date, COUNT(*) as count 
         FROM (
-            SELECT publication_date as activity_date FROM articles
+            SELECT publication_date as activity_date FROM articles WHERE deleted_at IS NULL
             UNION ALL
             SELECT created_at as activity_date FROM comments
         ) 
@@ -2673,6 +2678,7 @@ app.get('/admin/export/pdf', isAuthenticated, async (req, res) => {
         FROM articles a
         LEFT JOIN article_tags at ON a.id = at.article_id
         LEFT JOIN tags t ON at.tag_id = t.id
+        WHERE a.deleted_at IS NULL
         GROUP BY a.id
         ORDER BY a.publication_date ASC
     `;
@@ -2890,8 +2896,15 @@ function parseArticleBody(body) {
         cover_image_url: cleanStr(body.cover_image_url, 500) || null,
         lat: null, lng: null
     };
-    if (!data.title_fr || !data.title_en || !data.content_fr.trim() || !data.content_en.trim()) {
-        return { error: 'Titres et contenus (FR et EN) sont requis.' };
+    // Un ancien état d'erreur de la traduction automatique ne doit jamais être enregistré comme du vrai texte
+    const TRANSLATION_PLACEHOLDER = /Translating\.\.\.|Translation Error\./;
+    if (TRANSLATION_PLACEHOLDER.test(data.title_en)) data.title_en = '';
+    if (TRANSLATION_PLACEHOLDER.test(data.content_en)) data.content_en = '';
+    if (TRANSLATION_PLACEHOLDER.test(data.summary_en)) data.summary_en = '';
+
+    // Seul le français est obligatoire : l'anglais vide est complété par fillMissingEnglish()
+    if (!data.title_fr || !data.content_fr.trim()) {
+        return { error: 'Le titre et le contenu en français sont requis.' };
     }
     // L'image de couverture : chemin du site ou URL http(s) (pas de javascript:, data:...)
     if (data.cover_image_url && !/^(\/(?!\/)|https?:\/\/)/.test(data.cover_image_url)) {
@@ -2909,9 +2922,27 @@ function parseArticleBody(body) {
     return { data };
 }
 
+// Complète les champs anglais restés vides : traduction DeepL si disponible, sinon copie du français
+// (mieux vaut un article publiable qu'un formulaire refusé ; l'admin peut corriger ensuite).
+async function fillMissingEnglish(data) {
+    const translate = async (text) => {
+        if (translator) {
+            try {
+                const result = await translator.translateText(text, 'fr', 'en-GB');
+                if (result && typeof result.text === 'string' && result.text.trim()) return result.text;
+            } catch (error) { console.error("Erreur traduction (secours):", error.message); }
+        }
+        return text;
+    };
+    if (!data.title_en) data.title_en = await translate(data.title_fr);
+    if (!data.content_en.trim()) data.content_en = await translate(data.content_fr);
+    return data;
+}
+
 app.post('/journal', isAuthenticated, async (req, res) => {
     const parsed = parseArticleBody(req.body);
     if (parsed.error) return flashAndRedirect(req, res, 'error', parsed.error, '/journal/nouvelle');
+    await fillMissingEnglish(parsed.data);
     const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url, lat, lng } = parsed.data;
     const { tags, action } = req.body;
     let summary_en = parsed.data.summary_en;
@@ -2967,7 +2998,7 @@ app.post('/journal', isAuthenticated, async (req, res) => {
 app.get('/entree/:id/edit', isAuthenticated, (req, res) => {
     const id = req.params.id;
     const lang = req.language === 'en' ? 'en' : 'fr';
-    const sqlArticle = "SELECT * FROM articles WHERE id = ?";
+    const sqlArticle = "SELECT * FROM articles WHERE id = ? AND deleted_at IS NULL";
     const sqlArticleTags = `SELECT tag_id FROM article_tags WHERE article_id = ?`;
     const sqlAllTags = `SELECT id, name_${lang} as name FROM tags ORDER BY name_${lang} ASC`;
     Promise.all([
@@ -2995,6 +3026,7 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
 
     const parsed = parseArticleBody(req.body);
     if (parsed.error) return flashAndRedirect(req, res, 'error', parsed.error, `/entree/${id}/edit`);
+    await fillMissingEnglish(parsed.data);
     const { title_fr, title_en, summary_fr, content_fr, content_en, cover_image_url } = parsed.data;
     const { tags, action } = req.body;
     let summary_en = parsed.data.summary_en;
@@ -3031,7 +3063,7 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
             status = ?, 
             lat = ?, 
             lng = ? 
-            WHERE id = ?
+            WHERE id = ? AND deleted_at IS NULL
         `;
 
         const params = [
@@ -3073,28 +3105,109 @@ app.post('/entree/:id/edit', isAuthenticated, async (req, res) => {
         });
     });
 });
+// --- Corbeille ---
+// Supprimer un article le met à la corbeille (colonne deleted_at). Il disparaît du site mais peut être
+// restauré pendant TRASH_RETENTION_DAYS jours ; passé ce délai, il est effacé pour de bon (avec ses
+// commentaires, tags et likes, grâce aux suppressions en cascade de la base).
+const TRASH_RETENTION_DAYS = 30;
+
 app.post('/entree/:id/delete', isAuthenticated, (req, res) => {
     const id = parseId(req.params.id);
     if (id === null) return flashAndRedirect(req, res, 'error', 'Article introuvable.', '/journal');
-    const sql = 'DELETE FROM articles WHERE id = ?';
 
-    logAction(req, 'ARTICLE_DELETE', `ID: ${id}`);
-
-    db.run(sql, [id], function(err) {
+    db.run('UPDATE articles SET deleted_at = CURRENT_TIMESTAMP, is_pinned = 0 WHERE id = ? AND deleted_at IS NULL', [id], function(err) {
         if (err) {
-            console.error(`Erreur Delete:`, err);
-            return flashAndRedirect(req, res, 'error', 'Erreur suppression.', `/entree/${id}`);
+            console.error(`Erreur mise à la corbeille:`, err);
+            return flashAndRedirect(req, res, 'error', 'Erreur lors de la suppression.', `/entree/${id}`);
+        }
+        if (this.changes === 0) {
+            return flashAndRedirect(req, res, 'error', 'Article introuvable.', '/journal');
         }
 
-        if (typeof myCache !== 'undefined') myCache.flushAll();
+        logAction(req, 'ARTICLE_TRASH', `ID: ${id}`);
+        myCache.flushAll();
 
-        flashAndRedirect(req, res, 'success', 'Entrée supprimée avec succès.', '/journal');
+        flashAndRedirect(req, res, 'success', `Article mis à la corbeille. Vous pouvez le restaurer pendant ${TRASH_RETENTION_DAYS} jours.`, '/journal');
     });
 });
+
+app.get('/admin/trash', isAuthenticated, (req, res) => {
+    const sql = `
+        SELECT id, title_fr, status, deleted_at,
+               MAX(0, CAST(? - (julianday('now') - julianday(deleted_at)) AS INTEGER) + 1) AS days_left
+        FROM articles
+        WHERE deleted_at IS NOT NULL
+        ORDER BY deleted_at DESC
+    `;
+    db.all(sql, [TRASH_RETENTION_DAYS], (err, rows) => {
+        if (err) {
+            console.error("Erreur BDD (GET /admin/trash):", err);
+            return res.status(500).send("Erreur serveur.");
+        }
+        res.render('admin-trash', {
+            pageTitle: 'Corbeille',
+            activePage: 'admin',
+            articles: rows,
+            retentionDays: TRASH_RETENTION_DAYS
+        });
+    });
+});
+
+app.post('/admin/trash/restore/:id', isAuthenticated, (req, res) => {
+    const id = parseId(req.params.id);
+    if (id === null) return flashAndRedirect(req, res, 'error', 'Article introuvable.', '/admin/trash');
+
+    db.run('UPDATE articles SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL', [id], function(err) {
+        if (err || this.changes === 0) {
+            return flashAndRedirect(req, res, 'error', 'Impossible de restaurer cet article.', '/admin/trash');
+        }
+        logAction(req, 'ARTICLE_RESTORE', `ID: ${id}`);
+        myCache.flushAll();
+        flashAndRedirect(req, res, 'success', 'Article restauré.', `/entree/${id}`);
+    });
+});
+
+app.post('/admin/trash/purge/:id', isAuthenticated, (req, res) => {
+    const id = parseId(req.params.id);
+    if (id === null) return flashAndRedirect(req, res, 'error', 'Article introuvable.', '/admin/trash');
+
+    // Seuls les articles déjà à la corbeille peuvent être effacés définitivement
+    db.run('DELETE FROM articles WHERE id = ? AND deleted_at IS NOT NULL', [id], function(err) {
+        if (err || this.changes === 0) {
+            return flashAndRedirect(req, res, 'error', 'Impossible de supprimer cet article.', '/admin/trash');
+        }
+        logAction(req, 'ARTICLE_PURGE', `ID: ${id}`);
+        flashAndRedirect(req, res, 'success', 'Article supprimé définitivement.', '/admin/trash');
+    });
+});
+
+app.post('/admin/trash/empty', isAuthenticated, (req, res) => {
+    db.run('DELETE FROM articles WHERE deleted_at IS NOT NULL', [], function(err) {
+        if (err) {
+            console.error("Erreur BDD (vider la corbeille):", err);
+            return flashAndRedirect(req, res, 'error', 'Erreur lors du vidage de la corbeille.', '/admin/trash');
+        }
+        logAction(req, 'TRASH_EMPTY', `${this.changes} article(s)`);
+        flashAndRedirect(req, res, 'success', `Corbeille vidée (${this.changes} article${this.changes > 1 ? 's' : ''}).`, '/admin/trash');
+    });
+});
+
+// Effacement automatique des articles restés trop longtemps à la corbeille (au démarrage, puis chaque jour)
+function purgeExpiredTrash() {
+    db.run("DELETE FROM articles WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', ?)", [`-${TRASH_RETENTION_DAYS} days`], function(err) {
+        if (err) return console.error("Erreur purge de la corbeille:", err.message);
+        if (this.changes > 0) console.log(`🗑️ Corbeille : ${this.changes} article(s) expiré(s) supprimé(s) définitivement.`);
+    });
+}
+if (process.env.NODE_ENV !== 'test') {
+    setTimeout(purgeExpiredTrash, 30 * 1000).unref();                   // laisse le temps aux migrations de se terminer
+    setInterval(purgeExpiredTrash, 24 * 60 * 60 * 1000).unref();
+}
+
 app.post('/entree/:id/pin', isAuthenticated, (req, res) => {
     const id = req.params.id;
 
-    db.get('SELECT is_pinned FROM articles WHERE id = ?', [id], (err, row) => {
+    db.get('SELECT is_pinned FROM articles WHERE id = ? AND deleted_at IS NULL', [id], (err, row) => {
         if (err || !row) {
             return flashAndRedirect(req, res, 'error', 'Article introuvable.', 'back');
         }
@@ -3236,7 +3349,7 @@ app.get('/admin/comments', isAuthenticated, (req, res) => {
     const sql = `
         SELECT c.id, c.author_name, c.content, c.created_at, a.title_fr as article_title, a.id as article_id 
         FROM comments c 
-        JOIN articles a ON c.article_id = a.id 
+        JOIN articles a ON c.article_id = a.id AND a.deleted_at IS NULL 
         ORDER BY c.created_at DESC
     `;
 
@@ -3334,7 +3447,7 @@ app.use((err, req, res, next) => {
 
 // DÉMARRAGE SERVEUR
 
-module.exports = { app, db };
+module.exports = { app, db, purgeExpiredTrash };
 
 if (require.main === module) {
     app.listen(port, () => {

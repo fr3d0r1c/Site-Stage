@@ -331,3 +331,150 @@ describe('Sécurité & robustesse', () => {
         expect(rules).not.toMatch(/connexion|admin|inscription/i);
     });
 });
+
+// ========================================================
+// 4. ARTICLES : corbeille, anglais de secours, validations
+// ========================================================
+describe('Articles : corbeille et édition', () => {
+    const visitor = () => request(app);
+    const getRow = (sql, params = []) => new Promise(resolve => db.get(sql, params, (e, r) => resolve(r)));
+    const run = (sql, params = []) => new Promise((resolve, reject) => db.run(sql, params, function (e) { e ? reject(e) : resolve(this); }));
+
+    async function createArticle(title, extra = {}) {
+        await adminAgent.post('/journal').type('form').send({
+            title_fr: title, title_en: title + ' EN',
+            content_fr: 'Contenu de ' + title, content_en: 'Content of ' + title,
+            action: 'published', ...extra
+        });
+        return (await getRow('SELECT id FROM articles WHERE title_fr = ?', [title])).id;
+    }
+
+    test('La page d\'un article s\'affiche (adresse de partage fournie)', async () => {
+        const id = await createArticle('Article visible');
+        const res = await visitor().get('/entree/' + id);
+        expect(res.statusCode).toBe(200);
+        // Le lien de partage contient l'adresse de l'article, encodée pour une URL
+        expect(res.text).toContain(encodeURIComponent('/entree/' + id));
+    });
+
+    test('Supprimer = mettre à la corbeille : l\'article disparaît du site', async () => {
+        const id = await createArticle('Article à supprimer');
+        expect((await visitor().get('/entree/' + id)).statusCode).toBe(200);
+
+        const del = await adminAgent.post('/entree/' + id + '/delete');
+        expect(del.statusCode).toBe(302);
+
+        // Toujours en base, mais marqué supprimé
+        const row = await getRow('SELECT deleted_at FROM articles WHERE id = ?', [id]);
+        expect(row).toBeDefined();
+        expect(row.deleted_at).not.toBeNull();
+
+        // Introuvable pour tout le monde (visiteur ET admin) sur le site
+        expect((await visitor().get('/entree/' + id)).statusCode).toBe(404);
+        expect((await adminAgent.get('/entree/' + id)).statusCode).toBe(404);
+        expect((await adminAgent.get('/entree/' + id + '/edit')).statusCode).toBe(404);
+        expect((await visitor().get('/journal')).text).not.toContain('Article à supprimer');
+        expect((await adminAgent.get('/journal')).text).not.toContain('Article à supprimer');
+        expect((await visitor().get('/api/search').query({ q: 'Article à supprimer' })).body).toEqual([]);
+        expect((await visitor().get('/sitemap.xml')).text).not.toContain('/entree/' + id + '<');
+    });
+
+    test('La corbeille liste l\'article ; le restaurer le remet en ligne', async () => {
+        const id = await createArticle('Article restaurable');
+        await adminAgent.post('/entree/' + id + '/delete');
+
+        const trash = await adminAgent.get('/admin/trash');
+        expect(trash.statusCode).toBe(200);
+        expect(trash.text).toContain('Article restaurable');
+
+        const restore = await adminAgent.post('/admin/trash/restore/' + id);
+        expect(restore.statusCode).toBe(302);
+        expect((await visitor().get('/entree/' + id)).statusCode).toBe(200);
+        expect((await getRow('SELECT deleted_at FROM articles WHERE id = ?', [id])).deleted_at).toBeNull();
+    });
+
+    test('Suppression définitive : seulement depuis la corbeille', async () => {
+        const live = await createArticle('Article en ligne');
+        // Un article NON supprimé ne peut pas être purgé directement
+        await adminAgent.post('/admin/trash/purge/' + live);
+        expect(await getRow('SELECT id FROM articles WHERE id = ?', [live])).toBeDefined();
+
+        await adminAgent.post('/entree/' + live + '/delete');
+        await adminAgent.post('/admin/trash/purge/' + live);
+        expect(await getRow('SELECT id FROM articles WHERE id = ?', [live])).toBeUndefined();
+    });
+
+    test('Vider la corbeille', async () => {
+        const id = await createArticle('Article à vider');
+        await adminAgent.post('/entree/' + id + '/delete');
+        await adminAgent.post('/admin/trash/empty');
+        expect(await getRow('SELECT COUNT(*) AS n FROM articles WHERE deleted_at IS NOT NULL')).toEqual({ n: 0 });
+    });
+
+    test('Les articles restés plus de 30 jours à la corbeille sont effacés automatiquement', async () => {
+        const old = await createArticle('Article très ancien');
+        const recent = await createArticle('Article récent');
+        await run("UPDATE articles SET deleted_at = datetime('now', '-40 days') WHERE id = ?", [old]);
+        await run("UPDATE articles SET deleted_at = datetime('now', '-5 days') WHERE id = ?", [recent]);
+
+        const { purgeExpiredTrash } = require('./app');
+        purgeExpiredTrash();
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        expect(await getRow('SELECT id FROM articles WHERE id = ?', [old])).toBeUndefined();
+        expect(await getRow('SELECT id FROM articles WHERE id = ?', [recent])).toBeDefined();
+    });
+
+    test('Un visiteur ne peut ni voir la corbeille ni supprimer', async () => {
+        const id = await createArticle('Article protégé');
+        expect((await visitor().get('/admin/trash')).statusCode).toBe(404);
+        expect((await visitor().post('/entree/' + id + '/delete')).statusCode).toBe(404);
+        expect((await visitor().post('/admin/trash/purge/' + id)).statusCode).toBe(404);
+        expect((await getRow('SELECT deleted_at FROM articles WHERE id = ?', [id])).deleted_at).toBeNull();
+    });
+
+    test('Un commentaire ne peut pas être posté sur un article à la corbeille', async () => {
+        const id = await createArticle('Article commentaire');
+        await adminAgent.post('/entree/' + id + '/delete');
+        const before = (await getRow('SELECT COUNT(*) AS n FROM comments')).n;
+        await visitor().post('/article/' + id + '/comment').type('form').send({ author_name: 'Zoé', author_email: 'zoe@test.com', content: 'Coucou' });
+        expect((await getRow('SELECT COUNT(*) AS n FROM comments')).n).toBe(before);
+    });
+
+    test('Anglais vide : complété par le serveur (copie du français sans clé DeepL)', async () => {
+        await adminAgent.post('/journal').type('form').send({
+            title_fr: 'Titre sans anglais', title_en: '', content_fr: 'Corps sans anglais', content_en: '', action: 'published'
+        });
+        const row = await getRow("SELECT title_en, content_en FROM articles WHERE title_fr = 'Titre sans anglais'");
+        expect(row.title_en).toBe('Titre sans anglais');
+        expect(row.content_en).toBe('Corps sans anglais');
+    });
+
+    test('Un message d\'erreur de traduction n\'est jamais enregistré comme texte anglais', async () => {
+        await adminAgent.post('/journal').type('form').send({
+            title_fr: 'Titre erreur trad', title_en: 'Translation Error.', content_fr: 'Corps', content_en: 'Translating...', action: 'published'
+        });
+        const row = await getRow("SELECT title_en, content_en FROM articles WHERE title_fr = 'Titre erreur trad'");
+        expect(row.title_en).not.toMatch(/Translation Error|Translating/);
+        expect(row.content_en).not.toMatch(/Translation Error|Translating/);
+    });
+
+    test('Adresse de couverture dangereuse (javascript:) refusée', async () => {
+        await adminAgent.post('/journal').type('form').send({
+            title_fr: 'Couverture piégée', title_en: 'x', content_fr: 'a', content_en: 'b', cover_image_url: 'javascript:alert(1)', action: 'published'
+        });
+        expect(await getRow("SELECT id FROM articles WHERE title_fr = 'Couverture piégée'")).toBeUndefined();
+    });
+
+    test('Modification : les changements sont enregistrés', async () => {
+        const id = await createArticle('Avant modification');
+        const res = await adminAgent.post('/entree/' + id + '/edit').type('form').send({
+            title_fr: 'Après modification', title_en: 'After edit', content_fr: 'Nouveau corps', content_en: 'New body',
+            cover_image_url: '/uploads/exemple.webp', action: 'published'
+        });
+        expect(res.statusCode).toBe(302);
+        const row = await getRow('SELECT title_fr, cover_image_url FROM articles WHERE id = ?', [id]);
+        expect(row.title_fr).toBe('Après modification');
+        expect(row.cover_image_url).toBe('/uploads/exemple.webp');
+    });
+});

@@ -1,130 +1,168 @@
-window.translateText = async function(text, targetLang = 'en-GB', type = 'content') {
+// Traduction automatique FR -> EN dans l'éditeur d'articles.
+//
+// Règles (par rapport à l'ancienne version) :
+//  - un champ anglais corrigé à la main n'est JAMAIS écrasé (sauf bouton « Retraduire tout ») ;
+//  - en cas d'erreur, le champ anglais n'est pas modifié (avant : « Translation Error. » y était écrit
+//    et pouvait être enregistré avec l'article) ;
+//  - ouvrir un article existant ne relance pas de traduction si l'anglais est déjà rempli ;
+//  - une réponse tardive d'une ancienne requête ne remplace pas une plus récente.
+(function () {
+    const state = {
+        touched: { title: false, content: false }, // true = l'utilisateur a écrit/corrigé l'anglais lui-même
+        seq: { title: 0, content: 0 },             // numéro de la dernière requête, pour ignorer les réponses périmées
+        lastSource: { title: null, content: null },// dernier texte français envoyé (évite de retraduire à l'identique)
+        available: true                            // passe à false si le serveur n'a pas de clé DeepL
+    };
+    window.enState = state;
 
-    if (!text || text.trim() === '') return;
+    const el = (id) => document.getElementById(id);
 
-    const titleEnInput = document.getElementById('title_en');
-    const previewEnDiv = document.getElementById('preview_en');
-    const contentEnTextarea = document.getElementById('content_en');
+    function setStatus(type, message, isError) {
+        const status = el(type === 'title' ? 'title-en-status' : 'content-en-status');
+        if (!status) return;
+        status.textContent = message || '';
+        status.classList.toggle('is-error', !!isError);
+    }
 
-    const targetElement = (type === 'title') ? titleEnInput : previewEnDiv;
-    const targetInput = (type === 'title') ? titleEnInput : contentEnTextarea;
+    function renderEnglishPreview(markdown) {
+        const preview = el('preview_en');
+        if (!preview) return;
+        if (typeof marked === 'undefined') { preview.textContent = markdown; return; }
 
-    if (!targetElement || !targetInput) return;
+        const clean = String(markdown || '').replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
+        preview.innerHTML = marked.parse(clean);
+        if (typeof hljs !== 'undefined') {
+            preview.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
+            if (typeof addCopyButtons === 'function') addCopyButtons();
+        }
+    }
+    window.renderEnglishPreview = renderEnglishPreview;
 
-    try {
-        if (type === 'title') {
-            targetElement.value = 'Translating...';
-        } else {
-            targetElement.innerHTML = '<i>Translating...</i>';
+    // Les blocs de code ne doivent pas être traduits : on les remplace par des repères le temps de l'appel.
+    function protectCodeBlocks(text) {
+        const blocks = [];
+        const protectedText = text.replace(/```[\s\S]*?```/g, (match) => {
+            blocks.push(match);
+            return `__CODE_BLOCK_${blocks.length - 1}__`;
+        });
+        return { protectedText, restore: (translated) => blocks.reduce((out, block, i) => out.replace(new RegExp(`__CODE_BLOCK_${i}__`, 'g'), () => block), translated) };
+    }
+
+    /**
+     * Traduit `text` (français) vers l'anglais et remplit le champ correspondant.
+     * type : 'title' ou 'content'. opts.force : traduit même si l'anglais a été corrigé à la main.
+     */
+    window.translateText = async function (text, targetLang = 'en-GB', type = 'content', opts = {}) {
+        const force = !!opts.force;
+        if (!text || !text.trim()) return;
+        if (!force && (state.touched[type] || !state.available)) return;
+        if (!force && state.lastSource[type] === text) return;
+
+        const titleEn = el('title_en');
+        const contentEn = el('content_en');
+        if ((type === 'title' && !titleEn) || (type !== 'title' && !contentEn)) return;
+
+        const mySeq = ++state.seq[type];
+        setStatus(type, 'Traduction en cours…', false);
+
+        try {
+            const { protectedText, restore } = type === 'content' ? protectCodeBlocks(text) : { protectedText: text, restore: (t) => t };
+
+            const response = await fetch('/api/translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: protectedText, targetLang }),
+                credentials: 'include'
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                const error = new Error(data.error || response.statusText);
+                error.status = response.status;
+                throw error;
+            }
+            if (typeof data.translatedText !== 'string') throw new Error('Réponse inattendue.');
+
+            if (mySeq !== state.seq[type]) return; // une requête plus récente est partie entre-temps
+
+            const translated = restore(data.translatedText);
+            state.lastSource[type] = text;
+
+            if (type === 'title') {
+                titleEn.value = translated;
+            } else {
+                contentEn.value = translated;
+                renderEnglishPreview(translated);
+            }
+            setStatus(type, 'Traduit automatiquement', false);
+            document.dispatchEvent(new CustomEvent('entry:english-updated', { detail: { type } }));
+
+        } catch (error) {
+            console.error(`Erreur durant la traduction (${type}):`, error);
+            if (mySeq !== state.seq[type]) return;
+
+            if (error.status === 503) {
+                state.available = false;
+                setStatus(type, "Traduction automatique indisponible : écrivez l'anglais à la main (sinon il sera recopié du français).", true);
+            } else {
+                setStatus(type, "La traduction a échoué : l'anglais n'a pas été modifié.", true);
+            }
+            // On ne touche PAS au champ anglais : il garde sa valeur précédente.
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const titleFr = el('title_fr');
+        const titleEn = el('title_en');
+        const contentEn = el('content_en');
+        const previewEn = el('preview_en');
+
+        // Un anglais déjà présent (article existant) est considéré comme relu : on ne l'écrase pas.
+        if (titleEn && titleEn.value.trim()) state.touched.title = true;
+        if (contentEn && contentEn.value.trim()) {
+            state.touched.content = true;
+            renderEnglishPreview(contentEn.value);
+        } else if (previewEn) {
+            previewEn.textContent = '';
         }
 
-        let textToTranslate = text;
-        const codeBlocks = [];
-
-        if (type === 'content') {
-            const codeBlockRegex = /```[\s\S]*?```/g;
-
-            textToTranslate = text.replace(codeBlockRegex, (match) => {
-                codeBlocks.push(match);
-                return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+        // L'utilisateur écrit lui-même dans un champ anglais (event.isTrusted : vraie frappe, pas du code)
+        if (titleEn) {
+            titleEn.addEventListener('input', (event) => {
+                if (!event.isTrusted) return;
+                state.touched.title = true;
+                setStatus('title', 'Modifié à la main : ne sera plus traduit automatiquement.', false);
+            });
+        }
+        if (contentEn) {
+            contentEn.addEventListener('input', (event) => {
+                if (!event.isTrusted) return;
+                state.touched.content = true;
+                setStatus('content', 'Modifié à la main : ne sera plus traduit automatiquement.', false);
+                renderEnglishPreview(contentEn.value);
             });
         }
 
-        const response = await fetch('/api/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: textToTranslate, targetLang: targetLang }),
-            credentials: 'include'
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) throw new Error(`Erreur API: ${data.error || response.statusText}`);
-
-        if (data && typeof data.translatedText === 'string') {
-            let finalTranslatedText = data.translatedText;
-
-            if (type === 'content') {
-                codeBlocks.forEach((block, index) => {
-                    const placeholderRegex = new RegExp(`__CODE_BLOCK_${index}__`, 'g');
-                    finalTranslatedText = finalTranslatedText.replace(placeholderRegex, block);
-                });
-            }
-
-            if (type === 'title') {
-                targetElement.value = finalTranslatedText;
-            } else {
-                targetInput.value = finalTranslatedText;
-
-                if (typeof marked !== 'undefined') {
-                    const cleanTranslated = finalTranslatedText.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
-                    targetElement.innerHTML = marked.parse(cleanTranslated);
-
-                    if (typeof hljs !== 'undefined') {
-                        targetElement.querySelectorAll('pre code').forEach((block) => {
-                            hljs.highlightElement(block);
-                        });
-                        if (typeof addCopyButtons === 'function') addCopyButtons();
-                    }
-                } else {
-                    targetElement.innerText = finalTranslatedText;
-                }
-            }
-        } else {
-            throw new Error('Réponse inattendue.');
+        // Titre français -> titre anglais (avec un petit délai pour ne pas traduire à chaque lettre)
+        let titleTimer;
+        if (titleFr) {
+            titleFr.addEventListener('input', () => {
+                clearTimeout(titleTimer);
+                const text = titleFr.value;
+                if (!text.trim()) return;
+                titleTimer = setTimeout(() => window.translateText(text, 'en-GB', 'title'), 900);
+            });
         }
 
-    } catch (error) {
-        console.error(`Erreur durant la traduction (${type}):`, error);
-        if (type === 'title') {
-            targetElement.value = 'Translation Error.';
-        } else {
-            targetElement.innerHTML = '<i>Translation Error.</i>';
-        }
-
-        if (type === 'content' && contentEnTextarea) {
-            contentEnTextarea.value = 'Translation Error.';
-        }
-    }
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    const titleFrInput = document.getElementById('title_fr');
-    let titleDebounceTimer;
-
-    if (titleFrInput) {
-        titleFrInput.addEventListener('input', () => {
-            clearTimeout(titleDebounceTimer);
-            const textToTranslate = titleFrInput.value;
-
-            if (textToTranslate.trim() && typeof window.translateText === 'function') {
-                titleDebounceTimer = setTimeout(() => {
-                    window.translateText(textToTranslate, 'en-GB', 'title');
-                }, 700);
-            } else {
-                const titleEnInput = document.getElementById('title_en');
-                if(titleEnInput) titleEnInput.value = '';
+        // Page de modification d'un article dont l'anglais est vide : on le traduit une fois à l'ouverture.
+        setTimeout(() => {
+            if (titleFr && titleFr.value.trim() && titleEn && !titleEn.value.trim()) {
+                window.translateText(titleFr.value, 'en-GB', 'title');
             }
-        });
-    }
-
-    const contentFrEditor = document.getElementById('content-editor-fr');
-    if (contentFrEditor && contentFrEditor.value.trim() && typeof window.translateText === 'function') {
-        setTimeout(()=> {
-            const initialContent = window.easyMDEInstance ? window.easyMDEInstance.value() : contentFrEditor.value;
-
-            if(initialContent && initialContent.trim() !== '') {
-                window.translateText(initialContent, 'en-GB', 'content');
+            const source = window.easyMDEInstance ? window.easyMDEInstance.value() : (el('content-editor-fr') || {}).value;
+            if (source && source.trim() && contentEn && !contentEn.value.trim()) {
+                window.translateText(source, 'en-GB', 'content');
             }
-        }, 300);
-    }
-
-    if (titleFrInput && titleFrInput.value.trim() && typeof window.translateText === 'function') {
-        setTimeout(()=> {
-            const initialTitle = titleFrInput.value;
-            if (initialTitle.trim()) {
-                window.translateText(initialTitle, 'en-GB', 'title');
-            }
-        }, 300);
-    }
-});
+        }, 600);
+    });
+})();
