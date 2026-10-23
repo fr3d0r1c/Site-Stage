@@ -500,6 +500,25 @@ function isValidEmail(email) {
     return typeof email === 'string' && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Extrait lisible d'un article en Markdown : on retire titres, citations, listes, tableaux, code et liens,
+// puis on coupe au dernier mot entier. (Avant : les « > » et les tirets restaient dans le texte des cartes.)
+function makeExcerpt(markdown, max = 300) {
+    const text = String(markdown ?? '')
+        .replace(/```[\s\S]*?```/g, ' ')        // blocs de code
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')          // images
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')        // liens -> texte du lien
+        .replace(/^\s{0,3}#{1,6}\s+.*$/gm, ' ')         // lignes de titre
+        .replace(/^\s{0,3}>\s?/gm, '')                  // citations
+        .replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, '')        // puces et numérotations
+        .replace(/^\s*\|.*\|\s*$/gm, ' ')               // tableaux
+        .replace(/<[^>]+>/g, ' ')                       // balises HTML
+        .replace(/[`*_~]/g, '')                        // mise en forme
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (text.length <= max) return text;
+    return text.slice(0, max).replace(/\s+\S*$/, '') + '…';
+}
+
 // Identifiant numérique (id d'article, de commentaire...) ou null s'il est invalide
 function parseId(value) {
     return /^\d{1,12}$/.test(String(value)) ? parseInt(value, 10) : null;
@@ -1048,7 +1067,7 @@ app.get('/', cacheMiddleware(600), (req, res) => {
                 let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '');
                 textContent = textContent.replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
                 const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
-                excerpt = plainContent.substring(0, 350) + "...";
+                excerpt = makeExcerpt(article.content, 300);
             }
             // ----------------------------------------------------
 
@@ -1168,7 +1187,7 @@ app.get('/journal', cacheMiddleware(600), (req, res) => {
                 } else {
                     let textContent = article.content.replace(/!\[.*?\]\(.*?\)/g, '').replace(/^#\s+.*(\r\n|\n|\r)?/, '').trim();
                     const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, '');
-                    excerpt = plainContent.substring(0, 350) + "...";
+                    excerpt = makeExcerpt(article.content, 300);
                 }
 
                 return { 
@@ -1267,7 +1286,7 @@ app.get('/search', (req, res) => {
                     ...article, 
                     tags: tagList, 
                     coverImage: finalCoverImage, 
-                    excerpt: plainContent.substring(0, 350),
+                    excerpt: makeExcerpt(article.content, 300),
                     readingTime: getReadingTime(article.content) // <-- Utilisation de 'article'
                 };
             });
@@ -1381,7 +1400,7 @@ app.get('/tags/:tagName', (req, res) => {
                         excerpt = article.summary;
                     } else {
                         const plainContent = textContent.replace(/[#*`~_]|(\[.*?\]\(.*?\))/g, ''); // Enlever Markdown
-                        excerpt = plainContent.substring(0, 350) + "...";
+                        excerpt = makeExcerpt(article.content, 300);
                     }
 
                     return { 
@@ -1903,7 +1922,7 @@ app.get('/api/search', async (req, res) => {
                 id: article.id,
                 title: article.title,
                 date: new Date(article.publication_date).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR'),
-                excerpt: text.substring(0, 150) + '...',
+                excerpt: makeExcerpt(article.content, 150),
                 image: article.cover_image_url
             };
         });
