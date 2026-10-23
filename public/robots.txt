@@ -1,16 +1,9 @@
 # Indique que les règles s'appliquent à tous les robots
 User-agent: *
 
-# Interdit l'accès aux pages d'administration
-Disallow: /admin
-Disallow: /admin/
-Disallow: /connexion
-Disallow: /inscription
-Disallow: /change-password
-Disallow: /forgot-password
-Disallow: /reset-password/
-
-# Autorise tout le reste
+# Les pages d'administration et de connexion ne sont volontairement PAS listées ici :
+# ce fichier est public, il révélerait leur existence. Elles répondent 404 aux visiteurs
+# et sont envoyées avec l'en-tête "X-Robots-Tag: noindex" (voir le serveur).
 Allow: /
 
 # Indique l'emplacement du sitemap

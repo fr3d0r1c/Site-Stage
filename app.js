@@ -301,6 +301,14 @@ filter.addWords(...frenchBadWordsList);
 
 filter.addWords('testbad');
 
+// Pages sensibles : jamais indexées par les moteurs de recherche (robots.txt étant public, on ne les y liste pas)
+app.use((req, res, next) => {
+    if (/^\/(admin|connexion|inscription|forgot-password|reset-password|change-password|api)(\/|$)/.test(req.path)) {
+        res.set('X-Robots-Tag', 'noindex, nofollow');
+    }
+    next();
+});
+
 app.use((req, res, next) => {
     // On ne journalise pas la query string, ni les jetons de réinitialisation présents dans l'URL
     const safePath = req.path.replace(/^(\/reset-password\/).+$/, '$1[jeton]');
@@ -323,6 +331,28 @@ app.use((req, res, next) => {
     next();
 });
 
+// Réponse « page introuvable » : identique à une vraie 404, pour ne rien révéler des pages cachées
+function render404(req, res) {
+    res.status(404).render('404', { pageTitle: '404 - Page Introuvable', activePage: '' });
+}
+
+// --- Accès caché à la page de connexion (Konami code) ---
+// Le navigateur envoie la séquence du Konami code à POST /api/konami ; si elle est correcte, le serveur
+// ouvre pour 15 minutes l'accès aux pages de connexion de CETTE session. Sans cela, ces pages répondent 404.
+const KONAMI_SEQUENCE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+const LOGIN_UNLOCK_MS = 15 * 60 * 1000;
+
+function loginAccessExpiry() { return Date.now() + LOGIN_UNLOCK_MS; }
+
+function requireLoginAccess(req, res, next) {
+    const until = req.session.loginUnlockedUntil;
+    if (until && until > Date.now()) {
+        req.session.loginUnlockedUntil = loginAccessExpiry(); // on prolonge tant que la personne est active
+        return next();
+    }
+    render404(req, res);
+}
+
 function isAuthenticated(req, res, next) {
     if (req.session.userId) {
         return next(); // L'utilisateur est connecté, on continue
@@ -331,8 +361,8 @@ function isAuthenticated(req, res, next) {
     if (req.originalUrl.startsWith('/upload-image') || req.originalUrl.startsWith('/api/')) {
        return res.status(401).json({ error: 'Accès non autorisé. Veuillez vous reconnecter.' });
     }
-    // Pour les pages normales, redirige vers la page de connexion
-    res.redirect('/connexion');
+    // Pages d'administration : un visiteur voit une 404 (on ne révèle pas qu'elles existent)
+    render404(req, res);
 }
 
 function checkAdminExists(req, res, next) {
@@ -345,7 +375,7 @@ function checkAdminExists(req, res, next) {
         if (row.count === 0) {
             next();
         } else {
-            res.redirect('/connexion');
+            render404(req, res);
         }
     });
 }
@@ -367,6 +397,14 @@ const authLimiter = rateLimit({
 
 // Limiteur dédié à la connexion : le compteur est remis à zéro après une connexion réussie
 // (les échecs de login renvoient une redirection, donc skipSuccessfulRequests ne marcherait pas ici)
+const unlockLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => render404(req, res)
+});
+
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
@@ -1996,7 +2034,23 @@ app.post('/api/clear-flash', (req, res) => {
 });
 
 // AUTHENTIFICATION (Admin)
-app.get('/connexion', (req, res) => {
+// Déverrouille l'accès à la page de connexion si la séquence du Konami code est correcte
+app.post('/api/konami', unlockLimiter, (req, res) => {
+    const sequence = req.body && req.body.sequence;
+    const ok = Array.isArray(sequence)
+        && sequence.length === KONAMI_SEQUENCE.length
+        && sequence.every((key, i) => key === KONAMI_SEQUENCE[i]);
+
+    if (!ok) return render404(req, res);
+
+    req.session.loginUnlockedUntil = loginAccessExpiry();
+    req.session.save((err) => {
+        if (err) { console.error("Erreur session (konami):", err); return res.status(500).json({ ok: false }); }
+        res.json({ ok: true, redirect: '/connexion' });
+    });
+});
+
+app.get('/connexion', requireLoginAccess, (req, res) => {
     const resetSuccess = req.query.reset === 'success';
     const message = req.session.flashMessage; // Lit le message flash (ex: "Compte créé")
     req.session.flashMessage = null;
@@ -2017,7 +2071,7 @@ app.get('/connexion', (req, res) => {
 // pour que le temps de réponse ne révèle pas quels noms d'utilisateur existent.
 const DUMMY_HASH = bcrypt.hashSync('mot-de-passe-factice', 10);
 
-app.post('/connexion', loginLimiter, (req, res) => {
+app.post('/connexion', requireLoginAccess, loginLimiter, (req, res) => {
     const username = cleanStr(req.body.username, 100);
     const password = String(req.body.password || '');
     const BAD_CREDENTIALS = 'Identifiants incorrects.';
@@ -2042,7 +2096,7 @@ app.post('/connexion', loginLimiter, (req, res) => {
 
             // --- 2FA activée : on ne connecte PAS encore, on attend le code ---
             if (user.two_fa_enabled === 1) {
-                return startFreshSession(req, { tempUserId: user.id }, (errSave) => {
+                return startFreshSession(req, { tempUserId: user.id, loginUnlockedUntil: loginAccessExpiry() }, (errSave) => {
                     if (errSave) { console.error("Erreur session 2FA:", errSave); return res.redirect('/connexion'); }
                     res.redirect('/connexion/2fa');
                 });
@@ -2064,8 +2118,8 @@ app.post('/connexion', loginLimiter, (req, res) => {
         });
     });
 });
-app.get('/inscription', checkAdminExists, (req, res) => { res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); });
-app.post('/inscription', checkAdminExists, authLimiter, upload.single('avatar'), (req, res) => {
+app.get('/inscription', requireLoginAccess, checkAdminExists, (req, res) => { res.render('register', { pageTitle: req.t('page_titles.register'), activePage: 'admin', error: null }); });
+app.post('/inscription', requireLoginAccess, checkAdminExists, authLimiter, upload.single('avatar'), (req, res) => {
     const username = cleanStr(req.body.username, 50);
     const email = cleanStr(req.body.email, 254);
     const password = String(req.body.password || '');
@@ -2110,8 +2164,8 @@ app.get('/deconnexion', (req, res) => {
         res.redirect('/');
     });
 });
-app.get('/forgot-password', (req, res) => { res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: null, info: null }); });
-app.post('/forgot-password', authLimiter, (req, res) => {
+app.get('/forgot-password', requireLoginAccess, (req, res) => { res.render('forgot-password', { pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: null, info: null }); });
+app.post('/forgot-password', requireLoginAccess, authLimiter, (req, res) => {
     const renderForgot = (status, error, info) => res.status(status).render('forgot-password', {
         pageTitle: 'Mot de Passe Oublié', activePage: 'admin', error: error, info: info
     });
@@ -2174,7 +2228,9 @@ app.post('/reset-password/:token', authLimiter, (req, res) => {
             db.run('UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?', [newHash, user.id], (errUpdate) => {
                 if (errUpdate) { console.error("Erreur BDD (reset update):", errUpdate); return renderReset(500, 'Erreur serveur.'); }
                 logAction(req, 'PASSWORD_RESET', `Mot de passe réinitialisé pour l'utilisateur #${user.id}`);
-                res.redirect('/connexion?reset=success');
+                // Le lien reçu par email prouve l'identité : on ouvre l'accès à la page de connexion pour la suite
+                req.session.loginUnlockedUntil = loginAccessExpiry();
+                req.session.save(() => res.redirect('/connexion?reset=success'));
             });
         });
     });

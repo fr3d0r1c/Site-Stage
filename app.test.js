@@ -10,6 +10,10 @@ jest.mock('nodemailer', () => ({
 // Import de l'application
 const { app, db } = require('./app');
 
+// Séquence du Konami code : elle ouvre l'accès caché à la page de connexion
+const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+const unlockLogin = (agent) => agent.post('/api/konami').send({ sequence: KONAMI });
+
 // Agent global pour l'Admin
 let adminAgent = request.agent(app);
 let articleId;
@@ -30,7 +34,8 @@ beforeAll(async () => {
         });
     });
 
-    // 3. Connexion de l'Admin
+    // 3. Connexion de l'Admin (la page de connexion est cachée : on tape d'abord le Konami code)
+    await unlockLogin(adminAgent);
     await adminAgent
         .post('/connexion')
         .type('form')
@@ -164,13 +169,17 @@ describe('Sécurité & robustesse', () => {
     });
 
     test('POST /connexion - Utilisateur inconnu : redirection, pas de plantage', async () => {
-        const res = await anon().post('/connexion').type('form').send({ username: 'personne', password: 'nimportequoi' });
+        const agent = request.agent(app);
+        await unlockLogin(agent);
+        const res = await agent.post('/connexion').type('form').send({ username: 'personne', password: 'nimportequoi' });
         expect(res.statusCode).toBe(302);
         expect(res.headers.location).toBe('/connexion');
     });
 
     test('POST /connexion - Corps vide : redirection, pas de plantage', async () => {
-        const res = await anon().post('/connexion').type('form').send({});
+        const agent = request.agent(app);
+        await unlockLogin(agent);
+        const res = await agent.post('/connexion').type('form').send({});
         expect(res.statusCode).toBe(302);
     });
 
@@ -272,5 +281,53 @@ describe('Sécurité & robustesse', () => {
         await anon().post('/newsletter/subscribe').type('form').send({ email: 'nimportequoi' });
         const n = await new Promise(resolve => db.get("SELECT COUNT(*) AS n FROM subscribers WHERE email = 'nimportequoi'", (e, r) => resolve(r.n)));
         expect(n).toBe(0);
+    });
+
+    // --- Accès caché à la page de connexion ---
+    test('/connexion est introuvable (404) sans le Konami code', async () => {
+        expect((await anon().get('/connexion')).statusCode).toBe(404);
+        expect((await anon().post('/connexion').type('form').send({ username: 'a', password: 'b' })).statusCode).toBe(404);
+        expect((await anon().get('/inscription')).statusCode).toBe(404);
+        expect((await anon().get('/forgot-password')).statusCode).toBe(404);
+        expect((await anon().post('/forgot-password').type('form').send({ email: 'a@b.cd' })).statusCode).toBe(404);
+    });
+
+    test('Les pages admin répondent 404 à un visiteur (pas de redirection vers la connexion)', async () => {
+        for (const url of ['/admin', '/admin/dashboard', '/admin/messages', '/journal/nouvelle', '/change-password']) {
+            const res = await anon().get(url);
+            expect(res.statusCode).toBe(404);
+            expect(res.headers.location).toBeUndefined();
+        }
+    });
+
+    test('Mauvaise séquence : le serveur refuse et /connexion reste cachée', async () => {
+        const agent = request.agent(app);
+        expect((await agent.post('/api/konami').send({ sequence: ['ArrowUp', 'ArrowUp'] })).statusCode).toBe(404);
+        expect((await agent.post('/api/konami').send({ sequence: 'pas un tableau' })).statusCode).toBe(404);
+        expect((await agent.post('/api/konami').send({})).statusCode).toBe(404);
+        expect((await agent.get('/connexion')).statusCode).toBe(404);
+    });
+
+    test('Bonne séquence : /connexion devient accessible pour CETTE session seulement', async () => {
+        const agent = request.agent(app);
+        const ok = await unlockLogin(agent);
+        expect(ok.statusCode).toBe(200);
+        expect(ok.body.ok).toBe(true);
+        expect((await agent.get('/connexion')).statusCode).toBe(200);
+        // Un autre visiteur, lui, ne voit toujours rien
+        expect((await anon().get('/connexion')).statusCode).toBe(404);
+    });
+
+    test('Le lien de réinitialisation par email reste utilisable sans Konami code', async () => {
+        const res = await anon().get('/reset-password/jeton-invalide');
+        expect(res.statusCode).toBe(400); // lien invalide, mais la page répond (pas 404)
+    });
+
+    test('Pages sensibles envoyées avec noindex ; robots.txt ne les liste plus', async () => {
+        const res = await anon().get('/admin/dashboard');
+        expect(res.headers['x-robots-tag']).toContain('noindex');
+        const robots = await anon().get('/robots.txt');
+        const rules = robots.text.split(/\r?\n/).filter(l => /^\s*(Disallow|Allow)/i.test(l)).join(' ');
+        expect(rules).not.toMatch(/connexion|admin|inscription/i);
     });
 });
