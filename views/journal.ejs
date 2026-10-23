@@ -65,7 +65,7 @@
                     <% if (entry.tags && entry.tags.length > 0) { %>
                         <div class="tags-list">
                             <% entry.tags.forEach(tag => { %>
-                                <a href="/tags/<%= tag %>" class="tag-item"><%= tag %></a>
+                                <a href="/tags/<%= encodeURIComponent(tag) %>" class="tag-item"><%= tag %></a>
                             <% }); %>
                         </div>
                     <% } %>
@@ -76,7 +76,7 @@
                         <div class="actions">
                             <a href="/entree/<%= entry.id %>/edit"><%= t('journal.edit') %></a>
                             <form action="/entree/<%= entry.id %>/delete" method="POST" 
-                                  data-confirm="<%= t('admin_page.delete_confirm') %>"
+                                  data-confirm="Mettre « <%= entry.title %> » à la corbeille ? Vous pourrez le restaurer pendant 30 jours."
                                   style="display: inline;">
                                 <button type="submit"><%= t('journal.delete') %></button>
                             </form>
@@ -91,8 +91,13 @@
 </div>
 
 <% if (totalPages > 1) { %>
-    <div class="pagination" aria-label="Pagination">
-        <ul></ul>
+    <%
+        // Adresse de base de la pagination (journal complet ou page d'un tag) et tri conservé d'une page à l'autre
+        const baseUrl = (typeof currentTag !== 'undefined' && currentTag) ? '/tags/' + encodeURIComponent(currentTag) : '/journal';
+        const sortParam = (typeof currentSort !== 'undefined' && currentSort && currentSort !== 'date_desc') ? '&sort=' + encodeURIComponent(currentSort) : '';
+    %>
+    <nav class="pagination" aria-label="Pagination">
+        <ul>
             <% if (currentPage > 1) { %>
                 <li><a href="<%= baseUrl %>?page=<%= currentPage - 1 %><%= sortParam %>">&laquo;</a></li>
             <% } else { %>
@@ -111,7 +116,7 @@
                 <li class="disabled"><span>&raquo;</span></li>
             <% } %>
         </ul>
-    </div>
+    </nav>
 <% } %>
 
 <%- include('partials/footer') %>

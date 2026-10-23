@@ -2,14 +2,18 @@
 
 <h1><%= t('journal.add_entry') %></h1>
 
-<form action="/journal" method="POST" id="entry-form"> <div class="title-layout">
+<div id="local-draft-banner" class="draft-banner" role="status" hidden></div>
+<form action="/journal" method="POST" id="entry-form" data-draft-key="new">
+    <div class="title-layout">
         <div class="title-field">
             <label for="title_fr"><%= t('forms.title_fr') %> :</label><br>
             <input type="text" id="title_fr" name="title_fr" required>
         </div>
         <div class="title-field">
             <label for="title_en"><%= t('forms.title_en') %> :</label><br>
-            <input type="text" id="title_en" name="title_en" required readonly> </div>
+            <input type="text" id="title_en" name="title_en" placeholder="Rempli automatiquement, modifiable">
+            <small id="title-en-status" class="field-status" aria-live="polite"></small>
+        </div>
     </div>
     <hr>
 
@@ -19,7 +23,7 @@
             <textarea id="summary_fr" name="summary_fr" rows="3" placeholder="Un court texte d'accroche..."><%= (typeof article !== 'undefined' && article.summary_fr) ? article.summary_fr : '' %></textarea>
         </div>
         <div style="flex: 1;">
-            <label for="summary_en"><%= t('forms.summary_fr') %> :</label><br>
+            <label for="summary_en"><%= t('forms.summary_en') %> :</label><br>
             <textarea id="summary_en" name="summary_en" rows="3" placeholder="A short summary..."><%= (typeof article !== 'undefined' && article.summary_en) ? article.summary_en : '' %></textarea>
         </div>
     </div>
@@ -45,8 +49,17 @@
     </div> 
     <hr>
 
-    <label for="content_en" class="visually-hidden">Contenu Anglais (Traduction)</label>
-    <textarea id="content_en" name="content_en" style="display: none;" required aria-label="Contenu Anglais (Traduit)"></textarea>
+    <details class="en-correction" id="en-correction">
+        <summary><i class="fas fa-language"></i> Version anglaise : relire et corriger à la main</summary>
+        <p class="field-hint">
+            L'anglais est traduit automatiquement quand vous modifiez le français. Dès que vous corrigez un champ anglais ici,
+            il n'est plus écrasé. Le bouton ci-dessous refait toute la traduction depuis le français.
+        </p>
+        <label for="content_en">Contenu anglais (Markdown) :</label>
+        <textarea id="content_en" name="content_en" rows="14" aria-label="Contenu anglais (Markdown)"></textarea>
+        <button type="button" id="retranslate-btn" class="btn btn-secondary"><i class="fas fa-sync-alt"></i> Retraduire tout depuis le français</button>
+        <span id="content-en-status" class="field-status" aria-live="polite"></span>
+    </details>
     
     <hr>
 
@@ -63,9 +76,15 @@
         <small style="color: var(--c-text-light);">Astuce : Faites un clic droit sur Google Maps -> "Plus d'infos" pour avoir ces chiffres.</small>
     </div>
 
-    <div>
+    <div class="cover-field">
         <label for="cover_image_url"><%= t('forms.cover_image_url') %> :</label><br>
-        <input type="text" id="cover_image_url" name="cover_image_url" placeholder="Collez l'URL d'une image ici...">
+        <div class="cover-field-row">
+            <input type="text" id="cover_image_url" name="cover_image_url" placeholder="Collez l'adresse d'une image, ou envoyez un fichier">
+            <button type="button" id="cover-upload-btn" class="btn btn-secondary"><i class="fas fa-upload"></i> Envoyer une image</button>
+            <button type="button" id="cover-remove-btn" class="btn btn-secondary" hidden><i class="fas fa-times"></i> Retirer</button>
+        </div>
+        <input type="file" id="cover-upload-input" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+        <img id="cover-preview" class="cover-preview" alt="Aperçu de l'image de couverture" hidden>
         <small><%= t('forms.cover_image_hint') %></small>
     </div>
 
@@ -134,8 +153,9 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<%# Versions et empreintes (SRI) fixées : le navigateur refuse tout fichier modifié sur le CDN %>
+<script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js" integrity="sha384-QsSpx6a0USazT7nK7w8qXDgpSAPhFsb2XtpoLFQ5+X2yFN6hvCKnwEzN8M5FWaJb" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/easymde@2.18.0/dist/easymde.min.js" integrity="sha384-KtB38COewxfrhJxoN2d+olxJAeT08LF8cVZ6DQ8Poqu89zIptqO6zAXoIxpGNWYE" crossorigin="anonymous"></script>
 
 <script src="/js/auto-translate-preview.js"></script> 
 <script src="/js/init-easymde.js"></script>          
@@ -143,5 +163,6 @@
 <script src="/js/uploader.js"></script>
 <script src="/js/modal-tag-handler.js"></script>
 <script src="/js/form-validation.js"></script>
+<script src="/js/entry-editor-extras.js"></script>
 
 <%- include('partials/footer') %>

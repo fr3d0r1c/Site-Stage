@@ -5,6 +5,22 @@
 </div>
 
 <article class="full-article">
+    <a href="/journal" class="back-link"><i class="fas fa-arrow-left" aria-hidden="true"></i> <%= t('general.back_to_journal') %></a>
+
+    <% if (article.status === 'draft') { %>
+        <div class="draft-banner" role="status">
+            <i class="fas fa-pencil-ruler" aria-hidden="true"></i>
+            <strong>Brouillon</strong> : cet article n'est visible que par vous.
+            <a href="/entree/<%= article.id %>/edit">Continuer la rédaction</a>
+        </div>
+    <% } %>
+
+    <% if (article.cover_image_url) { %>
+        <figure class="article-cover">
+            <img src="<%= article.cover_image_url %>" alt="<%= article.title %>">
+        </figure>
+    <% } %>
+
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
         <h1 style="margin: 0;"><%= article.title %></h1>
 
@@ -14,16 +30,16 @@
     </div>
 
     <div style="margin-top: 0.5rem; color: var(--c-text-light); font-size: 0.9rem;">
-        <span><i class="far fa-calendar-alt"></i> <%= new Date(article.publication_date).toLocaleString(i18n.language) %></span>
+        <span><i class="far fa-calendar-alt"></i> <%= new Date(article.publication_date).toLocaleDateString(i18n.language, { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
         &nbsp;&bull;&nbsp;
-        <i class="far fa-eye"></i> <%= article.views %> vues &nbsp;&bull;&nbsp;
+        <i class="far fa-eye"></i> <%= article.views %> <%= t('general.views') %> &nbsp;&bull;&nbsp;
         <span><i class="far fa-clock"></i> <%= article.readingTime %> <%= t('general.min_read') %></span>
     </div>
 
     <% if (article.tags && article.tags.length > 0) { %>
         <div class="tags-list entry-tags" style="margin-top: 1rem;">
             <% article.tags.forEach(tag => { %>
-                <a href="/tags/<%= tag %>" class="tag-item"><%= tag %></a>
+                <a href="/tags/<%= encodeURIComponent(tag) %>" class="tag-item"><%= tag %></a>
             <% }); %>
         </div>
     <% } %>
@@ -69,18 +85,18 @@
         </button>
 
         <div id="share-menu" class="share-menu">
-            <a href="https://www.linkedin.com/sharing/share-offsite/?url=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
-               target="_blank" class="share-item">
+            <a href="https://www.linkedin.com/sharing/share-offsite/?url=<%= encodeURIComponent(shareUrl) %>" 
+               target="_blank" rel="noopener noreferrer" class="share-item">
                <i class="fab fa-linkedin-in" style="color: #0077b5;"></i> LinkedIn
             </a>
 
-            <a href="https://twitter.com/intent/tweet?text=<%= encodeURIComponent(article.title) %>&url=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
-               target="_blank" class="share-item">
+            <a href="https://twitter.com/intent/tweet?text=<%= encodeURIComponent(article.title) %>&url=<%= encodeURIComponent(shareUrl) %>" 
+               target="_blank" rel="noopener noreferrer" class="share-item">
                <i class="fab fa-x-twitter" style="color: var(--c-text);"></i> X (Twitter)
             </a>
 
-            <a href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent('https://ton-site.onrender.com/entree/' + article.id) %>" 
-               target="_blank" class="share-item">
+            <a href="https://www.facebook.com/sharer/sharer.php?u=<%= encodeURIComponent(shareUrl) %>" 
+               target="_blank" rel="noopener noreferrer" class="share-item">
                <i class="fab fa-facebook-f" style="color: #1877f2;"></i> Facebook
             </a>
 
@@ -103,7 +119,7 @@
             
             <a href="/entree/<%= article.id %>/edit" class="btn"><%= t('journal.edit') %></a>
             <form action="/entree/<%= article.id %>/delete" method="POST" 
-                   data-confirm="<%= t('admin_page.delete_confirm', 'Voulez-vous vraiment supprimer cette entrée ?') %>" 
+                   data-confirm="Mettre « <%= article.title %> » à la corbeille ? Vous pourrez le restaurer pendant 30 jours." 
                    style="display: inline;">
                  <button type="submit" class="btn btn-danger"><%= t('journal.delete') %></button>
              </form>

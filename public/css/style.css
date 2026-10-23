@@ -3162,3 +3162,86 @@ summary:focus-visible,
         scroll-behavior: auto !important;
     }
 }
+
+
+/* =================================================================
+   ARTICLES : lecture, cartes, éditeur, corbeille
+   (uniquement des variables de thème : valable en clair, sombre et sépia)
+   ================================================================= */
+
+/* --- Page de lecture --- */
+.full-article { max-width: 860px; margin-left: auto; margin-right: auto; }
+
+.back-link {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    margin-bottom: 1rem; font-size: 0.9rem; color: var(--c-text-light); text-decoration: none;
+}
+.back-link:hover { color: var(--c-primary); text-decoration: none; }
+
+.article-cover { margin: 0 0 1.5rem; }
+.article-cover img {
+    display: block; width: 100%; max-height: 420px; object-fit: cover;
+    border-radius: var(--border-radius); border: 1px solid var(--c-border);
+}
+
+.full-article h1 { line-height: 1.25; }
+.full-article .article-content { max-width: 70ch; margin-left: auto; margin-right: auto; }
+.full-article .article-content p,
+.full-article .article-content li { line-height: 1.85; }
+.full-article .article-content blockquote {
+    margin: 1.5em 0; padding: 0.5em 1.2em;
+    border-left: 4px solid var(--c-primary); background: var(--c-background);
+    border-radius: 0 var(--border-radius) var(--border-radius) 0; color: var(--c-text-light);
+}
+.full-article .article-content :not(pre) > code {
+    background: var(--c-background); border: 1px solid var(--c-border);
+    padding: 0.1em 0.4em; border-radius: 4px; font-size: 0.92em;
+}
+
+/* Bandeau « brouillon » (lecture d'un brouillon et éditeur) */
+.draft-banner {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem;
+    padding: 0.75rem 1rem; margin-bottom: 1.25rem;
+    background: var(--c-background); border: 1px solid var(--c-border);
+    border-left: 4px solid #f39c12; border-radius: var(--border-radius);
+    font-size: 0.95rem;
+}
+.draft-banner[hidden] { display: none; }
+.draft-banner .btn { padding: 4px 14px; font-size: 0.9rem; }
+
+/* --- Cartes du journal --- */
+.entry-card { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+.entry-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12); }
+.entry-card .cover-image { transition: transform 0.35s ease; }
+.entry-card:hover .cover-image { transform: scale(1.04); }
+.entry-card .card-body p { color: var(--c-text-light); line-height: 1.6; }
+.entry-card h2 { line-height: 1.3; }
+
+/* --- Éditeur : image de couverture --- */
+.cover-field-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.4rem 0; }
+.cover-field-row input[type="text"] { flex: 1 1 260px; margin: 0; }
+.cover-field-row .btn { white-space: nowrap; }
+.cover-field-row [hidden] { display: none; }
+.cover-preview {
+    display: block; max-width: 100%; max-height: 220px; object-fit: cover;
+    margin: 0.75rem 0; border-radius: var(--border-radius); border: 1px solid var(--c-border);
+}
+.cover-preview[hidden] { display: none; }
+
+/* --- Éditeur : version anglaise corrigeable --- */
+.en-correction {
+    margin: 1rem 0; padding: 0.75rem 1rem;
+    border: 1px solid var(--c-border); border-radius: var(--border-radius); background: var(--c-background);
+}
+.en-correction summary { cursor: pointer; font-weight: 600; }
+.en-correction textarea { width: 100%; margin: 0.5rem 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.field-hint { color: var(--c-text-light); font-size: 0.9rem; margin: 0.5rem 0; }
+.field-status { display: block; min-height: 1.2em; margin-top: 0.25rem; font-size: 0.85rem; color: var(--c-text-light); }
+.field-status.is-error { color: var(--c-danger); }
+
+/* --- Mobile --- */
+@media (max-width: 768px) {
+    .full-article { padding: 1.25rem; }
+    .full-article .article-content { max-width: 100%; }
+    .full-article .article-content p { font-size: 1.05rem; }
+}

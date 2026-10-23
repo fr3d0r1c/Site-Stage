@@ -67,7 +67,9 @@
     "search_button": "🔍",
     "cancel": "Annuler",
     "cancel_confirm": "Êtes-vous sûr de vouloir annuler ? Toutes les modifications non sauvegardées seront perdues.",
-    "min_read": "min de lecture"
+    "min_read": "min de lecture",
+    "views": "vues",
+    "back_to_journal": "Retour au journal"
   },
   "homepage": {
     "title": "Mon Carnet de Stage",

@@ -67,7 +67,10 @@
     "search_placeholder": "Search...",
     "search_button": "🔍",
     "cancel": "Cancel",
-    "cancel_confirm": "Are you sure you want to cancel? Any unsaved changes will be lost."
+    "cancel_confirm": "Are you sure you want to cancel? Any unsaved changes will be lost.",
+    "min_read": "min read",
+    "views": "views",
+    "back_to_journal": "Back to the journal"
   },
   "homepage": {
     "title": "My Internship Log",
