@@ -33,9 +33,9 @@ metadata:
 type: Opaque
 stringData:
   # Mettez vos vraies infos ici si vous voulez tester l'envoi d'email
-  EMAIL_USER: "votre-email@gmail.com"
-  EMAIL_PASS: "votre-mot-de-passe"
-  EMAIL_TO: "votre-email@gmail.com"   # destinataire des messages de contact et notifications
+  EMAIL_USER: "frederic.alleron@gmail.com"
+  EMAIL_PASS: "pksmwdusokwufcjo"
+  EMAIL_TO: "frederic.alleron@gmail.com"   # destinataire des messages de contact et notifications
   DEEPL_API_KEY: "votre-cle-api"      # (le code lit DEEPL_API_KEY ; l'ancien nom DEEPL_KEY n'était pas lu)
   DB_PATH: "/data/blog.db"
   # OBLIGATOIRES : l'application refuse de démarrer sans SESSION_SECRET.
@@ -68,6 +68,13 @@ spec:
         image: fr3d0r1c/carnet-stage:v1 
         # ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
         imagePullPolicy: Always # Force le téléchargement depuis Docker Hub
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         ports:
         - containerPort: 3000
         # Toutes les clés du Secret "carnet-secrets" deviennent des variables d'environnement
