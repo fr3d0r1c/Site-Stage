@@ -5,3 +5,4 @@ sessions.db
 .env
 .git
 tests
+data
