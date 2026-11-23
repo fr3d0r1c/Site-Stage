@@ -162,6 +162,7 @@ app.use(
         referrerPolicy: { policy: "strict-origin-when-cross-origin" },
         contentSecurityPolicy: {
             directives: {
+                upgradeInsecureRequests: process.env.INSECURE_COOKIES === 'true' ? null : [],
                 defaultSrc: ["'self'"],
                 connectSrc: [
                     "'self'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://cdnjs.cloudflare.com", 
