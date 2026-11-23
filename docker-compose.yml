@@ -11,7 +11,7 @@ services:
       - DB_PATH=/app/data/blog.db
       - SESSIONS_DIR=/app/data
       - INSECURE_COOKIES=true
-      - SITE_URL=http://192.168.1.133:3001
+      - SITE_URL=http://stage.homelab.internal
     ports:
       - "3001:3000"
     volumes:
